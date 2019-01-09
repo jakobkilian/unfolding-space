@@ -1,0 +1,20 @@
+
+Some notes concerning Raspberry Pi Cross-Compile:
+
+	sudo apt-get install build-essential
+	sudo apt-get install g++-arm-linux-gnueabihf
+	sudo apt-get install gdb-multiarch
+
+	- https://hackaday.com/2016/02/03/code-craft-cross-compiling-for-the-raspberry-pi/
+
+
+The SDK Libs for the Pico Flexx are in the `deps` directory. Infos here:
+https://pmdtec.com/picofamily/
+
+Download of ToF SDK:
+	https://pmdtec.com/picofamily/software-download/
+	passwort: ask Jakob
+
+
+
+
