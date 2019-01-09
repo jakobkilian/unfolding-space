@@ -107,60 +107,60 @@ class MyListener : public IDepthDataListener
         
         std::lock_guard<std::mutex> lock (flagMutex);
         
-        // create images which will be filled afterwards
-        multiCh.create (Size (data->width, data->height), CV_32FC3);
+        // create images which will be filled afterwards   |  CV_32FC3 heißt 32bit flaoting-point Array mit 3 Kanälen
+        multiCh.create (Size (data->width, data->height), CV_32FC3);       //hier wird Höhe und breite mit übergeben
         depImg.create (Size (data->width, data->height), CV_32FC3);
         
         
-        // set the image to zero
+        // leere die Bilder
         multiCh = Scalar::all (0);
         depImg = Scalar::all (0);
         
         
         
-        int k = 0;
-        for (int y = 0; y < multiCh.rows; y++)
+        int tempPixel = 0;
+        for (int thisRow = 0; reihe < multiCh.thisRow; thisRow++)
         {
-            float *multiChPtr = multiCh.ptr<float> (y);
-            float *depImgPtr = depImg.ptr<float> (y);
+            float *multiChPtr = multiCh.ptr<float> (thisRow);       //Funktion von OpenCV: ptr ist eine Art pointer des Typen float auf die thisRow Zeile
+            float *depImgPtr = depImg.ptr<float> (thisRow);
             
-            for (int x = 0; x < multiCh.cols; x++, k++)
+            for (int x = 0; x < multiCh.cols; x++, tempPixel++)     //iteriert durch die Spalten (also jeden einzelnen Pixel)
             {
                 //data müssten die rohen daten der Kamera sein (werden oben der onNEwDate übergeben
-                //d.h. hier wird ein bestimmter Wert (k) aus dem Datenarray (data) ausgegeben und in curPoint gespeichert
-                auto curPoint = data->points.at (k);
+                //d.h. hier wird ein bestimmter Wert (tempPixel) aus dem Datenarray (data) ausgegeben und in curPoint gespeichert
+                auto curPoint = data->points.at (tempPixel);
                 
                 //confidence geht von 0 bis 255 und bezeichnet wie vertrauenwürdig ein punkt ist. 0 heißt ungültig
                 if (curPoint.depthConfidence > 0)
                 {
                     // if the point is valid, map the pixel from 3D world
                     // coordinates to a 2D plane (this will distort the image)
-                    multiChPtr[x*3] = adjustDepthValue (curPoint.z, distThresh);
-                    multiChPtr[x*3+1] = curPoint.depthConfidence;
-                    multiChPtr[x*3+2] = 200;
+                    multiChPtr[x*3] = adjustDepthValue (curPoint.z, distThresh);            //TiefenWert als 0-255 float. Berechnet wird in Relation zu "distThresh"
+                    multiChPtr[x*3+1] = curPoint.depthConfidence;                           //Confidence wird mit abgespeichert - notwendig?
+                    multiChPtr[x*3+2] = 200;                                                //???
                     
-                    depImgPtr[x*3] = adjustDepthValueForImage (curPoint.z, distThresh);
-                    depImgPtr[x*3+1] = curPoint.depthConfidence;
-                    depImgPtr[x*3+2] = 200;
+                    depImgPtr[x*3] = adjustDepthValueForImage (curPoint.z, distThresh);     //Daten für das sichtbare Bild: der Wert wurde in 0-180 Wert gewandelt für Hue
+                    depImgPtr[x*3+1] = curPoint.depthConfidence;                            //Wird später zur Saturation - Punkt ist vertrauenswürdig: hohe saturation
+                    depImgPtr[x*3+2] = 200;                                                 //Wird später zur Helligkeit (HSB) - eigentlich irrelevant?
                     
                     
                 }
                 
                 else{
-                    multiChPtr[x*3] = 255;
-                    multiChPtr[x*3+1] = 0;
-                    multiChPtr[x*3+2] = 255;
+                    multiChPtr[x*3] = 255;              //Wenn aktuelle Pixel (tempPixel) überhaupt keine Confidence hat, wird er als 255 gewertet (weit weg/nicht im Range)
+                    multiChPtr[x*3+1] = 0;              //
+                    multiChPtr[x*3+2] = 255;            //
                     depImgPtr[x*3] = 255;
-                    depImgPtr[x*3+1] = 0;
+                    depImgPtr[x*3+1] = 0;               //Saturation ist 0, da keine confidence – heißt Pixel ist weiß im Bild
                     depImgPtr[x*3+2] = 255;
                 }
                 
-                if (curPoint.z> distThresh-0.2){
-                    multiChPtr[x*3] = 255;
-                    multiChPtr[x*3+1] = 0;
+                if (curPoint.z> distThresh-0.2){        //wenn tempPixel nur max 20cm (0.2) niedriger ist als Thresh wird er auf 255 gesetzt. Heißt, dass Werte
+                    multiChPtr[x*3] = 255;              //in den letzten 20cm immer "unendlich weit weg" sind bzw keine Vibration darstellen
+                    multiChPtr[x*3+1] = 0;              //ich glaube ich musste diesen letzten Bereich aus irgendwelchen praktischen Gründen ausschließen...
                     multiChPtr[x*3+2] = 255;
                     depImgPtr[x*3] = 255;
-                    depImgPtr[x*3+1] = 0;
+                    depImgPtr[x*3+1] = 0;               //Saturation ist 0, da keine confidence – heißt Pixel ist weiß im Bild
                     depImgPtr[x*3+2] = 255;
                 
                 }
@@ -171,62 +171,49 @@ class MyListener : public IDepthDataListener
         
         // create images to store the 8Bit version (some OpenCV
         // functions may only work on 8Bit images)
-        multiCh8.create (Size (data->width, data->height), CV_8UC3);
+        multiCh8.create (Size (data->width, data->height), CV_8UC3);            //8bit unsigned char Array mit 3 Kanälen
         depImg8.create (Size (data->width, data->height), CV_8UC3);
         fehler8.create (Size (data->width, data->height), CV_8UC3);
         
         if (undistortImage)
         {
             // call the undistortion function on the z image
-
             multiCh(Rect(myCrop*224/2,0,223-myCrop*224,170)).copyTo(multiCh);
             depImg(Rect(myCrop*224/2,0,223-myCrop*224,170)).copyTo(depImg);
-            
         }
         
-        
-        
-        
-        
-        
-        
-        
+
+        //convert die beiden Bilder (für Tiefenwert und für Bild) in die neuen 8bit Bilder
         multiCh.convertTo (multiCh8, CV_8UC3);
-        
-  
-        
         depImg.convertTo (depImg8, CV_8UC3);
-        
+        //und drehe sie
         flip(multiCh8, multiCh8, -1);
         flip(depImg8, depImg8, -1);
         
         
+        /* --berechne die 9pixel Matrix-- */
+        int thisWidth=multiCh8.size().width;                //finde zunächst die Breite...
+        int thisHeight=multiCh8.size().height;              //...und Höhe des Bildes heraus
         
-   
-        
-        /* --calculate the 9pixels matrix-- */
-        int thisW=multiCh8.size().width;
-        int thisH=multiCh8.size().height;
-        
-        for (int ox=0; ox<3; ox++) {
-            for (int oy=0; oy<3; oy++) {
+        for (int outputX=0; outputX<3; outputX++) {         //gehe durch die Spalten
+            for (int outputY=0; outputY<3; outputY++) {     //gehe durch die Reihen
                 
-                int thisCounter=0;
-                uchar thisPixel [4500]={};
+                int thisCounter=0;                          //fungiert als index für das thisPixel Array
+                uchar thisPixel [4500]={};                  //thisPixel array
                 
                 for (int i=0; i<4500; i++) {
-                    thisPixel[i]=255;
+                    thisPixel[i]=255;                       //Alle Werte werden zunächst auf 255 gestellt (kein ERgebnis /außerhalb der Range)
                 }
                 
-                for (int y =thisH/3*oy; y< thisH/3*(oy+1); y++) {
-                    for (int x =thisW/3*ox; x< thisW/3*(ox+1); x++) {
+                for (int y =thisHeight/3*outputY; y< thisHeight/3*(outputY+1); y++) {           //Gehe durch alle Pixel des jeweiligen Ouput-Kästchens
+                    for (int x =thisWidth/3*outputX; x< thisWidth/3*(outputX+1); x++) {
                         
-                        Vec3f werte = multiCh8.at<Vec3b>(y, x);
-                        uchar thisDepth = werte.val[0];
-                        uchar thisConf = werte.val[2];
+                        Vec3f werte = multiCh8.at<Vec3b>(y, x);         //Schreibe die Werte des aktuellen Pixels in einen 3 Kanal Float Vector
+                        uchar thisDepth = werte.val[0];                 //Schreibe Tiefe...
+                        uchar thisConf = werte.val[2];                  //...und Confidence in extra uchar
                         
                         if (thisConf>0){
-                            thisPixel[thisCounter]=thisDepth;
+                            thisPixel[thisCounter]=thisDepth;           //Schreibe den Tiefenwert ins Array wenn der Confiidence Wert über 0 ist
                             
                             //  cout << werte.val[0] << endl;
                             thisCounter++;
@@ -245,43 +232,41 @@ class MyListener : public IDepthDataListener
                     
                     //durch thisPixel iterieren
                     for (int pos=0; pos<4500; pos++) {
-                        if (thisPixel[pos] >=d && thisPixel[pos] <d+depthScanTolerance){
+                        if (thisPixel[pos] >=d && thisPixel[pos] <d+depthScanTolerance){   //wie viele Pixel befinden sich im Range von d+Tolerance? (10cm)
                             anzImRange++;
                         }
                     }
                     //cout << anzImRange << " -  - " << d << endl;
                     
                     
-                    if (anzImRange>minObjSizeThresh)
+                    if (anzImRange>minObjSizeThresh)                                      //beim ersten mit mehr als minObjSizeThresh (wenn ein Objekt Größer ist als Thresh)
                     {
                         //smoothing
-                        // int smoothingCalc=(ninePixMatrix[oy][ox]+d)/2;
-                        ninePixMatrix[oy][ox]=d;
-                        
-                        
-                        break;
+                        // int smoothingCalc=(ninePixMatrix[outputY][outputX]+d)/2;
+                        ninePixMatrix[outputY][outputX]=d;                                //.... trage diesen Wert in die 9Pixel Matrix ein
+                        break;                                                            //und beende dieses Kästchen
                         
                     }
                     else{
-                        //if the pixel has to low confidence - make it white
-                        ninePixMatrix[oy][ox]=255;
+                        //if the pixel has to less pixels - make it white              //wenn keine großgenuges Objekt da ist: weiß 
+                        ninePixMatrix[outputY][outputX]=255;
                     }
                     
                     
                 }//for dd
-            }//for oy
-        }//for ox
+            }//for outputY
+        }//for outputX
         
         
         
-        Mat tempImg( 3,3, CV_8UC1, ninePixMatrix );
+        Mat tempImg( 3,3, CV_8UC1, ninePixMatrix );                                     //Hier kommen gleich die 9 Tiefenwerte rein
         //printf( "Decimal: \t%i\n", ninePixMatrix[0][0]);
         
         ninePixImg.create (Size (3,3), CV_8UC1);
         
         resize (tempImg, ninePixImg, Size(3,3) ,0,0, INTER_NEAREST);
-        resize (ninePixImg, tempImg, myWindowSize ,0,0, INTER_NEAREST);
-        imshow ("ninePixImg", tempImg);
+        resize (ninePixImg, tempImg, myWindowSize ,0,0, INTER_NEAREST);                 //Skaliere hoch, um das 9Feld-Bild anzeigen zu können
+        imshow ("ninePixImg", tempImg);                                                 //zeige das 9Feld-Bild
         
         
         // convert images to the 8Bit version
@@ -289,19 +274,11 @@ class MyListener : public IDepthDataListener
         // You can also replace this with an automatic scaling by using
         // normalize(grayImage, grayImage8, 0, 255, NORM_MINMAX, CV_8UC1
         
-        
 
-        
-        
-        
         
         cvtColor (depImg8, depImg8,COLOR_HSV2RGB, 3);
         resize (depImg8, depImg8,myWindowSize,INTER_LANCZOS4);
-        
-        
- 
-        
-        
+
         imshow ("depImg8", depImg8);
         
         
@@ -327,7 +304,7 @@ class MyListener : public IDepthDataListener
     
     
     
-    /* --settings for aamera-- */
+    /* --settings for camera-- */
     
     void setLensParameters (const LensParameters &lensParameters)
     {
@@ -424,7 +401,6 @@ int main (int argc, char *argv[])
     openArdu();
     
     
-    
     // the camera manager will query for a connected camera
     {
         CameraManager manager;
@@ -506,11 +482,6 @@ int main (int argc, char *argv[])
     
     moveWindow("depImg8", 50, 50);
     moveWindow("ninePixImg", 700, 50);
-
-    
-    //test
-    
-    
     
     // start capture mode
     
