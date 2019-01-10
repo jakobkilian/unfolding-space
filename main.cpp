@@ -2,6 +2,7 @@
 #include <opencv2/opencv.hpp>
 #include <SerialStream.h>
 #include <string>
+#include <mutex>
 #include <sample_utils/PlatformResources.hpp>
 
 #define PORT "/dev/cu.usbmodem1411" //This is system-specific
@@ -118,8 +119,10 @@ class MyListener : public IDepthDataListener
         
         
         
+	
         int tempPixel = 0;
-        for (int thisRow = 0; reihe < multiCh.thisRow; thisRow++)
+        //for (int thisRow = 0; reihe < multiCh.thisRow; thisRow++)
+        for (int thisRow = 0; thisRow < multiCh.rows; thisRow++)
         {
             float *multiChPtr = multiCh.ptr<float> (thisRow);       //Funktion von OpenCV: ptr ist eine Art pointer des Typen float auf die thisRow Zeile
             float *depImgPtr = depImg.ptr<float> (thisRow);
