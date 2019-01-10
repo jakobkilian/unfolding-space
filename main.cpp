@@ -121,7 +121,6 @@ class MyListener : public IDepthDataListener
         
 	
         int tempPixel = 0;
-        //for (int thisRow = 0; reihe < multiCh.thisRow; thisRow++)
         for (int thisRow = 0; thisRow < multiCh.rows; thisRow++)
         {
             float *multiChPtr = multiCh.ptr<float> (thisRow);       //Funktion von OpenCV: ptr ist eine Art pointer des Typen float auf die thisRow Zeile
