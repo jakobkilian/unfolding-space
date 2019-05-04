@@ -1,442 +1,198 @@
-#include <royale.hpp>
-#include <opencv2/opencv.hpp>
-#include <SerialStream.h>
-#include <string>
-#include <mutex>
-#include <sample_utils/PlatformResources.hpp>
+#include "glove.hpp"
+#include "camera.hpp"
+#include "poti.hpp"
+#include "time.h"
+#include <royale/IEvent.hpp>
+#include <signal.h>
 
-#define PORT "/dev/cu.usbmodem1411" //This is system-specific
+using std::cerr;
+using std::cout;
+using std::endl;
 
-using namespace royale;
-using namespace sample_utils;
-using namespace std;
-using namespace cv;
-using namespace LibSerial;
+double coreTempDouble;
+int droppedAtBridge;
+int droppedAtFC;
+int deliveredFrames;
+int tenSecsDrops;
+int fpsFromCam;        //wich royal use case is used? How many fps does the cam deliver?
+bool processingImg;
+int currentKey = 0;
+bool record=false;
 
-/* --Arduino Serial Stuff-- */
-
-SerialStream ardu;
-//char for concluding message
-const char endMsg = 13;
-//char for next value
-const char nxtInt = ' ';
-//lra actuator values send to the arduino (0-255)
-string lraValues[9] = {"0", "0", "0", "0","0", "0", "0", "0","0"};
-//mapping of the lra actuators
-int lraMapping[9] = {2,5,8,1,4,7,0,3,6};
-
-
-/* --image calculation-- */
-
-//array for saving the 9 LRA-output values
-uchar ninePixMatrix [3][3] = {};
-//when scanning the depth image for closest object: the tolerance/range the scanner is checking (total range=255)
-int depthScanTolerance=10;
-//when scanning... : the min number of pixels, an object must have (smaller objects might be noise
-int minObjSizeThresh=300;
-
-float distThresh=2.8;
-float myCrop=0.25;
-
-/* --other-- */
-
-//standard size of the Windows
-Size_<int> myWindowSize= Size(650,500);
+long cameraStartTime;
 
 
 
-float myMap(float value, float istart, float istop, float ostart, float ostop) {
-    return ostart + (ostop - ostart) * ((value - istart) / (istop - istart));
-}
-
-int myHueChange(float oldValue, float changeValue){
-    int   oldInt= static_cast<int>(oldValue);
-    int   changeInt= static_cast<int>(changeValue);
-    return (oldInt+changeInt)%360;
-}
-
-
-//_______________ARDUINO FUNCTIONS________________
-
-void openArdu()
+//Royale Event Listener reports dropped frames as string. This functions extracts the number of frames that got lost at Bridge/FC. I believe, that dropped frames cause the instability.
+void extractDrops(royale::String str)
 {
-    ardu.Open(PORT);
-    /*The arduino must be setup to use the same baud rate*/
-    ardu.SetBaudRate(SerialStreamBuf::BAUD_115200);
-    ardu.SetCharSize(SerialStreamBuf::CHAR_SIZE_8);
-    ardu.SetNumOfStopBits(1) ;
-    ardu.SetParity( SerialStreamBuf::PARITY_ODD ) ;
-    ardu.SetFlowControl( SerialStreamBuf::FLOW_CONTROL_HARD ) ;
-    ardu.SetVTime(1);
-    ardu.SetVMin(0);
-    cout << "Arduino ready" << std::endl;
-}
+    using namespace std;
+    stringstream ss;
 
-void closeArdu()
-{
-    ardu.Close() ;
-}
+    /* Storing the whole string into string stream */
+    ss << str;
 
-void sendArdu()
-{
-    for (int i=0; i<8; i++) {
-        ardu <<lraValues[lraMapping[i]] << nxtInt;                 //send value and nextInt
-        // cout << lraValues[lraMapping[i]]  << " - "    ;          //print values, if needed
+    /* Running loop till the end of the stream */
+    string temp;
+    int found;
+    int i=0;
+    while (!ss.eof()) {
+        /* extracting word by word from stream */
+        ss >> temp;
+        /* Checking the given word is integer or not */
+        if (stringstream(temp) >> found) {
+            if (i==0) droppedAtBridge=found;
+            if (i==1) droppedAtFC=found;
+            if (i==2) deliveredFrames=found;
+            i++;
+        }
+        /* To save from space at the end of string */
+        temp = "";
     }
-    ardu << endMsg;                                 //print linebreak char to end the message (Arduino Messenger Library)
+    tenSecsDrops+=droppedAtBridge +droppedAtFC;
+
 }
 
 
-
-//_______________CAMERA LISTENER________________
-
-
-class MyListener : public IDepthDataListener
+//Gets called by Royale irregularily
+class EventReporter : public royale::IEventListener
 {
-    
-    public :
-    
-    MyListener() :
-    undistortImage (false)
-    {
-    }
-    
-    void onNewData (const DepthData *data)
-    {
-        // this callback function will be called for every new
-        // depth frame
-        
-        std::lock_guard<std::mutex> lock (flagMutex);
-        
-        // create images which will be filled afterwards   |  CV_32FC3 heißt 32bit flaoting-point Array mit 3 Kanälen
-        multiCh.create (Size (data->width, data->height), CV_32FC3);       //hier wird Höhe und breite mit übergeben
-        depImg.create (Size (data->width, data->height), CV_32FC3);
-        
-        
-        // leere die Bilder
-        multiCh = Scalar::all (0);
-        depImg = Scalar::all (0);
-        
-        
-        
-	
-        int tempPixel = 0;
-        for (int thisRow = 0; thisRow < multiCh.rows; thisRow++)
+    public:
+        virtual ~EventReporter() = default;
+
+        virtual void onEvent (std::unique_ptr<royale::IEvent> &&event) override
         {
-            float *multiChPtr = multiCh.ptr<float> (thisRow);       //Funktion von OpenCV: ptr ist eine Art pointer des Typen float auf die thisRow Zeile
-            float *depImgPtr = depImg.ptr<float> (thisRow);
-            
-            for (int x = 0; x < multiCh.cols; x++, tempPixel++)     //iteriert durch die Spalten (also jeden einzelnen Pixel)
+            //printf("EventListener  ");
+            royale::EventSeverity severity = event->severity();
+
+            switch (severity)
             {
-                //data müssten die rohen daten der Kamera sein (werden oben der onNEwDate übergeben
-                //d.h. hier wird ein bestimmter Wert (tempPixel) aus dem Datenarray (data) ausgegeben und in curPoint gespeichert
-                auto curPoint = data->points.at (tempPixel);
-                
-                //confidence geht von 0 bis 255 und bezeichnet wie vertrauenwürdig ein punkt ist. 0 heißt ungültig
-                if (curPoint.depthConfidence > 0)
-                {
-                    // if the point is valid, map the pixel from 3D world
-                    // coordinates to a 2D plane (this will distort the image)
-                    multiChPtr[x*3] = adjustDepthValue (curPoint.z, distThresh);            //TiefenWert als 0-255 float. Berechnet wird in Relation zu "distThresh"
-                    multiChPtr[x*3+1] = curPoint.depthConfidence;                           //Confidence wird mit abgespeichert - notwendig?
-                    multiChPtr[x*3+2] = 200;                                                //???
-                    
-                    depImgPtr[x*3] = adjustDepthValueForImage (curPoint.z, distThresh);     //Daten für das sichtbare Bild: der Wert wurde in 0-180 Wert gewandelt für Hue
-                    depImgPtr[x*3+1] = curPoint.depthConfidence;                            //Wird später zur Saturation - Punkt ist vertrauenswürdig: hohe saturation
-                    depImgPtr[x*3+2] = 200;                                                 //Wird später zur Helligkeit (HSB) - eigentlich irrelevant?
-                    
-                    
-                }
-                
-                else{
-                    multiChPtr[x*3] = 255;              //Wenn aktuelle Pixel (tempPixel) überhaupt keine Confidence hat, wird er als 255 gewertet (weit weg/nicht im Range)
-                    multiChPtr[x*3+1] = 0;              //
-                    multiChPtr[x*3+2] = 255;            //
-                    depImgPtr[x*3] = 255;
-                    depImgPtr[x*3+1] = 0;               //Saturation ist 0, da keine confidence – heißt Pixel ist weiß im Bild
-                    depImgPtr[x*3+2] = 255;
-                }
-                
-                if (curPoint.z> distThresh-0.2){        //wenn tempPixel nur max 20cm (0.2) niedriger ist als Thresh wird er auf 255 gesetzt. Heißt, dass Werte
-                    multiChPtr[x*3] = 255;              //in den letzten 20cm immer "unendlich weit weg" sind bzw keine Vibration darstellen
-                    multiChPtr[x*3+1] = 0;              //ich glaube ich musste diesen letzten Bereich aus irgendwelchen praktischen Gründen ausschließen...
-                    multiChPtr[x*3+2] = 255;
-                    depImgPtr[x*3] = 255;
-                    depImgPtr[x*3+1] = 0;               //Saturation ist 0, da keine confidence – heißt Pixel ist weiß im Bild
-                    depImgPtr[x*3+2] = 255;
-                
-                }
-                
+            case royale::EventSeverity::ROYALE_INFO:
+                //cerr << "info: " << event->describe() << endl;
+                extractDrops(event->describe());
+                break;
+            case royale::EventSeverity::ROYALE_WARNING:
+                //cerr << "warning: " << event->describe() << endl;
+                extractDrops(event->describe());
+                break;
+            case royale::EventSeverity::ROYALE_ERROR:
+                cerr << "error: " << event->describe() << endl;
+                break;
+            case royale::EventSeverity::ROYALE_FATAL:
+                cerr << "fatal: " << event->describe() << endl;
+                break;
+            default:
+                //cerr << "waits..." << event->describe() << endl;
+                break;
             }
         }
-        
-        
-        // create images to store the 8Bit version (some OpenCV
-        // functions may only work on 8Bit images)
-        multiCh8.create (Size (data->width, data->height), CV_8UC3);            //8bit unsigned char Array mit 3 Kanälen
-        depImg8.create (Size (data->width, data->height), CV_8UC3);
-        fehler8.create (Size (data->width, data->height), CV_8UC3);
-        
-        if (undistortImage)
-        {
-            // call the undistortion function on the z image
-            multiCh(Rect(myCrop*224/2,0,223-myCrop*224,170)).copyTo(multiCh);
-            depImg(Rect(myCrop*224/2,0,223-myCrop*224,170)).copyTo(depImg);
-        }
-        
-
-        //convert die beiden Bilder (für Tiefenwert und für Bild) in die neuen 8bit Bilder
-        multiCh.convertTo (multiCh8, CV_8UC3);
-        depImg.convertTo (depImg8, CV_8UC3);
-        //und drehe sie
-        flip(multiCh8, multiCh8, -1);
-        flip(depImg8, depImg8, -1);
-        
-        
-        /* --berechne die 9pixel Matrix-- */
-        int thisWidth=multiCh8.size().width;                //finde zunächst die Breite...
-        int thisHeight=multiCh8.size().height;              //...und Höhe des Bildes heraus
-        
-        for (int outputX=0; outputX<3; outputX++) {         //gehe durch die Spalten
-            for (int outputY=0; outputY<3; outputY++) {     //gehe durch die Reihen
-                
-                int thisCounter=0;                          //fungiert als index für das thisPixel Array
-                uchar thisPixel [4500]={};                  //thisPixel array
-                
-                for (int i=0; i<4500; i++) {
-                    thisPixel[i]=255;                       //Alle Werte werden zunächst auf 255 gestellt (kein ERgebnis /außerhalb der Range)
-                }
-                
-                for (int y =thisHeight/3*outputY; y< thisHeight/3*(outputY+1); y++) {           //Gehe durch alle Pixel des jeweiligen Ouput-Kästchens
-                    for (int x =thisWidth/3*outputX; x< thisWidth/3*(outputX+1); x++) {
-                        
-                        Vec3f werte = multiCh8.at<Vec3b>(y, x);         //Schreibe die Werte des aktuellen Pixels in einen 3 Kanal Float Vector
-                        uchar thisDepth = werte.val[0];                 //Schreibe Tiefe...
-                        uchar thisConf = werte.val[2];                  //...und Confidence in extra uchar
-                        
-                        if (thisConf>0){
-                            thisPixel[thisCounter]=thisDepth;           //Schreibe den Tiefenwert ins Array wenn der Confiidence Wert über 0 ist
-                            
-                            //  cout << werte.val[0] << endl;
-                            thisCounter++;
-                            
-                        }// if conf
-                    } //for x
-                }//for y
-                
-                
-                //scanner
-                
-                //Depth Wert
-                for (int d=0; d<255-depthScanTolerance; d++) {
-                    
-                    int anzImRange=0;
-                    
-                    //durch thisPixel iterieren
-                    for (int pos=0; pos<4500; pos++) {
-                        if (thisPixel[pos] >=d && thisPixel[pos] <d+depthScanTolerance){   //wie viele Pixel befinden sich im Range von d+Tolerance? (10cm)
-                            anzImRange++;
-                        }
-                    }
-                    //cout << anzImRange << " -  - " << d << endl;
-                    
-                    
-                    if (anzImRange>minObjSizeThresh)                                      //beim ersten mit mehr als minObjSizeThresh (wenn ein Objekt Größer ist als Thresh)
-                    {
-                        //smoothing
-                        // int smoothingCalc=(ninePixMatrix[outputY][outputX]+d)/2;
-                        ninePixMatrix[outputY][outputX]=d;                                //.... trage diesen Wert in die 9Pixel Matrix ein
-                        break;                                                            //und beende dieses Kästchen
-                        
-                    }
-                    else{
-                        //if the pixel has to less pixels - make it white              //wenn keine großgenuges Objekt da ist: weiß 
-                        ninePixMatrix[outputY][outputX]=255;
-                    }
-                    
-                    
-                }//for dd
-            }//for outputY
-        }//for outputX
-        
-        
-        
-        Mat tempImg( 3,3, CV_8UC1, ninePixMatrix );                                     //Hier kommen gleich die 9 Tiefenwerte rein
-        //printf( "Decimal: \t%i\n", ninePixMatrix[0][0]);
-        
-        ninePixImg.create (Size (3,3), CV_8UC1);
-        
-        resize (tempImg, ninePixImg, Size(3,3) ,0,0, INTER_NEAREST);
-        resize (ninePixImg, tempImg, myWindowSize ,0,0, INTER_NEAREST);                 //Skaliere hoch, um das 9Feld-Bild anzeigen zu können
-        imshow ("ninePixImg", tempImg);                                                 //zeige das 9Feld-Bild
-        
-        
-        // convert images to the 8Bit version
-        // This sample uses a fixed scaling of the values to (0, 255) to avoid flickering.
-        // You can also replace this with an automatic scaling by using
-        // normalize(grayImage, grayImage8, 0, 255, NORM_MINMAX, CV_8UC1
-        
-
-        
-        cvtColor (depImg8, depImg8,COLOR_HSV2RGB, 3);
-        resize (depImg8, depImg8,myWindowSize,INTER_LANCZOS4);
-
-        imshow ("depImg8", depImg8);
-        
-        
-        /* --fill the values in the Arduino LR value array-- */
-        int myCounter=0;
-        for (int y=0; y<3; y++) {
-            for (int x=0; x<3; x++) {
-                Scalar intensity = ninePixImg.at<uchar>(x, y);
-                stringstream tempStr ;
-                tempStr << intensity.val[0]/2; //divide to get a range from 0 to 128
-                lraValues[myCounter] = tempStr.str();
-                myCounter++;
-            }
-            
-        }
-        
-        /* --send serial data to Arduino-- */
-        sendArdu();
-        
-    }
-    
-    
-    
-    
-    
-    /* --settings for camera-- */
-    
-    void setLensParameters (const LensParameters &lensParameters)
-    {
-        // Construct the camera matrix
-        // (fx   0    cx)
-        // (0    fy   cy)
-        // (0    0    1 )
-        cameraMatrix = (Mat1d (3, 3) << lensParameters.focalLength.first, 0, lensParameters.principalPoint.first,
-                        0, lensParameters.focalLength.second, lensParameters.principalPoint.second,
-                        0, 0, 1);
-        
-        // Construct the distortion coefficients
-        // k1 k2 p1 p2 k3
-        distortionCoefficients = (Mat1d (1, 5) << lensParameters.distortionRadial[0],
-                                  lensParameters.distortionRadial[1],
-                                  lensParameters.distortionTangential.first,
-                                  lensParameters.distortionTangential.second,
-                                  lensParameters.distortionRadial[2]);
-    }
-    
-    
-    
-    
-    
-    
-    void toggleUndistort()
-    {
-        std::lock_guard<std::mutex> lock (flagMutex);
-        undistortImage = !undistortImage;
-    }
-    
-    
-    //_______________PRIVATE_______________
-    
-    
-private:
-    
-    float adjustDepthValue (float zValue, float max)
-    {
-        if (zValue>max){zValue=max;}
-        float newZValue = zValue / max * 255.0f;
-        return newZValue;
-        
-    }
-    
-    
-    
-    float adjustDepthValueForImage (float zValue, float max)
-    {
-        if (zValue>max){zValue=max;}
-        float newZValue = zValue / max * 180.0f;
-        newZValue= myMap(newZValue, 0, 180, 180, 0);
-        newZValue= myHueChange(newZValue, -50);
-        return newZValue;
-        
-    }
-    
-    // define images for depth and gray
-    // and for their 8Bit and scaled versions
-    Mat multiCh, multiCh8, fehler, fehler8, ninePixImg, depImg, depImg8;
-    
-    // lens matrices used for the undistortion of
-    // the image
-    Mat cameraMatrix;
-    Mat distortionCoefficients;
-    
-    std::mutex flagMutex;
-        bool undistortImage=false;
 };
 
+//Read out the core temperature and save it in coreTempDouble for printing it to the console
+void getCoreTemp() {
+    std::string coreTemp;
+    std::ifstream tempFile ("/sys/class/thermal/thermal_zone0/temp");
+    tempFile >> coreTemp;
+    coreTemp=coreTemp.insert(2,1, '.');
+    coreTempDouble= std::stod(coreTemp);
+    tempFile.close();
+}
+
+void endMuted(int dummy){
+    stopWritingVals=true;
+    muteAll();
+     exit(0);
+    }
 
 
 
 
-//_______________MAIN LOOP________________
-
-
-int main (int argc, char *argv[])
+//_______________MAIN LOOP________________________________________________________________________________________________________________________________________________
+int main(int argc, char *argv[])
 {
-    // Windows requires that the application allocate these, not the DLL.
-    PlatformResources resources;
+    //Mute the LRAs before ending the program by ctr + c (SIGINT)
+    signal(SIGINT, endMuted);
     
+    
+    //Setup the LRAs on the Glove (I2C Connection, Settings, Calibration, etc.)
+    setupGlove();
+
+    //Setup Connection to Digispark Board for Poti-Reads
+    initPoti();
+/*
+    //Get Time to create filename for video recording
+    time_t now = time(0);
+    tm *ltm = localtime(&now);
+    std::string a= std::to_string(ltm->tm_mon);
+    std::string b= std::to_string(ltm->tm_mday);
+    std::string c= std::to_string(ltm->tm_hour);
+    std::string d= std::to_string(ltm->tm_min);
+    std::string e= std::to_string(ltm->tm_sec);
+    std::string depfile = "outputs/" + a +"_" + b +"_"+ c+"_" + d +"_"+ e+"_" + "depth.avi" ;
+        std::string tilefile = "outputs/" + a +"_" + b +"_"+ c+"_" + d +"_"+ e+"_" + "tiles.avi" ;
+    cv::VideoWriter depVideo(depfile,CV_FOURCC('X','V','I','D'),10, cv::Size(224,171));
+        cv::VideoWriter tileVideo(tilefile,CV_FOURCC('X','V','I','D'),10, cv::Size(3,3));
+
+*/
+
+searchCam:
+
     // This is the data listener which will receive callbacks.  It's declared
     // before the cameraDevice so that, if this function exits with a 'return'
     // statement while the camera is still capturing, it will still be in scope
     // until the cameraDevice's destructor implicitly de-registers the listener.
-    MyListener listener;
-    
+    DepthDataListener listener;
+
+    //Event Listener
+    EventReporter eventReporter;
+
     // this represents the main camera device object
-    std::unique_ptr<ICameraDevice> cameraDevice;
-    
-    
-    //open connection to Arduino
-    openArdu();
-    
-    
+    std::unique_ptr<royale::ICameraDevice> cameraDevice;
+    uint commandLineUseCase;
+
+    //auto arg = std::unique_ptr<royale::String> (new royale::String (argv[1]));
+    //commandLineUseCase = std::move (arg);
+    commandLineUseCase = atoi( argv[1]);
+
+
     // the camera manager will query for a connected camera
     {
-        CameraManager manager;
+        royale::CameraManager manager;
+        //EventListener registrieren
+        //nicht mehr an dieser Stelle:
+        //manager.registerEventListener (&eventReporter);
         
-        // check the number of arguments
-        if (argc > 1)
+
+royale::Vector<royale::String> camlist;
+        cout << "Searching for 3D camera" << endl;
+        cout << "_______________________" << endl;
+while (camlist.empty()){
+
+        // if no argument was given try to open the first connected camera
+        camlist= manager.getConnectedCameraList();
+        cout << ".";
+        cout.flush();
+
+        if (!camlist.empty())
         {
-            // if the program was called with an argument try to open this as a file
-            cout << "Trying to open : " << argv[1] << endl;
-            cameraDevice = manager.createCamera (argv[1]);
+                    cout << endl;
+            cout << "Camera detected!" << endl;
+            cameraDevice = manager.createCamera(camlist[0]);
         }
-        else
+}
+/*
+        if (camlist.empty())
         {
-            // if no argument was given try to open the first connected camera
-            royale::Vector<royale::String> camlist (manager.getConnectedCameraList());
-            cout << "Detected " << camlist.size() << " camera(s)." << endl;
-            
-            if (!camlist.empty())
-            {
-                cameraDevice = manager.createCamera (camlist[0]);
-            }
-            else
-            {
-                cerr << "No suitable camera device detected." << endl
-                << "Please make sure that a supported camera is plugged in, all drivers are "
-                << "installed, and you have proper USB permission" << endl;
-                return 1;
-            }
-            
-            camlist.clear();
+            cerr << "No suitable camera device detected." << endl
+                 << "Please make sure that a supported camera is plugged in, all drivers are "
+                 << "installed, and you have proper USB permission" << endl;
+            return 1;
         }
+*/
+        camlist.clear();
+
     }
     // the camera device is now available and CameraManager can be deallocated here
-    
     if (cameraDevice == nullptr)
     {
         // no cameraDevice available
@@ -451,75 +207,253 @@ int main (int argc, char *argv[])
             return 1;
         }
     }
-    
+
     // IMPORTANT: call the initialize method before working with the camera device
     auto status = cameraDevice->initialize();
-    if (status != CameraStatus::SUCCESS)
+    if (status != royale::CameraStatus::SUCCESS)
     {
-        cerr << "Cannot initialize the camera device, error string : " << getErrorString (status) << endl;
+        cerr << "Cannot initialize the camera device, error string : " << getErrorString(status) << endl;
         return 1;
     }
-    
+
+    //mein stuff: cameraDevice->setExposureMode(royale::ExposureMode AUTO);
+
+    royale::Vector<royale::String> useCases;
+    auto usecaseStatus = cameraDevice->getUseCases(useCases);
+
+    if (usecaseStatus != royale::CameraStatus::SUCCESS || useCases.empty())
+    {
+        cerr << "No use cases are available" << endl;
+        cerr << "getUseCases() returned: " << getErrorString(usecaseStatus) << endl;
+        return 1;
+    }
+
+    cerr << useCases << endl;
+
+    // choose a use case
+    uint selectedUseCaseIdx = 0u;
+    if (commandLineUseCase)
+    {
+        cerr << "got the argument:" << commandLineUseCase << endl;
+        auto useCaseFound = false;
+        if (commandLineUseCase >= 0 && commandLineUseCase < useCases.size())
+        {
+            selectedUseCaseIdx = commandLineUseCase;
+            switch (commandLineUseCase)
+            {
+            case 0:
+                fpsFromCam=5;
+                break;
+            case 1:
+                fpsFromCam=10;
+                break;
+            case 2:
+                fpsFromCam=15;
+                break;
+            case 3:
+                fpsFromCam=25;
+                break;
+            case 4:
+                fpsFromCam=35;
+                break;
+            case 5:
+                fpsFromCam=45;
+                break;
+            }
+            useCaseFound = true;
+        }
+
+
+        if (!useCaseFound)
+        {
+            cerr << "Error: the chosen use case is not supported by this camera" << endl;
+            cerr << "A list of supported use cases is printed by sampleCameraInfo" << endl;
+            return 1;
+        }
+    }
+    else
+    {
+        cerr << "Here: autousecase id" << endl;
+        // choose the first use case
+        selectedUseCaseIdx = 0;
+    }
+
+    // set an operation mode
+    if (cameraDevice->setUseCase(useCases.at(selectedUseCaseIdx)) != royale::CameraStatus::SUCCESS)
+    {
+        cerr << "Error setting use case" << endl;
+        return 1;
+    }
+
     // retrieve the lens parameters from Royale
-    LensParameters lensParameters;
-    status = cameraDevice->getLensParameters (lensParameters);
-    if (status != CameraStatus::SUCCESS)
+    royale::LensParameters lensParameters;
+    status = cameraDevice->getLensParameters(lensParameters);
+    if (status != royale::CameraStatus::SUCCESS)
     {
         cerr << "Can't read out the lens parameters" << endl;
         return 1;
     }
-    
-    listener.setLensParameters (lensParameters);
-    
+
+    //listener.setLensParameters(lensParameters);
+
     // register a data listener
-    if (cameraDevice->registerDataListener (&listener) != CameraStatus::SUCCESS)
+    if (cameraDevice->registerDataListener(&listener) != royale::CameraStatus::SUCCESS)
     {
         cerr << "Error registering data listener" << endl;
         return 1;
     }
-    
+    // register a EVENT listener
+    cameraDevice->registerEventListener (&eventReporter);
+
+
+
     // create two windows
-    namedWindow ("ninePixImg", WINDOW_AUTOSIZE);
-    namedWindow ("depImg8", WINDOW_AUTOSIZE);
-    
-    moveWindow("depImg8", 50, 50);
-    moveWindow("ninePixImg", 700, 50);
-    
+    cv::namedWindow ("tileImg8", cv::WINDOW_NORMAL);
+    cv::resizeWindow("tileImg8", 672,513);
+    cv::moveWindow("tileImg8", 700, 50);
+    cv::namedWindow ("depImg8", cv::WINDOW_NORMAL);
+    cv::resizeWindow("depImg8", 672,513);
+    cv::moveWindow("depImg8", 50, 50);
+
+
+
     // start capture mode
-    
-    //mein stuff: cameraDevice->setExposureMode(royale::ExposureMode AUTO);
-    
-    if (cameraDevice->startCapture() != CameraStatus::SUCCESS)
+
+    if (cameraDevice->startCapture() != royale::CameraStatus::SUCCESS)
     {
         cerr << "Error starting the capturing" << endl;
         return 1;
     }
     
-    
-    int currentKey = 0;
-    
+    cameraStartTime=millis();
+    //active the vibration motors
+stopWritingVals=false;
+
+
+    long counter=0;
+    long lastCallImshow=millis();
+    long lastCall=0;
+    long lastCallPoti=millis();
     while (currentKey != 27)
     {
-        // wait until a key is pressed
-        currentKey = waitKey (0) & 255;
         
-        if (currentKey == 'd')
+            royale::String id;
+            royale::String name;
+            uint16_t maxSensorWidth;
+            uint16_t maxSensorHeight;
+            bool calib;
+            bool connected;
+            bool capturing;
+
+
+        
+        if (millis()-lastCallImshow> 100) {
+            
+            //Get all the data of the royal lib to see if camera is working
+            royale::Vector<royale::Pair<royale::String, royale::String>> cameraInfo;
+            auto status = cameraDevice->getCameraInfo (cameraInfo);
+            status = cameraDevice->getMaxSensorHeight (maxSensorHeight);
+            status = cameraDevice->getMaxSensorWidth (maxSensorWidth);
+            status = cameraDevice->getCameraName (name);
+            status = cameraDevice->getId (id);
+            status = cameraDevice->isCalibrated (calib);
+            status = cameraDevice->isConnected (connected);
+            status = cameraDevice->isCapturing (capturing);
+            
+            lastCallImshow=millis();
+            if (newDepthImage==true) {
+                newDepthImage=false;
+                cv::Mat dep;
+                cv::Mat tile;
+                dep=passDepFrame();
+                tile=passNineFrame();
+                cv::cvtColor(dep, dep, cv::COLOR_HSV2RGB, 3);
+                cv::flip(dep,dep, -1);
+                if (record==true) {
+                    //depVideo.write(dep);
+                    //tileVideo.write(tile);
+                }
+                cv::imshow ("depImg8", dep);
+                cv::imshow ("tileImg8", tile);
+                currentKey=cv::waitKey(1);
+                processingImg=false;
+            }
+        }
+
+        if (millis()-lastCallPoti>100) {
+            updatePoti();
+            if (record==true) {
+                printf("___recording!___\n");
+            }
+long lastTemp= millis()-lastNewData;
+                printf("time since last new data: %i ms \n", lastTemp);
+            printf("temp.: \t%.1f°C\n", coreTempDouble);
+            printf("drops:\t%i | %i\t deliver:\t%i \t drops in last 10sec: %i\n", droppedAtBridge,droppedAtFC, deliveredFrames, tenSecsDrops);
+            printOutput();
+            lastCallPoti=millis();
+        }
+
+
+        if (millis()-lastCall>10000) {
+            tenSecsDrops=0;f
+            getCoreTemp();
+            counter++;
+
+
+            // display some information about the connected camera
+
+            cout << endl;
+            cout << "cycle no "<< counter << "  --- " << micros() << endl;
+            cout << "====================================" << endl;
+            cout << "        Camera information"           << endl;
+            cout << "====================================" << endl;
+            cout << "Id:              " << id << endl;
+            cout << "Type:            " << name << endl;
+            cout << "Width:           " << maxSensorWidth << endl;
+            cout << "Height:          " << maxSensorHeight << endl;
+            cout << "Calibrated?:     " << calib << endl;
+            cout << "Connected?:      " << connected << endl;
+            cout << "Capturing?:      " << capturing << endl;
+            cerr << "camera info: " << status << endl<< endl<< endl<< endl<< endl<< endl<< endl<< endl<< endl<< endl;
+            lastCall=millis();
+        }
+        if (currentKey == 'r')
         {
-            // toggle the undistortion of the image
-            listener.toggleUndistort();
+            record=true;
+        }
+
+        if (currentKey == 's')
+        {
+            record=false;
+
         }
         
+        //RESTART WHEN CAMERA IS UNPLUGGED
+        //Check how long camera is capturing - in the beginning it needs some time to be recognized -> 1000ms
+        //If it says that it is not connected but still capturing, it should be unplugged:
+        if ((millis()-cameraStartTime)>1000 && connected==0 && capturing==1)
+        {
+            stopWritingVals=true;
+            
+            //Alle Motoren ausschalten
+            muteAll();
+
+                goto searchCam;
+        }
     }
-    
-    closeArdu();
-    cout << "Arduino END" << std::endl;
-    
+
+
+
     // stop capture mode
-    if (cameraDevice->stopCapture() != CameraStatus::SUCCESS)
+    if (cameraDevice->stopCapture() != royale::CameraStatus::SUCCESS)
     {
         cerr << "Error stopping the capturing" << endl;
         return 1;
     }
-    
+    exitprog:
+stopWritingVals=true;
+//Alle Motoren ausschalten
+muteAll();
+
     return 0;
 }
