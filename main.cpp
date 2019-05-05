@@ -436,6 +436,9 @@ while (currentKey != 27)
     //If it says that it is not connected but still capturing, it should be unplugged:
     if (connected==0 && capturing==1)
     {
+      cout << "________________________________________________"<< endl<< endl;
+      cout << "Camera Detached! Reinitialize Camera and Listener"<< endl<< endl;
+      cout << "________________________________________________"<< endl<< endl;
       //stop writing new values to the LRAs
       stopWritingVals=true;
       //mute all LRAs
@@ -443,7 +446,10 @@ while (currentKey != 27)
       //go to the beginning and find camera again
       goto searchCam;
     }
-    if ((millis()-lastNewData)>600){
+    if ((millis()-lastNewData)>2000){
+      cout << "________________________________________________"<< endl<< endl;
+      cout << "Library Crashed! Reinitialize Camera and Listener"<< endl<< endl;
+      cout << "________________________________________________"<< endl<< endl;
       libraryCrashNo++;
       //stop writing new values to the LRAs
       stopWritingVals=true;
