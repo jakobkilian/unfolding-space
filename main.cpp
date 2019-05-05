@@ -397,7 +397,7 @@ while (currentKey != 27)
 
 
   if (millis()-lastCall>10000) {
-    tenSecsDrops=0;f
+    tenSecsDrops=0;
     getCoreTemp();
     counter++;
 
