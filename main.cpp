@@ -19,6 +19,7 @@ bool processingImg;
 int currentKey = 0;
 bool record=false;
 int libraryCrashNo;
+int longestTimeNoData;
 
 long cameraStartTime;
 
@@ -346,6 +347,9 @@ while (currentKey != 27)
   bool connected;
   bool capturing;
   long timeSinceLastNewData= millis()-lastNewData;
+  if (longestTimeNoData<timeSinceLastNewData){
+    longestTimeNoData=timeSinceLastNewData;
+  }
 
 
 
@@ -389,6 +393,7 @@ while (currentKey != 27)
     }
     printf("time since last new data: %i ms \n", timeSinceLastNewData);
         printf("No of library crashes: %i times \n", libraryCrashNo);
+        printf("longest time with no new data was: %i \n", longestTimeNoData);
     printf("temp.: \t%.1f°C\n", coreTempDouble);
     printf("drops:\t%i | %i\t deliver:\t%i \t drops in last 10sec: %i\n", droppedAtBridge,droppedAtFC, deliveredFrames, tenSecsDrops);
     printOutput();
