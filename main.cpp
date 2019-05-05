@@ -345,6 +345,7 @@ while (currentKey != 27)
   bool calib;
   bool connected;
   bool capturing;
+  long timeSinceLastNewData= millis()-lastNewData;
 
 
 
@@ -386,8 +387,7 @@ while (currentKey != 27)
     if (record==true) {
       printf("___recording!___\n");
     }
-    long lastTemp= millis()-lastNewData;
-    printf("time since last new data: %i ms \n", lastTemp);
+    printf("time since last new data: %i ms \n", timeSinceLastNewData);
         printf("No of library crashes: %i times \n", libraryCrashNo);
     printf("temp.: \t%.1f°C\n", coreTempDouble);
     printf("drops:\t%i | %i\t deliver:\t%i \t drops in last 10sec: %i\n", droppedAtBridge,droppedAtFC, deliveredFrames, tenSecsDrops);
@@ -446,9 +446,9 @@ while (currentKey != 27)
       //go to the beginning and find camera again
       goto searchCam;
     }
-    if ((millis()-lastNewData)>2000){
+    if (timeSinceLastNewData>4000){
       cout << "________________________________________________"<< endl<< endl;
-      cout << "Library Crashed! Reinitialize Camera and Listener"<< endl<< endl;
+      cout << "Library Crashed! Reinitialize Camera and Listener. last new frame:  "<<timeSinceLastNewData<< endl<< endl;
       cout << "________________________________________________"<< endl<< endl;
       libraryCrashNo++;
       //stop writing new values to the LRAs
@@ -460,8 +460,6 @@ while (currentKey != 27)
     }
   }
 }
-
-
 
 // stop capture mode
 if (cameraDevice->stopCapture() != royale::CameraStatus::SUCCESS)
