@@ -34,7 +34,6 @@ cv::Mat tileImg;
 
 bool newDepthImage;
 bool stopWritingVals=false;
-bool noChangeInMatrix=true;
 long lastNewData=millis();
 
 int globalCycleTime;
@@ -109,9 +108,9 @@ lensParameters.distortionRadial[2]);
 //This function gets called everytime there is a new depth frame!
 void DepthDataListener::onNewData(const DepthData *data)
 {
-    
-    
-    lastNewData=millis();
+
+
+  lastNewData=millis();
   //printCurTime(" ");
   printPause();
   //printCurTime("Begin");
@@ -191,9 +190,9 @@ if(true){
         depImgPtr[x * 3] = 7;
         depImgPtr[x * 3 + 1] = 10;
         depImgPtr[x * 3 + 2] = 245;
-      
-      histo[tileIdx][255]++;
-      
+
+        histo[tileIdx][255]++;
+
       }
 
     }
@@ -258,10 +257,10 @@ if(true){
 
 
 
-if(true){
-  std::lock_guard<std::mutex> lock(depMutex);
-  tileImg= cv::Mat(3, 3, CV_8UC1, &tempMat);
-}
+  if(true){
+    std::lock_guard<std::mutex> lock(depMutex);
+    tileImg= cv::Mat(3, 3, CV_8UC1, &tempMat);
+  }
 }
 
 // counting per 100 passed frames
