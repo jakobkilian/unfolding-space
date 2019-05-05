@@ -395,7 +395,7 @@ long lastTemp= millis()-lastNewData;
 
 
         if (millis()-lastCall>10000) {
-            tenSecsDrops=0;f
+            tenSecsDrops=0;
             getCoreTemp();
             counter++;
 
