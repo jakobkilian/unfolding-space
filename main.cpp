@@ -4,6 +4,10 @@
 #include "time.h"
 #include <royale/IEvent.hpp>
 #include <signal.h>
+#include <iostream>
+#include <string>
+#include <boost/array.hpp>
+#include <boost/asio.hpp>
 
 using std::cerr;
 using std::cout;
@@ -22,6 +26,39 @@ int libraryCrashNo;
 int longestTimeNoData;
 
 long cameraStartTime;
+
+//UDP STUFF
+  using boost::asio::ip::udp;
+    boost::asio::io_service io_service;
+
+    udp::socket myInputSocket(io_service, udp::endpoint(udp::v4(), 52222));
+    udp::socket myOutputSocket(io_service, udp::endpoint(udp::v4(), 53333));
+
+
+
+
+void udpHandling(){
+  
+
+  
+   boost::array<char, 1> recv_buf;
+      udp::endpoint remote_endpoint;
+      boost::system::error_code error;
+      myInputSocket.receive_from(boost::asio::buffer(recv_buf),
+          remote_endpoint, 0, error);
+
+      if (error && error != boost::asio::error::message_size)
+        throw boost::system::system_error(error);
+
+      std::string message = std::to_string(time(0));
+
+      boost::system::error_code ignored_error;
+      myOutputSocket.send_to(boost::asio::buffer(message),
+          remote_endpoint, 0, ignored_error);
+  
+  }
+
+
 
 
 
@@ -338,7 +375,6 @@ long lastCall=0;
 long lastCallPoti=millis();
 while (currentKey != 27)
 {
-
   royale::String id;
   royale::String name;
   uint16_t maxSensorWidth;
@@ -405,7 +441,7 @@ while (currentKey != 27)
     tenSecsDrops=0;
     getCoreTemp();
     counter++;
-
+      udpHandling();
 
     // display some information about the connected camera
 

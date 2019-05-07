@@ -1,9 +1,9 @@
 CC = g++
-CCFLAGS = -o3 -O -g
+CCFLAGS = -o3 -O -g -pthread
 SOURCES = glove.cpp camera.cpp poti.cpp main.cpp
 NAME = app
 INCFLAGS = -Ilibroyale/include -Ilibroyale/samples/inc `libusb-config --cflags`
-LDFLAGS = -Llibroyale/bin -lroyale -lopencv_core -lopencv_highgui -lopencv_imgproc -lwiringPi `libusb-config --libs`
+LDFLAGS = -Llibroyale/bin -lroyale -lopencv_core -lopencv_highgui -lopencv_imgproc -lboost_system -lwiringPi `libusb-config --libs`
 
 $(NAME): $(SOURCES)
 	$(CC) $(CCFLAGS) -o $(NAME) $(INCFLAGS) $(LDFLAGS) $(SOURCES)
