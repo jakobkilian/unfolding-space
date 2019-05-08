@@ -29,6 +29,7 @@ int *ptrOutVal[15];
 
 long cameraStartTime;
 
+void allocateValPtrs(){
 //Zuweisung
 ptrOutVal[0]=&fpsFromCam;
 ptrOutVal[1]=&droppedAtBridge;
@@ -45,7 +46,7 @@ ptrOutVal[11]=&fpsFromCam;
 ptrOutVal[12]=&fpsFromCam;
 ptrOutVal[13]=&fpsFromCam;
 ptrOutVal[14]=&fpsFromCam;
-
+}
 //UDP STUFF
 using boost::asio::ip::udp;
 boost::asio::io_service io_service;
@@ -57,31 +58,22 @@ void udpHandling(){
   boost::asio::socket_base::bytes_readable command(true);
   myInputSocket.io_control(command);
   size_t bytes_readable = command.get();
-
+//IF there is a byte
   if (bytes_readable>0){
-    cout << "there are bytes in BUFFER" << '\n';
     boost::array<char, 1> recv_buf;
     udp::endpoint remote_endpoint;
     boost::system::error_code error;
-
-
     while (bytes_readable>=1){
       myInputSocket.receive_from(boost::asio::buffer(recv_buf),
       remote_endpoint, 0, error);
-      cout << "in receive" << '\n';
       boost::asio::socket_base::bytes_readable command(true);
       myInputSocket.io_control(command);
       bytes_readable = command.get();
 
     }
-
-    cout << "after receive" << '\n';
-
     if (error && error != boost::asio::error::message_size)
     throw boost::system::system_error(error);
-    cout << "after error" << '\n';
     if (recv_buf[0]=='1'){
-      cout << "yes it is a one" << '\n';
       std::string message = std::to_string(time(0));
       boost::system::error_code ignored_error;
       //SEND THE DATA
@@ -187,7 +179,7 @@ int main(int argc, char *argv[])
   //Mute the LRAs before ending the program by ctr + c (SIGINT)
   signal(SIGINT, endMuted);
 
-
+allocateValPtrs();
   //Setup the LRAs on the Glove (I2C Connection, Settings, Calibration, etc.)
   setupGlove();
 
