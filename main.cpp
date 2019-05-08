@@ -26,43 +26,51 @@ int libraryCrashNo;
 int longestTimeNoData;
 
 long cameraStartTime;
-
-//UDP STUFF
+{
+  //UDP STUFF
   using boost::asio::ip::udp;
-    boost::asio::io_service io_service;
-
-    udp::socket myInputSocket(io_service, udp::endpoint(udp::v4(), 52222));
-    udp::socket myOutputSocket(io_service, udp::endpoint(udp::v4(), 53333));
-
+  boost::asio::io_service io_service;
+  udp::socket myInputSocket(io_service, udp::endpoint(udp::v4(), 52222));
+  udp::socket myOutputSocket(io_service, udp::endpoint(udp::v4(), 53333));
+}
 
 
 
 void udpHandling(){
 
+  size_t bytes_readable=1;
+  boost::array<char, 1> recv_buf;
+  udp::endpoint remote_endpoint;
+  boost::system::error_code error;
+  cout << "before receive" << '\n';
 
-   boost::array<char, 1> recv_buf;
-      udp::endpoint remote_endpoint;
-      boost::system::error_code error;
-      cout << "before receive" << '\n';
-      myInputSocket.receive_from(boost::asio::buffer(recv_buf),
-          remote_endpoint, 0, error);
-          cout << "after receive" << '\n';
-
-      if (error && error != boost::asio::error::message_size)
-        throw boost::system::system_error(error);
-          cout << "after error" << '\n';
-if (recv_buf[0]=='1'){
-        cout << "yes it is a one" << '\n';
-      std::string message = std::to_string(time(0));
-      boost::system::error_code ignored_error;
-      myOutputSocket.send_to(boost::asio::buffer(message),
-          remote_endpoint, 0, ignored_error);
-  }
-
-          cout << "ending in 4 secs." << '\n';
-          delay(4000);
+  while (bytes_readable>=1){
+    myInputSocket.receive_from(boost::asio::buffer(recv_buf),
+    remote_endpoint, 0, error);
+    cout << "in receive" << '\n';
+    boost::asio::socket_base::bytes_readable command(true);
+    myInputSocket.io_control(command);
+    bytes_readable = command.get();
 
   }
+
+  cout << "after receive" << '\n';
+
+  if (error && error != boost::asio::error::message_size)
+  throw boost::system::system_error(error);
+  cout << "after error" << '\n';
+  if (recv_buf[0]=='1'){
+    cout << "yes it is a one" << '\n';
+    std::string message = std::to_string(time(0));
+    boost::system::error_code ignored_error;
+    myOutputSocket.send_to(boost::asio::buffer(message),
+    remote_endpoint, 0, ignored_error);
+  }
+
+  cout << "ending in 4 secs." << '\n';
+  delay(4000);
+
+}
 
 
 
@@ -434,8 +442,8 @@ while (currentKey != 27)
       printf("___recording!___\n");
     }
     printf("time since last new data: %i ms \n", timeSinceLastNewData);
-        printf("No of library crashes: %i times \n", libraryCrashNo);
-        printf("longest time with no new data was: %i \n", longestTimeNoData);
+    printf("No of library crashes: %i times \n", libraryCrashNo);
+    printf("longest time with no new data was: %i \n", longestTimeNoData);
     printf("temp.: \t%.1f°C\n", coreTempDouble);
     printf("drops:\t%i | %i\t deliver:\t%i \t drops in last 10sec: %i\n", droppedAtBridge,droppedAtFC, deliveredFrames, tenSecsDrops);
     printOutput();
@@ -443,11 +451,11 @@ while (currentKey != 27)
   }
 
 
-  if (millis()-lastCall>10000) {
+  if (millis()-lastCall>5000) {
     tenSecsDrops=0;
     getCoreTemp();
     counter++;
-      udpHandling();
+    udpHandling();
 
     // display some information about the connected camera
 
