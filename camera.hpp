@@ -22,6 +22,11 @@ extern bool newDepthImage;
 extern bool processingImg;
 extern std::mutex depMutex;
 extern long lastNewData;
+extern int frameCounter;
+extern int loop;
+extern int fps;
+extern std::array<uint8_t,9> ninePixMatrix;
+
 
 class DepthDataListener : public royale::IDepthDataListener
 {

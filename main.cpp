@@ -24,28 +24,35 @@ int currentKey = 0;
 bool record=false;
 int libraryCrashNo;
 int longestTimeNoData;
+bool connected;
+bool capturing;
+long timeSinceLastNewData;
 
-int *ptrOutVal[15];
+int *ptrOutVal[25];
 
 long cameraStartTime;
 
 void allocateValPtrs(){
 //Zuweisung
-ptrOutVal[0]=&fpsFromCam;
 ptrOutVal[1]=&droppedAtBridge;
 ptrOutVal[2]=&droppedAtFC;
 ptrOutVal[3]=&deliveredFrames;
 ptrOutVal[4]=&tenSecsDrops;
 ptrOutVal[5]=&libraryCrashNo;
 ptrOutVal[6]=&longestTimeNoData;
-ptrOutVal[7]=&fpsFromCam;
-ptrOutVal[8]=&fpsFromCam;
-ptrOutVal[9]=&fpsFromCam;
-ptrOutVal[10]=&fpsFromCam;
-ptrOutVal[11]=&fpsFromCam;
-ptrOutVal[12]=&fpsFromCam;
-ptrOutVal[13]=&fpsFromCam;
+ptrOutVal[7]=&connected;
+ptrOutVal[8]=&capturing;
+ptrOutVal[9]=&timeSinceLastNewData;
+ptrOutVal[10]=&globalPotiVal;
+ptrOutVal[11]=&frameCounter;
+ptrOutVal[12]=&loop;
+ptrOutVal[13]=&fps;
 ptrOutVal[14]=&fpsFromCam;
+
+for (size_t i = 15; i < 24; i++) {
+ptrOutVal[i]=&ninePixMatrix[i];
+}
+
 }
 //UDP STUFF
 using boost::asio::ip::udp;
@@ -74,20 +81,18 @@ void udpHandling(){
     if (error && error != boost::asio::error::message_size)
     throw boost::system::system_error(error);
     if (recv_buf[0]=='1'){
-      std::string message = std::to_string(time(0));
       boost::system::error_code ignored_error;
-      //SEND THE DATA
-      for (size_t i = 0; i < 15; i++) {
-        myOutputSocket.send_to(boost::asio::buffer(std::to_string(i)+":" + std::to_string(ptrValOut[i])),
+      //SEND THE TIME
+      myOutputSocket.send_to(boost::asio::buffer("0:" + std::to_string(time(0))),
+      remote_endpoint, 0, ignored_error);
+      //SEND DATA
+      for (size_t i = 1; i < 15; i++) {
+        myOutputSocket.send_to(boost::asio::buffer(std::to_string(i)+":" + std::to_string(*ptrOutVal[i])),
         remote_endpoint, 0, ignored_error);
       }
     }
   }
 }
-
-
-
-
 
 //Royale Event Listener reports dropped frames as string. This functions extracts the number of frames that got lost at Bridge/FC. I believe, that dropped frames cause the instability.
 void extractDrops(royale::String str)
@@ -407,9 +412,7 @@ while (currentKey != 27)
   uint16_t maxSensorWidth;
   uint16_t maxSensorHeight;
   bool calib;
-  bool connected;
-  bool capturing;
-  long timeSinceLastNewData= millis()-lastNewData;
+timeSinceLastNewData= millis()-lastNewData;
   if (longestTimeNoData<timeSinceLastNewData){
     longestTimeNoData=timeSinceLastNewData;
   }

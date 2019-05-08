@@ -22,8 +22,8 @@ float distThresh = 1.5;
 
 int frameCounter;
 int loop;
+int fps;
 std::array<uint8_t,9> ninePixMatrix;
-std::array<uint8_t,9> oldNinePixMatrix;
 int globalPotiVal;
 
 int cycleTime;
@@ -329,7 +329,6 @@ float DepthDataListener::adjustDepthValueForImage(float zValue, float max)
 
 void printOutput() {
   int millisSince=((int) millis()-millisFirst)/1000;
-  int fps=0;
   if (millisSince>0) {
     fps = ((loop*100)+frameCounter)/millisSince;
   }
