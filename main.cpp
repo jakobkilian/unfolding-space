@@ -68,11 +68,11 @@ void udpHandling(){
       cout << "yes it is a one" << '\n';
       std::string message = std::to_string(time(0));
       boost::system::error_code ignored_error;
-      myOutputSocket.send_to(boost::asio::buffer(message),
+      myOutputSocket.send_to(boost::asio::buffer("0:" + message),
       remote_endpoint, 0, ignored_error);
-      myOutputSocket.send_to(boost::asio::buffer(string("1:") + std::to_string(globalPotiVal)),
+      myOutputSocket.send_to(boost::asio::buffer("1:" + std::to_string(globalPotiVal)),
       remote_endpoint, 0, ignored_error);
-      myOutputSocket.send_to(boost::asio::buffer(string("2:") + std::to_string(longestTimeNoData)),
+      myOutputSocket.send_to(boost::asio::buffer("2:" + std::to_string(longestTimeNoData)),
       remote_endpoint, 0, ignored_error);
     }
   }
