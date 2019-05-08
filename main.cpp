@@ -70,17 +70,11 @@ void udpHandling(){
       boost::system::error_code ignored_error;
       myOutputSocket.send_to(boost::asio::buffer(message),
       remote_endpoint, 0, ignored_error);
-
-      myOutputSocket.send_to(boost::asio::buffer(std::to_string(timeSinceLastNewData)),
+      myOutputSocket.send_to(boost::asio::buffer(string("1:") + std::to_string(globalPotiVal)),
       remote_endpoint, 0, ignored_error);
-
-      myOutputSocket.send_to(boost::asio::buffer(std::to_string(longestTimeNoData)),
+      myOutputSocket.send_to(boost::asio::buffer(string("2:") + std::to_string(longestTimeNoData)),
       remote_endpoint, 0, ignored_error);
     }
-
-    cout << "ending in 4 secs." << '\n';
-    delay(4000);
-
   }
 }
 
