@@ -93,6 +93,6 @@ int updatePoti()
     std::cout << "can't get new poti val" << '\n';
     return -1;
   }
-  globalPotiVal=lastVal;
+  globalPotiVal=2;
   return lastVal;
 }
