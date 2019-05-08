@@ -40,11 +40,11 @@ void allocateValPtrs(){
   ptrOutVal[5]=&deliveredFrames;
   ptrOutVal[6]=&tenSecsDrops;
   ptrOutVal[7]=&libraryCrashNo;
-  ptrOutVal[10]=&globalPotiVal;
-  ptrOutVal[11]=&frameCounter;
-  ptrOutVal[12]=&loop;
-  ptrOutVal[13]=&fps;
-  ptrOutVal[14]=&fpsFromCam;
+  ptrOutVal[8]=&globalPotiVal;
+  ptrOutVal[9]=&frameCounter;
+  ptrOutVal[10]=&loop;
+  ptrOutVal[11]=&fps;
+  ptrOutVal[12]=&fpsFromCam;
 
 }
 //UDP STUFF
@@ -80,9 +80,9 @@ void udpHandling(){
       remote_endpoint, 0, ignored_error);
       myOutputSocket.send_to(boost::asio::buffer("1:" + std::to_string(timeSinceLastNewData),
       remote_endpoint, 0, ignored_error);
-      myOutputSocket.send_to(boost::asio::buffer("2:" + std::to_string(connected ? 1 : 0),
+      myOutputSocket.send_to(boost::asio::buffer("13:" + std::to_string(connected ? 1 : 0),
       remote_endpoint, 0, ignored_error);
-      myOutputSocket.send_to(boost::asio::buffer("3:" + std::to_string(capturing ? 1 : 0),
+      myOutputSocket.send_to(boost::asio::buffer("14:" + std::to_string(capturing ? 1 : 0),
       remote_endpoint, 0, ignored_error);
       //SEND DATA
       for (size_t i = 2; i < 15; i++) {
