@@ -26,13 +26,13 @@ int libraryCrashNo;
 int longestTimeNoData;
 
 long cameraStartTime;
-{
+
   //UDP STUFF
   using boost::asio::ip::udp;
   boost::asio::io_service io_service;
   udp::socket myInputSocket(io_service, udp::endpoint(udp::v4(), 52222));
   udp::socket myOutputSocket(io_service, udp::endpoint(udp::v4(), 53333));
-}
+
 
 
 
