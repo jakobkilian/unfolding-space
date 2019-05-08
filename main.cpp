@@ -38,24 +38,30 @@ long cameraStartTime;
 
 
 void udpHandling(){
-  
 
-  
+
    boost::array<char, 1> recv_buf;
       udp::endpoint remote_endpoint;
       boost::system::error_code error;
+      std::cout << "before receive" << '\n';
       myInputSocket.receive_from(boost::asio::buffer(recv_buf),
           remote_endpoint, 0, error);
+          std::cout << "after receive" << '\n';
 
       if (error && error != boost::asio::error::message_size)
         throw boost::system::system_error(error);
-
+          std::cout << "after error" << '\n';
+if (recv_buf[0]=='1'){}
+          std::cout << "yes it is a one" << '\n';
       std::string message = std::to_string(time(0));
-
       boost::system::error_code ignored_error;
       myOutputSocket.send_to(boost::asio::buffer(message),
           remote_endpoint, 0, ignored_error);
-  
+  }
+
+          std::cout << "ending in 4 secs." << '\n';
+          delay(4000);
+
   }
 
 
