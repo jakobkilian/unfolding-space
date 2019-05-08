@@ -28,6 +28,7 @@ void initPoti() {
       if((device->descriptor.idVendor == 0x16c0) && (device->descriptor.idProduct == 0x05df))
       {
         digiSpark = device;
+        std::cout << "FOUND Digispark" << '\n';
       }
       else{
       std::cout << "No digiSpark there" << '\n';
