@@ -25,16 +25,32 @@ bool record=false;
 int libraryCrashNo;
 int longestTimeNoData;
 
+int *ptrOutVal[15];
+
 long cameraStartTime;
+
+//Zuweisung
+ptrOutVal[0]=&fpsFromCam;
+ptrOutVal[1]=&droppedAtBridge;
+ptrOutVal[2]=&droppedAtFC;
+ptrOutVal[3]=&deliveredFrames;
+ptrOutVal[4]=&tenSecsDrops;
+ptrOutVal[5]=&libraryCrashNo;
+ptrOutVal[6]=&longestTimeNoData;
+ptrOutVal[7]=&fpsFromCam;
+ptrOutVal[8]=&fpsFromCam;
+ptrOutVal[9]=&fpsFromCam;
+ptrOutVal[10]=&fpsFromCam;
+ptrOutVal[11]=&fpsFromCam;
+ptrOutVal[12]=&fpsFromCam;
+ptrOutVal[13]=&fpsFromCam;
+ptrOutVal[14]=&fpsFromCam;
 
 //UDP STUFF
 using boost::asio::ip::udp;
 boost::asio::io_service io_service;
 udp::socket myInputSocket(io_service, udp::endpoint(udp::v4(), 52222));
 udp::socket myOutputSocket(io_service, udp::endpoint(udp::v4(), 53333));
-
-
-
 
 void udpHandling(){
   //Check if bytes are available
@@ -43,7 +59,7 @@ void udpHandling(){
   size_t bytes_readable = command.get();
 
   if (bytes_readable>0){
-        cout << "there are bytes in BUFFER" << '\n';
+    cout << "there are bytes in BUFFER" << '\n';
     boost::array<char, 1> recv_buf;
     udp::endpoint remote_endpoint;
     boost::system::error_code error;
@@ -68,12 +84,11 @@ void udpHandling(){
       cout << "yes it is a one" << '\n';
       std::string message = std::to_string(time(0));
       boost::system::error_code ignored_error;
-      myOutputSocket.send_to(boost::asio::buffer("0:" + message),
-      remote_endpoint, 0, ignored_error);
-      myOutputSocket.send_to(boost::asio::buffer("1:" + std::to_string(globalPotiVal)),
-      remote_endpoint, 0, ignored_error);
-      myOutputSocket.send_to(boost::asio::buffer("2:" + std::to_string(longestTimeNoData)),
-      remote_endpoint, 0, ignored_error);
+      //SEND THE DATA
+      for (size_t i = 0; i < 15; i++) {
+        myOutputSocket.send_to(boost::asio::buffer(std::to_string(i)+":" + std::to_string(ptrValOut[i])),
+        remote_endpoint, 0, ignored_error);
+      }
     }
   }
 }
