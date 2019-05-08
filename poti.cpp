@@ -29,6 +29,9 @@ void initPoti() {
       {
         digiSpark = device;
       }
+      else{
+      std::std::cout << "No digiSpark there" << '\n';
+      }
       device = device->next;
     }
     bus = bus->next;
@@ -86,6 +89,7 @@ int updatePoti()
     }
   }
   else {
+    std::std::cout << "can't get new poti val" << '\n';
     return -1;
   }
   globalPotiVal=lastVal;
