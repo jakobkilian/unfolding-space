@@ -28,30 +28,23 @@ bool connected;
 bool capturing;
 long timeSinceLastNewData;
 
-int *ptrOutVal[25];
+int *ptrOutVal[15];
 
 long cameraStartTime;
 
 void allocateValPtrs(){
-//Zuweisung
-ptrOutVal[1]=&droppedAtBridge;
-ptrOutVal[2]=&droppedAtFC;
-ptrOutVal[3]=&deliveredFrames;
-ptrOutVal[4]=&tenSecsDrops;
-ptrOutVal[5]=&libraryCrashNo;
-ptrOutVal[6]=&longestTimeNoData;
-ptrOutVal[7]=&connected;
-ptrOutVal[8]=&capturing;
-ptrOutVal[9]=&timeSinceLastNewData;
-ptrOutVal[10]=&globalPotiVal;
-ptrOutVal[11]=&frameCounter;
-ptrOutVal[12]=&loop;
-ptrOutVal[13]=&fps;
-ptrOutVal[14]=&fpsFromCam;
-
-for (size_t i = 15; i < 24; i++) {
-ptrOutVal[i]=&ninePixMatrix[i];
-}
+  //Zuweisung
+  ptrOutVal[2]=&longestTimeNoData;
+  ptrOutVal[3]=&droppedAtBridge;
+  ptrOutVal[4]=&droppedAtFC;
+  ptrOutVal[5]=&deliveredFrames;
+  ptrOutVal[6]=&tenSecsDrops;
+  ptrOutVal[7]=&libraryCrashNo;
+  ptrOutVal[10]=&globalPotiVal;
+  ptrOutVal[11]=&frameCounter;
+  ptrOutVal[12]=&loop;
+  ptrOutVal[13]=&fps;
+  ptrOutVal[14]=&fpsFromCam;
 
 }
 //UDP STUFF
@@ -65,7 +58,7 @@ void udpHandling(){
   boost::asio::socket_base::bytes_readable command(true);
   myInputSocket.io_control(command);
   size_t bytes_readable = command.get();
-//IF there is a byte
+  //IF there is a byte
   if (bytes_readable>0){
     boost::array<char, 1> recv_buf;
     udp::endpoint remote_endpoint;
@@ -85,11 +78,24 @@ void udpHandling(){
       //SEND THE TIME
       myOutputSocket.send_to(boost::asio::buffer("0:" + std::to_string(time(0))),
       remote_endpoint, 0, ignored_error);
+      myOutputSocket.send_to(boost::asio::buffer("1:" + std::to_string(timeSinceLastNewData),
+      remote_endpoint, 0, ignored_error);
+      myOutputSocket.send_to(boost::asio::buffer("2:" + std::to_string(connected ? 1 : 0),
+      remote_endpoint, 0, ignored_error);
+      myOutputSocket.send_to(boost::asio::buffer("3:" + std::to_string(capturing ? 1 : 0),
+      remote_endpoint, 0, ignored_error);
       //SEND DATA
-      for (size_t i = 1; i < 15; i++) {
+      for (size_t i = 2; i < 15; i++) {
         myOutputSocket.send_to(boost::asio::buffer(std::to_string(i)+":" + std::to_string(*ptrOutVal[i])),
         remote_endpoint, 0, ignored_error);
       }
+      //9pixmatrix
+      for (size_t i = 15; i < 24; i++) {
+        myOutputSocket.send_to(boost::asio::buffer(std::to_string(i)+":" + std::to_string(ninePixMatrix[i])),
+        remote_endpoint, 0, ignored_error);
+      }
+
+
     }
   }
 }
@@ -184,7 +190,7 @@ int main(int argc, char *argv[])
   //Mute the LRAs before ending the program by ctr + c (SIGINT)
   signal(SIGINT, endMuted);
 
-allocateValPtrs();
+  allocateValPtrs();
   //Setup the LRAs on the Glove (I2C Connection, Settings, Calibration, etc.)
   setupGlove();
 
@@ -412,7 +418,7 @@ while (currentKey != 27)
   uint16_t maxSensorWidth;
   uint16_t maxSensorHeight;
   bool calib;
-timeSinceLastNewData= millis()-lastNewData;
+  timeSinceLastNewData= millis()-lastNewData;
   if (longestTimeNoData<timeSinceLastNewData){
     longestTimeNoData=timeSinceLastNewData;
   }
