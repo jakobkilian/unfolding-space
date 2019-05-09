@@ -97,7 +97,7 @@ void udpHandling(){
     //Wenn 1 reinkommt, sende Daten.
     if (recv_buf[0]=='1'){
       //SEND THE TIME
-      sendString(std::to_string(time(0),0);
+      sendString(std::to_string(time(0)),0);
       sendLong(timeSinceLastNewData,1);
       sendInt(longestTimeNoData,2);
       sendInt(fps,3);
