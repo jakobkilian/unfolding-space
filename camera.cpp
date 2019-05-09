@@ -11,8 +11,6 @@ using std::endl;
 
 cv::VideoWriter video;
 
-bool capturing=true;
-
 using namespace royale;
 
 //when scanning... : the min number of pixels, an object must have (smaller objects might be noise
