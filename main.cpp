@@ -96,6 +96,9 @@ void udpHandling(){
       sendInt(deliveredFrames,12);
       sendInt(globalCycleTime,13);
       sendInt(globalPauseTime,14);
+
+for (size_t i = 0; i < 9; i++) {
+      sendInt(ninePixMatrix[i],i+15);}
     }
   }
 }
