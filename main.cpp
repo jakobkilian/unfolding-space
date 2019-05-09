@@ -460,7 +460,7 @@ while (currentKey != 27)
     }
   }
 
-  if (millis()-lastCallPoti>100) {
+  if (millis()-lastCallPoti>50) {
     udpHandling();
     updatePoti();
     if (record==true) {
