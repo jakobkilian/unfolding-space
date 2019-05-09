@@ -33,23 +33,7 @@ int *ptrOutVal[25];
 long cameraStartTime;
 
 
-void allocateValPtrs(){
-  //Zuweisung
-  ptrOutVal[1]=&droppedAtBridge;
-  ptrOutVal[2]=&droppedAtFC;
-  ptrOutVal[3]=&deliveredFrames;
-  ptrOutVal[4]=&tenSecsDrops;
-  ptrOutVal[5]=&libraryCrashNo;
-  ptrOutVal[6]=&longestTimeNoData;
-  ptrOutVal[7]=&fpsFromCam;
-  ptrOutVal[8]=&fpsFromCam;
-  ptrOutVal[9]=&fpsFromCam;
-  ptrOutVal[10]=&globalPotiVal;
-  ptrOutVal[11]=&frameCounter;
-  ptrOutVal[12]=&loop;
-  ptrOutVal[13]=&fps;
-  ptrOutVal[14]=&fpsFromCam;
-}
+
 //UDP STUFF
 using boost::asio::ip::udp;
 boost::asio::io_service io_service;
@@ -206,7 +190,6 @@ int main(int argc, char *argv[])
   //Mute the LRAs before ending the program by ctr + c (SIGINT)
   signal(SIGINT, endMuted);
 
-  allocateValPtrs();
   //Setup the LRAs on the Glove (I2C Connection, Settings, Calibration, etc.)
   setupGlove();
 
@@ -265,7 +248,7 @@ int main(int argc, char *argv[])
       camlist= manager.getConnectedCameraList();
       cout << ".";
       cout.flush();
-
+    udpHandling();
       if (!camlist.empty())
       {
         cout << endl;
