@@ -55,8 +55,11 @@ using boost::asio::ip::udp;
 boost::asio::io_service io_service;
 udp::socket myInputSocket(io_service, udp::endpoint(udp::v4(), 52222));
 udp::socket myOutputSocket(io_service, udp::endpoint(udp::v4(), 53333));
+udp::endpoint remote_endpoint;
+boost::system::error_code ignored_error;
 
-void sendString(String thisString, int thisId){
+
+void sendString(std::string thisString, int thisId){
   myOutputSocket.send_to(boost::asio::buffer(std::to_string(thisId)+":" + thisString),remote_endpoint, 0, ignored_error);
 }
 void sendInt(int thisInt, int thisId){
@@ -80,7 +83,6 @@ void udpHandling(){
   //IF there is a byte
   if (bytes_readable>0){
     boost::array<char, 1> recv_buf;
-    udp::endpoint remote_endpoint;
     boost::system::error_code error;
     //Lese alle bis zum aktuellsten
     while (bytes_readable>=1){
@@ -94,7 +96,6 @@ void udpHandling(){
     throw boost::system::system_error(error);
     //Wenn 1 reinkommt, sende Daten.
     if (recv_buf[0]=='1'){
-      boost::system::error_code ignored_error;
       //SEND THE TIME
       sendString(std::to_string(time(0),0);
       sendLong(timeSinceLastNewData,1);
@@ -110,8 +111,7 @@ void udpHandling(){
       sendInt(tenSecsDrops,11);
       sendInt(deliveredFrames,12);
       sendInt(globalCycleTime,13);
-            sendInt(globalPauseTime,14);
-
+      sendInt(globalPauseTime,14);
     }
   }
 }
