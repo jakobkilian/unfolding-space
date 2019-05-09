@@ -32,24 +32,23 @@ int *ptrOutVal[25];
 
 long cameraStartTime;
 
+
 void allocateValPtrs(){
-//Zuweisung
-ptrOutVal[1]=&droppedAtBridge;
-ptrOutVal[2]=&droppedAtFC;
-ptrOutVal[3]=&deliveredFrames;
-ptrOutVal[4]=&tenSecsDrops;
-ptrOutVal[5]=&libraryCrashNo;
-ptrOutVal[6]=&longestTimeNoData;
-ptrOutVal[7]=&fpsFromCam;
-ptrOutVal[8]=&fpsFromCam;
-ptrOutVal[9]=&fpsFromCam;
-ptrOutVal[10]=&globalPotiVal;
-ptrOutVal[11]=&frameCounter;
-ptrOutVal[12]=&loop;
-ptrOutVal[13]=&fps;
-ptrOutVal[14]=&fpsFromCam;
-
-
+  //Zuweisung
+  ptrOutVal[1]=&droppedAtBridge;
+  ptrOutVal[2]=&droppedAtFC;
+  ptrOutVal[3]=&deliveredFrames;
+  ptrOutVal[4]=&tenSecsDrops;
+  ptrOutVal[5]=&libraryCrashNo;
+  ptrOutVal[6]=&longestTimeNoData;
+  ptrOutVal[7]=&fpsFromCam;
+  ptrOutVal[8]=&fpsFromCam;
+  ptrOutVal[9]=&fpsFromCam;
+  ptrOutVal[10]=&globalPotiVal;
+  ptrOutVal[11]=&frameCounter;
+  ptrOutVal[12]=&loop;
+  ptrOutVal[13]=&fps;
+  ptrOutVal[14]=&fpsFromCam;
 }
 //UDP STUFF
 using boost::asio::ip::udp;
@@ -57,36 +56,62 @@ boost::asio::io_service io_service;
 udp::socket myInputSocket(io_service, udp::endpoint(udp::v4(), 52222));
 udp::socket myOutputSocket(io_service, udp::endpoint(udp::v4(), 53333));
 
+void sendString(String thisString, int thisId){
+  myOutputSocket.send_to(boost::asio::buffer(std::to_string(thisId)+":" + thisString),remote_endpoint, 0, ignored_error);
+}
+void sendInt(int thisInt, int thisId){
+  myOutputSocket.send_to(boost::asio::buffer(std::to_string(thisId)+":" + std::to_string(thisInt)),remote_endpoint, 0, ignored_error);
+}
+void sendLong(long thisLong, int thisId){
+  myOutputSocket.send_to(boost::asio::buffer(std::to_string(thisId)+":" + std::to_string(thisLong)),remote_endpoint, 0, ignored_error);
+}
+void sendBool(bool thisBool, int thisId){
+  myOutputSocket.send_to(boost::asio::buffer(std::to_string(thisId)+":" + std::to_string(thisBool)),remote_endpoint, 0, ignored_error);
+}
+void sendDouble(bool thisDouble, int thisId){
+  myOutputSocket.send_to(boost::asio::buffer(std::to_string(thisId)+":" + std::to_string(thisDouble)),remote_endpoint, 0, ignored_error);
+}
+
 void udpHandling(){
   //Check if bytes are available
   boost::asio::socket_base::bytes_readable command(true);
   myInputSocket.io_control(command);
   size_t bytes_readable = command.get();
-//IF there is a byte
+  //IF there is a byte
   if (bytes_readable>0){
     boost::array<char, 1> recv_buf;
     udp::endpoint remote_endpoint;
     boost::system::error_code error;
+    //Lese alle bis zum aktuellsten
     while (bytes_readable>=1){
       myInputSocket.receive_from(boost::asio::buffer(recv_buf),
       remote_endpoint, 0, error);
       boost::asio::socket_base::bytes_readable command(true);
       myInputSocket.io_control(command);
       bytes_readable = command.get();
-
     }
     if (error && error != boost::asio::error::message_size)
     throw boost::system::system_error(error);
+    //Wenn 1 reinkommt, sende Daten.
     if (recv_buf[0]=='1'){
       boost::system::error_code ignored_error;
       //SEND THE TIME
-      myOutputSocket.send_to(boost::asio::buffer("0:" + std::to_string(time(0))),
-      remote_endpoint, 0, ignored_error);
-      //SEND DATA
-      for (size_t i = 1; i < 15; i++) {
-        myOutputSocket.send_to(boost::asio::buffer(std::to_string(i)+":" + std::to_string(*ptrOutVal[i])),
-        remote_endpoint, 0, ignored_error);
-      }
+      sendString(std::to_string(time(0),0);
+      sendLong(timeSinceLastNewData,1);
+      sendInt(longestTimeNoData,2);
+      sendInt(fps,3);
+      sendInt(globalPotiVal,4);
+      sendDouble(coreTempDouble,5);
+      sendBool(connected,6);
+      sendBool(capturing,7);
+      sendInt(libraryCrashNo,8);
+      sendInt(droppedAtBridge,9);
+      sendInt(droppedAtFC,10);
+      sendInt(tenSecsDrops,11);
+      sendInt(deliveredFrames,12);
+      sendInt(globalCycleTime,13);
+            sendInt(globalPauseTime,14);
+
     }
   }
 }
@@ -181,7 +206,7 @@ int main(int argc, char *argv[])
   //Mute the LRAs before ending the program by ctr + c (SIGINT)
   signal(SIGINT, endMuted);
 
-allocateValPtrs();
+  allocateValPtrs();
   //Setup the LRAs on the Glove (I2C Connection, Settings, Calibration, etc.)
   setupGlove();
 
@@ -409,7 +434,7 @@ while (currentKey != 27)
   uint16_t maxSensorWidth;
   uint16_t maxSensorHeight;
   bool calib;
-timeSinceLastNewData= millis()-lastNewData;
+  timeSinceLastNewData= millis()-lastNewData;
   if (longestTimeNoData<timeSinceLastNewData){
     longestTimeNoData=timeSinceLastNewData;
   }
