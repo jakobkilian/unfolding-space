@@ -37,50 +37,37 @@ long cameraStartTime;
 //UDP STUFF
 using boost::asio::ip::udp;
 boost::asio::io_service io_service;
-udp::socket myInputSocket(io_service, udp::endpoint(udp::v4(), 52222));
 udp::socket myOutputSocket(io_service, udp::endpoint(udp::v4(), 53333));
 udp::endpoint remote_endpoint;
 boost::system::error_code ignored_error;
-
+udp::endpoint destination(
+    boost::asio::ip::address_v4::broadcast(), 53333);
+    
+    void boostInit(){
+        myOutputSocket.open(udp::v4(),ignored_error);
+myOutputSocket.set_option(udp::socket::reuse_address(true));
+myOutputSocket.set_option(boost::asio::socket_base::broadcast(true));
+   
+        }
 
 void sendString(std::string thisString, int thisId){
-  myOutputSocket.send_to(boost::asio::buffer(std::to_string(thisId)+":" + thisString),remote_endpoint, 0, ignored_error);
+  myOutputSocket.send_to(boost::asio::buffer(std::to_string(thisId)+":" + thisString),destination, 0, ignored_error);
 }
 void sendInt(int thisInt, int thisId){
-  myOutputSocket.send_to(boost::asio::buffer(std::to_string(thisId)+":" + std::to_string(thisInt)),remote_endpoint, 0, ignored_error);
+  myOutputSocket.send_to(boost::asio::buffer(std::to_string(thisId)+":" + std::to_string(thisInt)),destination, 0, ignored_error);
 }
 void sendLong(long thisLong, int thisId){
-  myOutputSocket.send_to(boost::asio::buffer(std::to_string(thisId)+":" + std::to_string(thisLong)),remote_endpoint, 0, ignored_error);
+  myOutputSocket.send_to(boost::asio::buffer(std::to_string(thisId)+":" + std::to_string(thisLong)),destination, 0, ignored_error);
 }
 void sendBool(bool thisBool, int thisId){
-  myOutputSocket.send_to(boost::asio::buffer(std::to_string(thisId)+":" + std::to_string(thisBool)),remote_endpoint, 0, ignored_error);
+  myOutputSocket.send_to(boost::asio::buffer(std::to_string(thisId)+":" + std::to_string(thisBool)),destination, 0, ignored_error);
 }
 void sendDouble(bool thisDouble, int thisId){
-  myOutputSocket.send_to(boost::asio::buffer(std::to_string(thisId)+":" + std::to_string(thisDouble)),remote_endpoint, 0, ignored_error);
+  myOutputSocket.send_to(boost::asio::buffer(std::to_string(thisId)+":" + std::to_string(thisDouble)),destination, 0, ignored_error);
 }
 
 void udpHandling(){
-  //Check if bytes are available
-  boost::asio::socket_base::bytes_readable command(true);
-  myInputSocket.io_control(command);
-  size_t bytes_readable = command.get();
-  //IF there is a byte
-  if (bytes_readable>0){
-    boost::array<char, 1> recv_buf;
-    boost::system::error_code error;
-    //Lese alle bis zum aktuellsten
-    while (bytes_readable>=1){
-      myInputSocket.receive_from(boost::asio::buffer(recv_buf),
-      remote_endpoint, 0, error);
-      boost::asio::socket_base::bytes_readable command(true);
-      myInputSocket.io_control(command);
-      bytes_readable = command.get();
-    }
-    if (error && error != boost::asio::error::message_size)
-    throw boost::system::system_error(error);
-    //Wenn 1 reinkommt, sende Daten.
-    if (recv_buf[0]=='1'){
-      //SEND THE TIME
+
       sendString(std::to_string(time(0)),0);
       sendLong(timeSinceLastNewData,1);
       sendInt(longestTimeNoData,2);
@@ -99,8 +86,8 @@ void udpHandling(){
 
 for (size_t i = 0; i < 9; i++) {
       sendInt(ninePixMatrix[i],i+15);}
-    }
-  }
+    
+
 }
 
 //Royale Event Listener reports dropped frames as string. This functions extracts the number of frames that got lost at Bridge/FC. I believe, that dropped frames cause the instability.
@@ -192,7 +179,8 @@ int main(int argc, char *argv[])
 {
   //Mute the LRAs before ending the program by ctr + c (SIGINT)
   signal(SIGINT, endMuted);
-
+  
+  boostInit();
   //Setup the LRAs on the Glove (I2C Connection, Settings, Calibration, etc.)
   setupGlove();
 
@@ -392,7 +380,7 @@ cv::resizeWindow("tileImg8", 672,513);
 cv::moveWindow("tileImg8", 700, 50);
 cv::namedWindow ("depImg8", cv::WINDOW_NORMAL);
 cv::resizeWindow("depImg8", 672,513);
-cv::moveWindow("depImg8", 50, 50);
+cv::moveWindow("depImg8", 5, 50);
 
 
 
@@ -427,7 +415,7 @@ while (currentKey != 27)
 
 
 
-  if (millis()-lastCallImshow> 100) {
+  if (millis()-lastCallImshow> 66) {
 
     //Get all the data of the royal lib to see if camera is working
     royale::Vector<royale::Pair<royale::String, royale::String>> cameraInfo;
