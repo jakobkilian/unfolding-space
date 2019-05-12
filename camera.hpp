@@ -34,13 +34,10 @@ class DepthDataListener : public royale::IDepthDataListener
         // the image
         cv::Mat cameraMatrix;
         cv::Mat distortionCoefficients;
-
-
         bool undistortImage = false;
 
     public:
         DepthDataListener() : undistortImage(false) {}
-
         void onNewData(const royale::DepthData *data);
         void setLensParameters(const royale::LensParameters &lensParameters);
         void toggleUndistort();

@@ -64,6 +64,9 @@ bool calibSuccess[9];
 
 int retVal;
 
+//Should there be a calibration in the beginning? Else: Take standard Values
+bool startupCalib=false;
+
 //respective I2C Address
 int drv;
 int tca0;
@@ -90,7 +93,7 @@ void setupGlove()
   drv= initI2CDevice(DRV2605_ADDRESS);
   tca0=initI2CDevice(TCA9548A_0_ADDRESS);
   tca1=initI2CDevice(TCA9548A_1_ADDRESS);
-  //printf("STARTING SETUP\n");
+
   //resetAll(); //to stop ongoing vibrations or faulty settings
   //Write settings to all drivers and start simultaneous auto calibration
   for (int u = 0; u < 9; u++)
@@ -102,78 +105,78 @@ void setupGlove()
     }
   }
   /*
-//  delay(300);
+  //  delay(300);
 
   //Check if autocalibration already was finished and successfull. If not, do subsequent calibration passes
   for (int u = 0; u < 0; u++)
   {
-    drvSelect(u);     //select the driver to write to
+  drvSelect(u);     //select the driver to write to
   printf("\n\n\n\nDRV No: %i\n", u);
   printf("_________________\n");
-    int calibCounter=0;
-    //Get GO bit - when cleared auto calibration has been finished
-    uint8_t getGO = 0x01;
-    while ((getGO & 0x01) != 0x00 )
-    {
-      getGO=registerRead(GO);
-      delay(5);
-    }
-    //Get status register to check if auto calibration was successfull
-    uint8_t getStatus = registerRead(STATUS);
-    if ((getStatus & 0x08) == 0x00)
-    {
-      calibSuccess[u]=true;
-    }
-    else
-    {
-      //Cancel when there were too many calibration passes
-      while (calibCounter < maxCalibPasses)
-      {
-        //Start next calibration
-        printf("LRA %i returned status %x. Calib pass no %i\n", u, getStatus, calibCounter);
-        while (setupLRA() != 0)
-        {
-          printf("setup of actuator No %i failed\n",u); //Send all register settings and "GO" bit to start auto calibration
-        }
-        delay(300);
-        getGO = 0x01;
-        while ((getGO & 0x01) != 0x00 )
-        {
-          getGO=registerRead(GO);
-          delay(5);
-        }
-        getStatus = registerRead(STATUS);
-        if ((getStatus & 0x08) == 0x00)
-        {
-          calibSuccess[u]=true;
-          break;
-        }
-        calibCounter++;   //count the calibration passes
-      }
-      if (calibCounter == maxCalibPasses){}
-      printf("FATAL: cannot calibrate LRA No %i", u);
-    }
-    //If Calibration was successfull print results and switch to active mode
-    if (calibSuccess[u]==true)
-    {
-      while (registerWrite(MODE, 0x05) != 0)            //set DRV to RTP Mode
-      {
-        printf("setting No %i in RTP mode failed\n", u);
-      }
-      while (registerWrite(RTP_INPUT, 0x00) != 0)      //set vibration value to 0
-      {
-        printf("setting RTP value at No %i to zero failed\n", u);
-      }
-      printStatusToSerial(getStatus);
-    }
-  }
-  printSummary();
-   
-  */
+  int calibCounter=0;
+  //Get GO bit - when cleared auto calibration has been finished
+  uint8_t getGO = 0x01;
+  while ((getGO & 0x01) != 0x00 )
+  {
+  getGO=registerRead(GO);
+  delay(5);
+}
+//Get status register to check if auto calibration was successfull
+uint8_t getStatus = registerRead(STATUS);
+if ((getStatus & 0x08) == 0x00)
+{
+calibSuccess[u]=true;
+}
+else
+{
+//Cancel when there were too many calibration passes
+while (calibCounter < maxCalibPasses)
+{
+//Start next calibration
+printf("LRA %i returned status %x. Calib pass no %i\n", u, getStatus, calibCounter);
+while (setupLRA() != 0)
+{
+printf("setup of actuator No %i failed\n",u); //Send all register settings and "GO" bit to start auto calibration
+}
+delay(300);
+getGO = 0x01;
+while ((getGO & 0x01) != 0x00 )
+{
+getGO=registerRead(GO);
+delay(5);
+}
+getStatus = registerRead(STATUS);
+if ((getStatus & 0x08) == 0x00)
+{
+calibSuccess[u]=true;
+break;
+}
+calibCounter++;   //count the calibration passes
+}
+if (calibCounter == maxCalibPasses){}
+printf("FATAL: cannot calibrate LRA No %i", u);
+}
+//If Calibration was successfull print results and switch to active mode
+if (calibSuccess[u]==true)
+{
+while (registerWrite(MODE, 0x05) != 0)            //set DRV to RTP Mode
+{
+printf("setting No %i in RTP mode failed\n", u);
+}
+while (registerWrite(RTP_INPUT, 0x00) != 0)      //set vibration value to 0
+{
+printf("setting RTP value at No %i to zero failed\n", u);
+}
+printStatusToSerial(getStatus);
+}
+}
+printSummary();
+
+*/
 }
 
 
-//Lese einen Wert aus einem Register
+//Read a register
 uint8_t registerRead(unsigned char ucRegAddress)
 {
   int result;
@@ -187,10 +190,9 @@ uint8_t registerRead(unsigned char ucRegAddress)
   return result;
 }
 
-//Schreibe einen Wert in ein Register
+//Write a register
 int registerWrite(unsigned char ucRegAddress, char cValue)
 {
-  //printf("schreibe den register wert %u mit  %u\n", ucRegAddress, cValue);
   {
     if (int result = wiringPiI2CWriteReg8(drv, ucRegAddress, cValue) != 0)
     {
@@ -202,20 +204,16 @@ int registerWrite(unsigned char ucRegAddress, char cValue)
   }
 }
 
+//WRITE all vibration values to DRVs
 void writeValues(int valc, uint8_t* vals) {
   uint8_t order[9] = {2,5,6,1,3,7,0,4,8};
   for (int i = 0; i!= valc; ++i) {
     drvSelect(order[i]);
-    //printCurTime("TCA");
     registerWrite(RTP_INPUT, altCurve[vals[i]]);
-    //printCurTime("DRV");
-    //printf("%i - %i ||", altCurve[vals[i]]);
-
   }
-  //printf("\n");
 }
 
-//Stellt den TCA so ein, dass DRV 0-4 auf den ersten TCA gehen und 5-8 auf den zweiten. der jeweils andere TCA wird dabei ausgeschaltet
+//Route DRV 0-4 to first TCA multiplexer and 5-8 to the second TCA
 int drvSelect(uint8_t i)
 {
   if (i <= 4)
@@ -271,125 +269,125 @@ int setupLRA()
   return -1; //Closed/Auto-resonance Mode on
   if (registerWrite(CONTRL4, 0x30) != 0)
   return -1; //Calib length of 500ms
-  //if (registerWrite(GO, 0x01) != 0)
-  //return -1; //GO to start Auto-Calib process
-        while (registerWrite(MODE, 0x05) != 0)            //set DRV to RTP Mode
-      {      }
-      while (registerWrite(RTP_INPUT, 0x00) != 0)      //set vibration value to 0
-      {}
-  return 0;
-}
-
-//Stelle alle DRV aus am Ende des Programms
-void muteAll()
-{
-  for (int i = 0; i<9; ++i) {
-    drvSelect(i);
-    registerWrite(RTP_INPUT, 0);
+  if (startupCalib==true){ //only when there should be a calib at startup
+    if (registerWrite(GO, 0x01) != 0)
+    return -1; //GO to start Auto-Calib process
   }
-  delay(10);
-            printf("Muted all LRAs \n");
+  while (registerWrite(MODE, 0x05) != 0)            //set DRV to RTP Mode
+  {      }
+  while (registerWrite(RTP_INPUT, 0x00) != 0)      //set vibration value to 0
+  {}
+    return 0;
+  }
 
-}
-
-
-//Reset all DRV shields
-void resetAll()
-{
-  for (int u = 0; u < 9; u++)
+  //When an error occurs or the program is exited: mute the DRVs first.
+  void muteAll()
   {
-    drvSelect(u);
-    delay(1);
-    //First: Set DEV_RESET bit to 1
-    while (registerWrite(MODE, 0x80) != 0) //Do until the shield is reset
-    {
-      printf("Reset failed\n");
+    for (int i = 0; i<9; ++i) {
+      drvSelect(i);
+      registerWrite(RTP_INPUT, 0);
     }
+    delay(10);
+    printf("Muted all LRAs \n");
   }
-  delay(10);
-  for (int u = 0; u < 9; u++)
+
+
+  //Reset all DRV shields
+  void resetAll()
   {
-    drvSelect(u);
-    delay(1);
-    //Check DEV_RESET bit until it gets cleared (reset finished)
-    uint8_t getMODE = 0x80;
-    while ((getMODE & 0x80) != 0x00 ) //Do until the shield is reset
+    for (int u = 0; u < 9; u++)
     {
-      getMODE=registerRead(MODE);
+      drvSelect(u);
       delay(1);
+      //First: Set DEV_RESET bit to 1
+      while (registerWrite(MODE, 0x80) != 0) //Do until the shield is reset
+      {
+        printf("Reset failed\n");
+      }
     }
-    //Get device in active mode (end standby)
-    while (registerWrite(MODE, 0x40) != 0)
+    delay(10);
+    for (int u = 0; u < 9; u++)
     {
-      printf("Activation failed\n");
-    }
-    //Check standby bit until it gets cleared (device active)
-    getMODE = 0x00;
-    while ((getMODE & 0x04) != 0x00 ) //Check until it is active
-    {
-      getMODE=registerRead(MODE);
+      drvSelect(u);
       delay(1);
+      //Check DEV_RESET bit until it gets cleared (reset finished)
+      uint8_t getMODE = 0x80;
+      while ((getMODE & 0x80) != 0x00 ) //Do until the shield is reset
+      {
+        getMODE=registerRead(MODE);
+        delay(1);
+      }
+      //Get device in active mode (end standby)
+      while (registerWrite(MODE, 0x40) != 0)
+      {
+        printf("Activation failed\n");
+      }
+      //Check standby bit until it gets cleared (device active)
+      getMODE = 0x00;
+      while ((getMODE & 0x04) != 0x00 ) //Check until it is active
+      {
+        getMODE=registerRead(MODE);
+        delay(1);
+      }
+      printf("reset actuator %i successfull\n", u);
     }
-    printf("reset actuator %i successfull\n", u);
+    printf("all actuators reset\n\n\n\n");
   }
-  printf("all actuators reset\n\n\n\n");
-}
 
-//print result of calibration pass
-void printStatusToSerial(uint8_t status)
-{
-  printf("return:\t\t%x\ncommunication:\t", status);
-  if ((status & 0xE0) == 0x00) //check if the board gives the right ID back
+  //print result of calibration pass
+  void printStatusToSerial(uint8_t status)
   {
-    printf("NO ANSWER\n");
-  }
-  if ((status & 0xE0) != 0x00)
-  {   //if it does, check the rest of the status
-    printf("CONNECTED\ncalib success:\t");
-    if ((status & 0x8) == 0x00) //check is calib was successfull
-    printf("YES\n");
-    else
+    printf("return:\t\t%x\ncommunication:\t", status);
+    if ((status & 0xE0) == 0x00) //check if the board gives the right ID back
     {
-      printf("NO\n");
-      printf("overtemperature:\t");
-      if ((status & 0x2) != 0x00)
+      printf("NO ANSWER\n");
+    }
+    if ((status & 0xE0) != 0x00)
+    {   //if it does, check the rest of the status
+      printf("CONNECTED\ncalib success:\t");
+      if ((status & 0x8) == 0x00) //check is calib was successfull
       printf("YES\n");
       else
-      printf("NO\n");
-      printf("overcurrent:\t");
-      if ((status & 0x1) != 0x00)
-      printf("YES\n");
-      else
-      printf("NO\n");
+      {
+        printf("NO\n");
+        printf("overtemperature:\t");
+        if ((status & 0x2) != 0x00)
+        printf("YES\n");
+        else
+        printf("NO\n");
+        printf("overcurrent:\t");
+        if ((status & 0x1) != 0x00)
+        printf("YES\n");
+        else
+        printf("NO\n");
+      }
     }
+    int freq = 0x00;
+    freq = registerRead(LRA_RESON);
+    float frequency = 1 / (freq * 0.00009846);
+    printf("frequency:\t%.2f Hz\n", frequency);
   }
-  int freq = 0x00;
-  freq = registerRead(LRA_RESON);
-  float frequency = 1 / (freq * 0.00009846);
-  printf("frequency:\t%.2f Hz\n", frequency);
-}
 
-//print calibration summary
-void printSummary() {
-  printf("\n\n\n here are the results of the calib test-run: \n");
-  printf("______________________________\n");
-  for (int u = 0; u < 9; u++) {
-        printf("LRA No %i: \t ",u);
-    drvSelect(u);
-        uint8_t getReg = 0x00;
-    getReg=registerRead(A_CAL_COMP);
-    printf("\t Compensation:  %u \t ",getReg);
-    getReg=registerRead(A_CAL_BEMF);
-    printf("\t back-EMF:  %u \t ",getReg);
-    printf("\t  Device is ");
-
-    if (calibSuccess[u] == true) {
-      printf("READY\n");
-      availableLRAs++;
+  //print calibration summary
+  void printSummary() {
+    printf("\n\n\n here are the results of the calib test-run: \n");
+    printf("______________________________\n");
+    for (int u = 0; u < 9; u++) {
+      printf("LRA No %i: \t ",u);
+      drvSelect(u);
+      uint8_t getReg = 0x00;
+      getReg=registerRead(A_CAL_COMP);
+      printf("\t Compensation:  %u \t ",getReg);
+      getReg=registerRead(A_CAL_BEMF);
+      printf("\t back-EMF:  %u \t ",getReg);
+      printf("\t  Device is ");
+      if (calibSuccess[u] == true) {
+        printf("READY\n");
+        availableLRAs++;
+      }
+      else {
+        printf("-\n");
+      }
     }
-    else {
-      printf("-\n");
-    }
+    printf("\ntotal of:\t%i\n",availableLRAs);
   }
-  printf("\ntotal of:\t%i\n",availableLRAs);
-}
