@@ -8,11 +8,6 @@ using std::cerr;
 using std::cout;
 using std::endl;
 
-
-cv::VideoWriter video;
-
-
-
 using namespace royale;
 
 //when scanning... : the min number of pixels, an object must have (smaller objects might be noise
@@ -48,15 +43,17 @@ std::mutex tileMutex;
 //standard size of the Windows
 cv::Size_<int> myWindowSize = cv::Size(112, 85);
 
-int millisFirst;
+int millisFirstFrame;
 bool first=false;
 
+//
 int myHueChange(float oldValue, float changeValue)
 {
   int oldInt = static_cast<int>(oldValue);
   int changeInt = static_cast<int>(changeValue);
   return (oldInt + changeInt) % 360;
 }
+
 //How long was this step?
 void printCurTime(const std::string& msg)
 {
@@ -64,18 +61,19 @@ void printCurTime(const std::string& msg)
   cycleTime+=millis()-lastPrintCurTime;
   lastPrintCurTime=millis();
 }
+
 //How long was this cycle?
-void printCycle()
+void getCycleDur()
 {
   cycleTime+=millis()-lastPrintCurTime;
   globalCycleTime=cycleTime;
   //cout <<  " _________________________ Cycle Time:" << cycleTime <<  " ______________________________" << endl;
   cycleTime=0;
   lastPrintCurTime=millis();
-
 }
+
 //How long was the pause since last onNewData?
-void printPause()
+void getPauseDur()
 {
   cycleTime+=millis()-lastPrintCurTime;
   globalPauseTime=cycleTime;
@@ -105,118 +103,86 @@ lensParameters.distortionRadial[2]);
 */
 
 
-//This function gets called everytime there is a new depth frame!
+//This function gets called everytime there is a new depth frame from the Pico Flexx
 void DepthDataListener::onNewData(const DepthData *data)
 {
+  int histo[9][256];                      //historgram, needed to find closest obj and creat tiles
+  lastNewData=millis();                   //timestamp when new frame arrives (to check if libroyale didn't crash)
+  getPauseDur();                          //calcucalte how long the last pause (waiting for onNewData) has been
+  distThresh=globalPotiVal/100/3;         //calculate current distThresh from potiVal
 
-
-  lastNewData=millis();
-  //printCurTime(" ");
-  printPause();
-  //printCurTime("Begin");
-  //is this the first frame?
-
-  distThresh=globalPotiVal/33.333333;     //get current distThresh
-
-  width = data->width;
-  height = data->height;
-  int tileWidth = width / 3 + 1;
-  int tileHeight = height / 3 + 1;
-
+//Save time of first arriving frame
   if(first!=true) {
-    millisFirst=millis();
+    millisFirstFrame=millis();
     first=true;
   }
 
-  //Check if saving and showing og img is finished
-  /*    while (processingImg==true) {
-  delay(1);
-}
-*/
-int histo[9][256];
+//check size of incoming data
+  width = data->width;                //get width from depth image
+  height = data->height;              //get height from depth image
+  int tileWidth = width / 3 + 1;      //respectiveley width of one tile
+  int tileHeight = height / 3 + 1;    //respectiveley height of one tile
 
+//need this if-true for the mutex
 if(true){
-  std::lock_guard<std::mutex> lock(depMutex);
-  // create images which will be filled afterwards   |  CV_32FC3 heißt 32bit flaoting-point Array mit 3 Kanälen
-  depImg.create (cv::Size (width, height), CV_8UC3);
-  tileImg.create (cv::Size (3, 3), CV_8UC1);
+  std::lock_guard<std::mutex> lock(depMutex);           //Do not read the image while it gets written
+  depImg.create (cv::Size (width, height), CV_8UC3);    //images that get filled later
+  tileImg.create (cv::Size (3, 3), CV_8UC1);            //images that get filled later
+  bzero(histo, sizeof(int) * 9 * 256);                  //empty histogram array
 
-
-
-  bzero(histo, sizeof(int) * 9 * 256);
-
-  //printCurTime("Nur init Kram");
+//READING DEPTH IMAGE pixel by pixel
   for (int y = 0; y < height; y++)
   {
-
     uint8_t *depImgPtr = depImg.ptr<uint8_t>(y);
-    for (int x = 0; x < width; x++) //iteriert durch die Spalten (also jeden einzelnen Pixel)
+    for (int x = 0; x < width; x++)
     {
+      auto curPoint = data->points.at(y * width + x);         //save currently observed pixel in curPoint
+      bool valid=curPoint.depthConfidence > 10;               //check its validity (if bigger than 10 -> valid)
+      int tileIdx = (x / tileWidth) + 3 * (y / tileHeight);   //switch to the respective tile
 
-
-      //data müssten die rohen daten der Kamera sein (werden oben der onNEwDate übergeben
-      //d.h. hier wird ein bestimmter Wert (tempPixel) aus dem Datenarray (data) ausgegeben und in curPoint gespeichert
-      auto curPoint = data->points.at(y * width + x);
-      bool valid=curPoint.depthConfidence > 10;
-      int tileIdx = (x / tileWidth) + 3 * (y / tileHeight);
-
-
-      //confidence geht von 0 bis 255 und bezeichnet wie vertrauenwürdig ein punkt ist. 0 heißt ungültig
+      //WRITE VALID PIXELS in DepImg and histo
       if (valid)
       {
         // if the point is valid, map the pixel from 3D world
         // coordinates to a 2D plane (this will distort the image)
-        uint8_t depth = (uint8_t)adjustDepthValue(curPoint.z, distThresh);      //Depth Value as 0-255 float in relation to distThresh
-        histo[tileIdx][depth]++;
-
-        depImgPtr[x * 3] = adjustDepthValueForImage(curPoint.z, distThresh);    //Hue value from 0-180
-        depImgPtr[x * 3 + 1] = 0;                                             //Saturation is always the same
-        depImgPtr[x * 3 + 2] = adjustDepthValue(curPoint.z, distThresh);                                             //Brightness is always the same
+        uint8_t depth = (uint8_t)adjustDepthValue(curPoint.z, distThresh);      //Depth Value in relation to distThresh
+        histo[tileIdx][depth]++;                                                //write pixel in historgram
+        depImgPtr[x * 3] = adjustDepthValueForImage(curPoint.z, distThresh);    //ä Hue value from 0-180
+        depImgPtr[x * 3 + 1] = 0;                                               //ä Saturation is always the same
+        depImgPtr[x * 3 + 2] = adjustDepthValue(curPoint.z, distThresh);        //ä Brightness is always the same
       }
 
-      //If pixel is exactly 255 (means it is out of range)
+      //ä if pixel is out of range but valid –> make it white / invisible
       if (adjustDepthValue(curPoint.z, distThresh)==255)
       {
-        //make pixel white (unvisible)
         depImgPtr[x * 3] = 255;
         depImgPtr[x * 3 + 1] = 0;
         depImgPtr[x * 3 + 2] = 255;
       }
 
-      //If pixel is not valid (means confidence is too low)
+      //ä If pixel is not valid –> make it grey
       if (!valid)
       {
-        //make pixel grey
         depImgPtr[x * 3] = 7;
         depImgPtr[x * 3 + 1] = 10;
         depImgPtr[x * 3 + 2] = 245;
-
-        histo[tileIdx][255]++;
+        histo[tileIdx][255]++;                  //ä add a pixel in inivite distance
 
       }
-
     }
   }
 }
-newDepthImage=true;
+newDepthImage=true;                             //New Depth Image is there
 
-//cv::resize(depImg, depImg, myWindowSize, cv::INTER_NEAREST);
-//printCurTime("Resize");
-//cv::cvtColor(depImg, depImg, cv::COLOR_HSV2RGB, 3);
-//printCurTime("color");
-//cv::flip(depImg,depImg, -1);
-//printCurTime("Flip");
-printCurTime("Init Kram und Data in Array und Img füllen");
-
-if(true){
-  std::lock_guard<std::mutex> lock(tileMutex);
-  // find closest object per tile
+if(true){                                       //need this if-true for the mutex
+  std::lock_guard<std::mutex> lock(tileMutex);  //Do not read the image while it gets written
+  //FIND CLOSEST object per tile
   for (int tileIdx = 0; tileIdx < 9; tileIdx++)
   {
     int sum = 0;
     int val;
-    int offset=17;          //exclude the first 17cm because of oversaturation issues
-    int range=50;           //only look at a range of 0.5m
+    int offset=17;          //exclude the first 17cm because of oversaturation issues of the Pico Flexx
+    int range=50;           //look in a tolerance range of 50cm
     for (val = offset; val < 256; val++)
     {
       if(histo[tileIdx][val] >5) {
@@ -230,36 +196,20 @@ if(true){
       if (sum >= minObjSizeThresh)
       break;
     }
-    ninePixMatrix[tileIdx] = val;
+    //WRITE the value in the Tile Matrix:
+    ninePixMatrix[(tileIdx-8)*-1] = (val-255)*-1;       //Here two modification have to be done to have the right visual orientation in the end
   }
 
-  //printCurTime("Tiles Analyse");
+  /*ä hier muss ich wohl nochmla drehen weil das tile bil dsonst falsch ist
+    for (int i = 0; i < 9; i++)
+    {
+      ninePixMatrix[i] =((tempMat[i]-255)*-1);            //umdrehen
+    }
+*/
 
-
-
-  uint8_t tempMat[9];
-  //Einmal umdrehen
-  for (int i = 0; i < 9; i++)
-  {
-    tempMat[i] = ninePixMatrix[(i-8)*-1];
-    //ninePixMatrix[i] = (ninePixMatrix[i] - 255) * -1;
-  }
-
-
-
-  //printCurTime("umdrehen I");
-
-  for (int i = 0; i < 9; i++)
-  {
-    ninePixMatrix[i] =((tempMat[i]-255)*-1);            //umdrehen
-  }
-
-
-
-
-  if(true){
-    std::lock_guard<std::mutex> lock(depMutex);
-    tileImg= cv::Mat(3, 3, CV_8UC1, &tempMat);
+  if(true){                                             //need this if-true for the mutex
+    std::lock_guard<std::mutex> lock(depMutex);         //lock again for writing process
+    tileImg= cv::Mat(3, 3, CV_8UC1, &ninePixMatrix);    //Write the matr
   }
 }
 
@@ -269,52 +219,45 @@ if (frameCounter==100)
   loop++;
   frameCounter=0;
 }
-
-
-
-//Printe das ASCII-Bild und andere Informationen
-//passiert nun in der Main
-//printOutput();
-
-
-
 frameCounter++;
-//Write the Values to the glove
-//printCurTime("-");
-if(true){
-  std::lock_guard<std::mutex> lock(tileMutex);
-  if (stopWritingVals!=true)
-  writeValues(9, &(ninePixMatrix[0]));}
-  printCurTime("Vorbereitung und Werte an den Handschuh");
-  //delay(20);
-  //printCurTime("Delay");
-  printCycle();
+
+
+//WRITE VALUES TO GLOVE
+if(true){                                             //need this if-true for the mutex
+  std::lock_guard<std::mutex> lock(tileMutex);        //lock to write values to glove
+  if (stopWritingVals!=true)                          //Check if values should be written
+  writeValues(9, &(ninePixMatrix[0]));}               //WRITE
+  getCycleDur();                                      //Calculate how long this cycle took
 }
 
+//Toggle to undistort the picture (lense produces fisheye view)
 void DepthDataListener::toggleUndistort()
 {
   std::lock_guard<std::mutex> lock(depMutex);
   undistortImage = !undistortImage;
 }
 
-//_______________PRIVATE_______________
 
+
+//_______________PRIVATE_______________
 float DepthDataListener::adjustDepthValue(float zValue, float max)
 {
-  //if distThresh is zero, everything is out of range (255)
+  //if max is 0 (e.g. poti is at 0): set all tiles to out of range / s55
   if (max==0)
   {
     return 255;
   }
-
+  //if max is smaller: set all tiles to max
   if (zValue > max)
   {
     zValue = max;
   }
+  //make ZValue relative to max and return 0-255
   float newZValue = zValue / max * 255.0f;
   return newZValue;
 }
 
+//ä
 float DepthDataListener::adjustDepthValueForImage(float zValue, float max)
 {
   if (zValue > max)
@@ -327,8 +270,9 @@ float DepthDataListener::adjustDepthValueForImage(float zValue, float max)
   return newZValue;
 }
 
+//ä
 void printOutput() {
-  int millisSince=((int) millis()-millisFirst)/1000;
+  int millisSince=((int) millis()-millisFirstFrame)/1000;
   if (millisSince>0) {
     fps = ((loop*100)+frameCounter)/millisSince;
   }
@@ -363,14 +307,12 @@ void printOutput() {
   }
 }
 
-
+//Function to pass Tiles Img to main.cpp
 cv::Mat passNineFrame() {
-
-
   return tileImg;
 }
+//Function to pass Depth Img to main.cpp
 cv::Mat passDepFrame() {
-
   std::lock_guard<std::mutex> lock(depMutex);
   depImgMod.create (cv::Size (width, height), CV_8UC3);
   depImg.copyTo(depImgMod);

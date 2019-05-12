@@ -33,7 +33,6 @@ int *ptrOutVal[25];
 long cameraStartTime;
 
 
-
 //UDP STUFF
 using boost::asio::ip::udp;
 boost::asio::io_service io_service;
@@ -42,12 +41,12 @@ udp::endpoint remote_endpoint;
 boost::system::error_code ignored_error;
 udp::endpoint destination(
     boost::asio::ip::address_v4::broadcast(), 53333);
-    
+
     void boostInit(){
         myOutputSocket.open(udp::v4(),ignored_error);
 myOutputSocket.set_option(udp::socket::reuse_address(true));
 myOutputSocket.set_option(boost::asio::socket_base::broadcast(true));
-   
+
         }
 
 void sendString(std::string thisString, int thisId){
@@ -86,7 +85,7 @@ void udpHandling(){
 
 for (size_t i = 0; i < 9; i++) {
       sendInt(ninePixMatrix[i],i+15);}
-    
+
 
 }
 
@@ -179,7 +178,7 @@ int main(int argc, char *argv[])
 {
   //Mute the LRAs before ending the program by ctr + c (SIGINT)
   signal(SIGINT, endMuted);
-  
+
   boostInit();
   //Setup the LRAs on the Glove (I2C Connection, Settings, Calibration, etc.)
   setupGlove();
