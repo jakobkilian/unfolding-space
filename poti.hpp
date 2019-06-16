@@ -5,3 +5,4 @@ void initPoti();
 int updatePoti();
 
 extern int globalPotiVal;
+extern bool potiAv;

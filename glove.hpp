@@ -13,3 +13,5 @@ void setupGlove();
 void muteAll();
 void writeValues(int valc, uint8_t*vals);
 
+//drv board detachable?
+extern bool detachableDRV;

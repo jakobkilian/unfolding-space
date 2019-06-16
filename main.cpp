@@ -30,6 +30,15 @@ long timeSinceLastNewData;
 
 long cameraStartTime;
 
+//Does the system use a poti?
+bool potiAv=1;
+
+//Does the system use the old and DRV-Breakoutboards or the new detachable DRV-PCB
+bool detachableDRV=0;
+
+//any visual output?
+bool gui=1;
+
 //UDP STUFF
 using boost::asio::ip::udp;
 boost::asio::io_service io_service;
@@ -152,7 +161,7 @@ udp::endpoint destination(
       tempFile.close();
     }
 
-//When an error occurs or the camera gets detached: mute all vibrations insted showing last image
+    //When an error occurs or the camera gets detached: mute all vibrations insted showing last image
     void endMuted(int dummy){
       stopWritingVals=true;
       muteAll();
@@ -173,7 +182,9 @@ udp::endpoint destination(
       setupGlove();
 
       //Setup Connection to Digispark Board for Poti-Reads
-      initPoti();
+      if (potiAv)
+        initPoti();
+
       /*
       //Get Time to create filename for video recording
       time_t now = time(0);
@@ -234,262 +245,260 @@ udp::endpoint destination(
             cameraDevice = manager.createCamera(camlist[0]);
           }
         }
-      camlist.clear();
+        camlist.clear();
 
-    }
-    // the camera device is now available and CameraManager can be deallocated here
-    if (cameraDevice == nullptr)
-    {
-      // no cameraDevice available
-      if (argc > 1)
+      }
+      // the camera device is now available and CameraManager can be deallocated here
+      if (cameraDevice == nullptr)
       {
-        cerr << "Could not open " << argv[1] << endl;
+        // no cameraDevice available
+        if (argc > 1)
+        {
+          cerr << "Could not open " << argv[1] << endl;
+          return 1;
+        }
+        else
+        {
+          cerr << "Cannot create the camera device" << endl;
+          return 1;
+        }
+      }
+
+      // IMPORTANT: call the initialize method before working with the camera device
+      auto status = cameraDevice->initialize();
+      if (status != royale::CameraStatus::SUCCESS)
+      {
+        cerr << "Cannot initialize the camera device, error string : " << getErrorString(status) << endl;
         return 1;
+      }
+
+      royale::Vector<royale::String> useCases;
+      auto usecaseStatus = cameraDevice->getUseCases(useCases);
+
+      if (usecaseStatus != royale::CameraStatus::SUCCESS || useCases.empty())
+      {
+        cerr << "No use cases are available" << endl;
+        cerr << "getUseCases() returned: " << getErrorString(usecaseStatus) << endl;
+        return 1;
+      }
+
+      cerr << useCases << endl;
+
+      // choose a use case
+      uint selectedUseCaseIdx = 0u;
+      if (commandLineUseCase)
+      {
+        cerr << "got the argument:" << commandLineUseCase << endl;
+        auto useCaseFound = false;
+        if (commandLineUseCase >= 0 && commandLineUseCase < useCases.size())
+        {
+          unint8_t fpsUseCases[6] = {0,10,15,25,35,45}; //fix values coming from the pico flexx
+          selectedUseCaseIdx = commandLineUseCase;
+          fpsFromCam=fpsUseCases[commandLineUseCase];
+          useCaseFound = true;
+        }
+
+        if (!useCaseFound)
+        {
+          cerr << "Error: the chosen use case is not supported by this camera" << endl;
+          cerr << "A list of supported use cases is printed by sampleCameraInfo" << endl;
+          return 1;
+        }
       }
       else
       {
-        cerr << "Cannot create the camera device" << endl;
+        cerr << "Here: autousecase id" << endl;
+        // choose the first use case
+        selectedUseCaseIdx = 0;
+      }
+
+      // set an operation mode
+      if (cameraDevice->setUseCase(useCases.at(selectedUseCaseIdx)) != royale::CameraStatus::SUCCESS)
+      {
+        cerr << "Error setting use case" << endl;
         return 1;
       }
-    }
 
-    // IMPORTANT: call the initialize method before working with the camera device
-    auto status = cameraDevice->initialize();
-    if (status != royale::CameraStatus::SUCCESS)
-    {
-      cerr << "Cannot initialize the camera device, error string : " << getErrorString(status) << endl;
-      return 1;
-    }
-
-    royale::Vector<royale::String> useCases;
-    auto usecaseStatus = cameraDevice->getUseCases(useCases);
-
-    if (usecaseStatus != royale::CameraStatus::SUCCESS || useCases.empty())
-    {
-      cerr << "No use cases are available" << endl;
-      cerr << "getUseCases() returned: " << getErrorString(usecaseStatus) << endl;
-      return 1;
-    }
-
-    cerr << useCases << endl;
-
-    // choose a use case
-    uint selectedUseCaseIdx = 0u;
-    if (commandLineUseCase)
-    {
-      cerr << "got the argument:" << commandLineUseCase << endl;
-      auto useCaseFound = false;
-      if (commandLineUseCase >= 0 && commandLineUseCase < useCases.size())
+      // retrieve the lens parameters from Royale
+      royale::LensParameters lensParameters;
+      status = cameraDevice->getLensParameters(lensParameters);
+      if (status != royale::CameraStatus::SUCCESS)
       {
-        unint8_t fpsUseCases[6] = {0,10,15,25,35,45}; //fix values coming from the pico flexx
-        selectedUseCaseIdx = commandLineUseCase;
-        fpsFromCam=fpsUseCases[commandLineUseCase];
-        useCaseFound = true;
-      }
-
-      if (!useCaseFound)
-      {
-        cerr << "Error: the chosen use case is not supported by this camera" << endl;
-        cerr << "A list of supported use cases is printed by sampleCameraInfo" << endl;
+        cerr << "Can't read out the lens parameters" << endl;
         return 1;
       }
-    }
-    else
-    {
-      cerr << "Here: autousecase id" << endl;
-      // choose the first use case
-      selectedUseCaseIdx = 0;
-    }
 
-    // set an operation mode
-    if (cameraDevice->setUseCase(useCases.at(selectedUseCaseIdx)) != royale::CameraStatus::SUCCESS)
-    {
-      cerr << "Error setting use case" << endl;
-      return 1;
-    }
+      //ä listener.setLensParameters(lensParameters);
 
-    // retrieve the lens parameters from Royale
-    royale::LensParameters lensParameters;
-    status = cameraDevice->getLensParameters(lensParameters);
-    if (status != royale::CameraStatus::SUCCESS)
-    {
-      cerr << "Can't read out the lens parameters" << endl;
-      return 1;
-    }
+      // register a data listener
+      if (cameraDevice->registerDataListener(&listener) != royale::CameraStatus::SUCCESS)
+      {
+        cerr << "Error registering data listener" << endl;
+        return 1;
+      }
+      // register a EVENT listener
+      cameraDevice->registerEventListener (&eventReporter);
 
-    //ä listener.setLensParameters(lensParameters);
 
-    // register a data listener
-    if (cameraDevice->registerDataListener(&listener) != royale::CameraStatus::SUCCESS)
-    {
-      cerr << "Error registering data listener" << endl;
-      return 1;
-    }
-    // register a EVENT listener
-    cameraDevice->registerEventListener (&eventReporter);
+if (gui)
+createWindows();
 
 
 
-    // create two windows
-    cv::namedWindow ("tileImg8", cv::WINDOW_NORMAL);
-    cv::resizeWindow("tileImg8", 672,513);
-    cv::moveWindow("tileImg8", 700, 50);
-    cv::namedWindow ("depImg8", cv::WINDOW_NORMAL);
-    cv::resizeWindow("depImg8", 672,513);
-    cv::moveWindow("depImg8", 5, 50);
-
-
-
-    // start capture mode
-    if (cameraDevice->startCapture() != royale::CameraStatus::SUCCESS)
-    {
-      cerr << "Error starting the capturing" << endl;
-      return 1;
-    }
-
-    cameraStartTime=millis();
-    //active the vibration motors
-    stopWritingVals=false;
-
-
-    long counter=0;
-    long lastCallImshow=millis();
-    long lastCall=0;
-    long lastCallPoti=millis();
-    while (currentKey != 27)
-    {
-      royale::String id;
-      royale::String name;
-      uint16_t maxSensorWidth;
-      uint16_t maxSensorHeight;
-      bool calib;
-      timeSinceLastNewData= millis()-lastNewData;
-      if (longestTimeNoData<timeSinceLastNewData){
-        longestTimeNoData=timeSinceLastNewData;
+      // start capture mode
+      if (cameraDevice->startCapture() != royale::CameraStatus::SUCCESS)
+      {
+        cerr << "Error starting the capturing" << endl;
+        return 1;
       }
 
+      cameraStartTime=millis();
+      //active the vibration motors
+      stopWritingVals=false;
 
 
-      if (millis()-lastCallImshow> 66) {
+      long counter=0;
+      long lastCallImshow=millis();
+      long lastCall=0;
+      long lastCallPoti=millis();
+      while (currentKey != 27)
+      {
+        royale::String id;
+        royale::String name;
+        uint16_t maxSensorWidth;
+        uint16_t maxSensorHeight;
+        bool calib;
+        timeSinceLastNewData= millis()-lastNewData;
+        if (longestTimeNoData<timeSinceLastNewData){
+          longestTimeNoData=timeSinceLastNewData;
+        }
 
-        //Get all the data of the royal lib to see if camera is working
-        royale::Vector<royale::Pair<royale::String, royale::String>> cameraInfo;
-        auto status = cameraDevice->getCameraInfo (cameraInfo);
-        status = cameraDevice->getMaxSensorHeight (maxSensorHeight);
-        status = cameraDevice->getMaxSensorWidth (maxSensorWidth);
-        status = cameraDevice->getCameraName (name);
-        status = cameraDevice->getId (id);
-        status = cameraDevice->isCalibrated (calib);
-        status = cameraDevice->isConnected (connected);
-        status = cameraDevice->isCapturing (capturing);
 
-        lastCallImshow=millis();
-        if (newDepthImage==true) {
-          newDepthImage=false;
-          cv::Mat dep;
-          cv::Mat tile;
-          dep=passDepFrame();
-          tile=passNineFrame();
-          cv::cvtColor(dep, dep, cv::COLOR_HSV2RGB, 3);
-          cv::flip(dep,dep, -1);
-          if (record==true) {
-            //depVideo.write(dep);
-            //tileVideo.write(tile);
+
+        if (millis()-lastCallImshow> 66) {
+
+          //Get all the data of the royal lib to see if camera is working
+          royale::Vector<royale::Pair<royale::String, royale::String>> cameraInfo;
+          auto status = cameraDevice->getCameraInfo (cameraInfo);
+          status = cameraDevice->getMaxSensorHeight (maxSensorHeight);
+          status = cameraDevice->getMaxSensorWidth (maxSensorWidth);
+          status = cameraDevice->getCameraName (name);
+          status = cameraDevice->getId (id);
+          status = cameraDevice->isCalibrated (calib);
+          status = cameraDevice->isConnected (connected);
+          status = cameraDevice->isCapturing (capturing);
+
+          lastCallImshow=millis();
+          if (newDepthImage==true) {
+            newDepthImage=false;
+            cv::Mat dep;
+            cv::Mat tile;
+            dep=passDepFrame();
+            tile=passNineFrame();
+            cv::cvtColor(dep, dep, cv::COLOR_HSV2RGB, 3);
+            cv::flip(dep,dep, -1);
+            if (record==true) {
+              //depVideo.write(dep);
+              //tileVideo.write(tile);
+            }
+            cv::imshow ("depImg8", dep);
+            cv::imshow ("tileImg8", tile);
+            currentKey=cv::waitKey(1);
+            processingImg=false;
           }
-          cv::imshow ("depImg8", dep);
-          cv::imshow ("tileImg8", tile);
-          currentKey=cv::waitKey(1);
-          processingImg=false;
         }
-      }
 
-      if (millis()-lastCallPoti>50) {
-        udpHandling();
-        updatePoti();
-        if (record==true) {
-          printf("___recording!___\n");
+        if (millis()-lastCallPoti>50) {
+          udpHandling();
+          if (potiAv)
+          updatePoti();
+          if (record==true) {
+            printf("___recording!___\n");
+          }
+          printf("time since last new data: %i ms \n", timeSinceLastNewData);
+          printf("No of library crashes: %i times \n", libraryCrashNo);
+          printf("longest time with no new data was: %i \n", longestTimeNoData);
+          printf("temp.: \t%.1f°C\n", coreTempDouble);
+          printf("drops:\t%i | %i\t deliver:\t%i \t drops in last 10sec: %i\n", droppedAtBridge,droppedAtFC, deliveredFrames, tenSecsDrops);
+          printOutput();
+          lastCallPoti=millis();
         }
-        printf("time since last new data: %i ms \n", timeSinceLastNewData);
-        printf("No of library crashes: %i times \n", libraryCrashNo);
-        printf("longest time with no new data was: %i \n", longestTimeNoData);
-        printf("temp.: \t%.1f°C\n", coreTempDouble);
-        printf("drops:\t%i | %i\t deliver:\t%i \t drops in last 10sec: %i\n", droppedAtBridge,droppedAtFC, deliveredFrames, tenSecsDrops);
-        printOutput();
-        lastCallPoti=millis();
-      }
 
 
-      if (millis()-lastCall>5000) {
-        tenSecsDrops=0;
-        getCoreTemp();
-        counter++;
-        // display some information about the connected camera
+        if (millis()-lastCall>5000) {
+          tenSecsDrops=0;
+          getCoreTemp();
+          counter++;
+          // display some information about the connected camera
 
-        cout << endl;
-        cout << "cycle no "<< counter << "  --- " << micros() << endl;
-        cout << "====================================" << endl;
-        cout << "        Camera information"           << endl;
-        cout << "====================================" << endl;
-        cout << "Id:              " << id << endl;
-        cout << "Type:            " << name << endl;
-        cout << "Width:           " << maxSensorWidth << endl;
-        cout << "Height:          " << maxSensorHeight << endl;
-        cout << "Calibrated?:     " << calib << endl;
-        cout << "Connected?:      " << connected << endl;
-        cout << "Capturing?:      " << capturing << endl;
-        cerr << "camera info: " << status << endl<< endl<< endl<< endl<< endl<< endl<< endl<< endl<< endl<< endl;
-        lastCall=millis();
-      }
-      if (currentKey == 'r')
-      {
-        record=true;
-      }
-
-      if (currentKey == 's')
-      {
-        record=false;
-
-      }
-
-      //RESTART WHEN CAMERA IS UNPLUGGED
-      //Check how long camera is capturing - in the beginning it needs some time to be recognized -> 1000ms
-      if((millis()-cameraStartTime)>1000){
-        //If it says that it is not connected but still capturing, it should be unplugged:
-        if (connected==0 && capturing==1)
+          cout << endl;
+          cout << "cycle no "<< counter << "  --- " << micros() << endl;
+          cout << "====================================" << endl;
+          cout << "        Camera information"           << endl;
+          cout << "====================================" << endl;
+          cout << "Id:              " << id << endl;
+          cout << "Type:            " << name << endl;
+          cout << "Width:           " << maxSensorWidth << endl;
+          cout << "Height:          " << maxSensorHeight << endl;
+          cout << "Calibrated?:     " << calib << endl;
+          cout << "Connected?:      " << connected << endl;
+          cout << "Capturing?:      " << capturing << endl;
+          cerr << "camera info: " << status << endl<< endl<< endl<< endl<< endl<< endl<< endl<< endl<< endl<< endl;
+          lastCall=millis();
+        }
+        if (currentKey == 'r')
         {
-          cout << "________________________________________________"<< endl<< endl;
-          cout << "Camera Detached! Reinitialize Camera and Listener"<< endl<< endl;
-          cout << "________________________________________________"<< endl<< endl;
-          //stop writing new values to the LRAs
-          stopWritingVals=true;
-          //mute all LRAs
-          muteAll();
-          //go to the beginning and find camera again
-          goto searchCam;
+          record=true;
         }
-        if (timeSinceLastNewData>4000){
-          cout << "________________________________________________"<< endl<< endl;
-          cout << "Library Crashed! Reinitialize Camera and Listener. last new frame:  "<<timeSinceLastNewData<< endl<< endl;
-          cout << "________________________________________________"<< endl<< endl;
-          libraryCrashNo++;
-          //stop writing new values to the LRAs
-          stopWritingVals=true;
-          //mute all LRAs
-          muteAll();
-          //go to the beginning and find camera again
-          goto searchCam;
+
+        if (currentKey == 's')
+        {
+          record=false;
+
+        }
+
+        //RESTART WHEN CAMERA IS UNPLUGGED
+        //Check how long camera is capturing - in the beginning it needs some time to be recognized -> 1000ms
+        if((millis()-cameraStartTime)>1000){
+          //If it says that it is not connected but still capturing, it should be unplugged:
+          if (connected==0 && capturing==1)
+          {
+            cout << "________________________________________________"<< endl<< endl;
+            cout << "Camera Detached! Reinitialize Camera and Listener"<< endl<< endl;
+            cout << "________________________________________________"<< endl<< endl;
+            //stop writing new values to the LRAs
+            stopWritingVals=true;
+            //mute all LRAs
+            muteAll();
+            //go to the beginning and find camera again
+            goto searchCam;
+          }
+          if (timeSinceLastNewData>4000){
+            cout << "________________________________________________"<< endl<< endl;
+            cout << "Library Crashed! Reinitialize Camera and Listener. last new frame:  "<<timeSinceLastNewData<< endl<< endl;
+            cout << "________________________________________________"<< endl<< endl;
+            libraryCrashNo++;
+            //stop writing new values to the LRAs
+            stopWritingVals=true;
+            //mute all LRAs
+            muteAll();
+            //go to the beginning and find camera again
+            goto searchCam;
+          }
         }
       }
-    }
+//__________ END OF KEY-LOOP
 
-    // stop capture mode
-    if (cameraDevice->stopCapture() != royale::CameraStatus::SUCCESS)
-    {
-      cerr << "Error stopping the capturing" << endl;
-      return 1;
+
+
+      // stop capture mode
+      if (cameraDevice->stopCapture() != royale::CameraStatus::SUCCESS)
+      {
+        cerr << "Error stopping the capturing" << endl;
+        return 1;
+      }
+      stopWritingVals=true;
+      //Alle Motoren ausschalten
+      muteAll();
+      return 0;
     }
-    stopWritingVals=true;
-    //Alle Motoren ausschalten
-    muteAll();
-    return 0;
-  }

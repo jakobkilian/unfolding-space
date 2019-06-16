@@ -109,7 +109,9 @@ void DepthDataListener::onNewData(const DepthData *data)
   int histo[9][256];                      //historgram, needed to find closest obj and creat tiles
   lastNewData=millis();                   //timestamp when new frame arrives (to check if libroyale didn't crash)
   getPauseDur();                          //calcucalte how long the last pause (waiting for onNewData) has been
+  if (potiAv){
   distThresh=globalPotiVal/100/3;         //calculate current distThresh from potiVal
+}
 
 //Save time of first arriving frame
   if(first!=true) {
