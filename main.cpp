@@ -1,6 +1,7 @@
 #include "glove.hpp"
 #include "camera.hpp"
 #include "poti.hpp"
+#include "init.hpp"
 #include "time.h"
 #include <royale/IEvent.hpp>
 #include <signal.h>
@@ -292,7 +293,7 @@ udp::endpoint destination(
         auto useCaseFound = false;
         if (commandLineUseCase >= 0 && commandLineUseCase < useCases.size())
         {
-          unint8_t fpsUseCases[6] = {0,10,15,25,35,45}; //fix values coming from the pico flexx
+          uint8_t fpsUseCases[6] = {0,10,15,25,35,45}; //fix values coming from the pico flexx
           selectedUseCaseIdx = commandLineUseCase;
           fpsFromCam=fpsUseCases[commandLineUseCase];
           useCaseFound = true;
@@ -340,8 +341,8 @@ udp::endpoint destination(
       cameraDevice->registerEventListener (&eventReporter);
 
 
-if (gui)
-createWindows();
+if (gui){
+createWindows();}
 
 
 
