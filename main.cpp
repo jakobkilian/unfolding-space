@@ -516,12 +516,28 @@ createWindows();}
               cerr << "Error setting use case" << endl;
               return 1;
             }
-            cout << "wait now" << endl;
 
+
+            // start capture mode
+            if (cameraDevice->startCapture() != royale::CameraStatus::SUCCESS)
+            {
+              cerr << "Error starting the capturing" << endl;
+              return 1;
+            }
+
+            cameraStartTime=millis();
+            //active the vibration motors
+            stopWritingVals=false;
+
+
+
+
+            cout << "wait now" << endl;
 delay(5000);
 timeSinceLastNewData=0;
 //            goto searchCam;
           }
+                  if((millis()-cameraStartTime)>4000){
           if (timeSinceLastNewData>4000){
             cout << "________________________________________________"<< endl<< endl;
             cout << "Library Crashed! Reinitialize Camera and Listener. last new frame:  "<<timeSinceLastNewData<< endl<< endl;
@@ -534,6 +550,7 @@ timeSinceLastNewData=0;
             //go to the beginning and find camera again
             goto searchCam;
           }
+        }
         }
       }
 //__________ END OF KEY-LOOP
