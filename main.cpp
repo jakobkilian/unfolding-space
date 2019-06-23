@@ -201,6 +201,18 @@ udp::endpoint destination(
       cv::VideoWriter depVideo(depfile,CV_FOURCC('X','V','I','D'),10, cv::Size(224,171));
       cv::VideoWriter tileVideo(tilefile,CV_FOURCC('X','V','I','D'),10, cv::Size(3,3));
       */
+start:
+      //go to the beginning and find camera again
+      royale::CameraManager manager;
+      royale::Vector<royale::String> camlist;
+      cout << "_";
+      cout.flush();
+      camlist= manager.getConnectedCameraList();
+      if (camlist.empty())
+      {
+        cout << "found cam - back to the inititalization" << endl;
+        goto start;
+      }
 
       searchCam:
 
@@ -223,7 +235,7 @@ udp::endpoint destination(
 
 
       // the camera manager will query for a connected camera
-
+      {
         royale::CameraManager manager;
         //EventListener registrieren
         //nicht mehr an dieser Stelle:
@@ -233,19 +245,23 @@ udp::endpoint destination(
         royale::Vector<royale::String> camlist;
         cout << "Searching for 3D camera" << endl;
         cout << "_______________________" << endl;
-                  camlist= manager.getConnectedCameraList();
+        while (camlist.empty()){
 
+          // if no argument was given try to open the first connected camera
+          camlist= manager.getConnectedCameraList();
+          cout << ".";
+          cout.flush();
+          udpHandling();
           if (!camlist.empty())
           {
             cout << endl;
             cout << "Camera detected!" << endl;
             cameraDevice = manager.createCamera(camlist[0]);
-                    camlist.clear();
           }
-        else{
+        }
+        camlist.clear();
 
-
-
+      }
       // the camera device is now available and CameraManager can be deallocated here
       if (cameraDevice == nullptr)
       {
@@ -261,6 +277,7 @@ udp::endpoint destination(
           return 1;
         }
       }
+
       // IMPORTANT: call the initialize method before working with the camera device
       auto status = cameraDevice->initialize();
       if (status != royale::CameraStatus::SUCCESS)
@@ -333,11 +350,12 @@ udp::endpoint destination(
         cerr << "Error registering data listener" << endl;
         return 1;
       }
-
       // register a EVENT listener
       cameraDevice->registerEventListener (&eventReporter);
 
 
+      if (gui){
+        createWindows();}
 
 
 
@@ -347,11 +365,7 @@ udp::endpoint destination(
           cerr << "Error starting the capturing" << endl;
           return 1;
         }
-}
 
-
-      if (gui){
-        createWindows();}
         cameraStartTime=millis();
         cameraDetached=false;
         //active the vibration motors
