@@ -492,7 +492,6 @@ createWindows();}
                 cameraDevice = manager.createCamera(camlist[0]);
               }
             }
-            camlist.clear();
 
 goto foundCam;
 timeSinceLastNewData=0;
