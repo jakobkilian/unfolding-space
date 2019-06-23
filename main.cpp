@@ -176,6 +176,24 @@ udp::endpoint destination(
     //_______________MAIN LOOP________________________________________________________________________________________________________________________________________________
     int main(int argc, char *argv[])
     {
+bool startcheck=true;
+while (startcheck==true){
+
+  //go to the beginning and find camera again
+  royale::CameraManager manager;
+  royale::Vector<royale::String> camlist;
+  cout << "_";
+  cout.flush();
+  camlist= manager.getConnectedCameraList();
+  if (!camlist.empty())
+  {
+    cout << "found cam - go on" << endl;
+startcheck==false;
+  }
+}
+
+
+
       //Mute the LRAs before ending the program by ctr + c (SIGINT)
       signal(SIGINT, endMuted);
 
@@ -201,18 +219,6 @@ udp::endpoint destination(
       cv::VideoWriter depVideo(depfile,CV_FOURCC('X','V','I','D'),10, cv::Size(224,171));
       cv::VideoWriter tileVideo(tilefile,CV_FOURCC('X','V','I','D'),10, cv::Size(3,3));
       */
-start:
-      //go to the beginning and find camera again
-      royale::CameraManager manager;
-      royale::Vector<royale::String> camlist;
-      cout << "_";
-      cout.flush();
-      camlist= manager.getConnectedCameraList();
-      if (camlist.empty())
-      {
-        cout << "found cam - back to the inititalization" << endl;
-        goto start;
-      }
 
       searchCam:
 
@@ -232,8 +238,6 @@ start:
       //auto arg = std::unique_ptr<royale::String> (new royale::String (argv[1]));
       //commandLineUseCase = std::move (arg);
       commandLineUseCase = atoi( argv[1]);
-
-
       // the camera manager will query for a connected camera
       {
         royale::CameraManager manager;
