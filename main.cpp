@@ -488,14 +488,27 @@ createWindows();}
               {
                 cout << endl;
                 cout << "Camera detected in loop!" << endl;
-                //cameraDevice = manager.createCamera(camlist[0]);
+                cameraDevice = manager.createCamera(camlist[0]);
               }
             }
             camlist.clear();
 
 
+
+
             // IMPORTANT: call the initialize method before working with the camera device
             auto status = cameraDevice->initialize();
+            if (status != royale::CameraStatus::SUCCESS)
+            {
+              cerr << "LOOP Cannot initialize the camera device, error string : " << getErrorString(status) << endl;
+              return 1;
+            }
+            else{
+              cerr << "LOOPis initialized " << getErrorString(status) << endl;
+
+
+            }
+
 
             // set an operation mode
             if (cameraDevice->setUseCase(useCases.at(selectedUseCaseIdx)) != royale::CameraStatus::SUCCESS)
@@ -503,7 +516,9 @@ createWindows();}
               cerr << "Error setting use case" << endl;
               return 1;
             }
+            cout << "wait now" << endl;
 
+delay(5000);
 timeSinceLastNewData=0;
 //            goto searchCam;
           }
