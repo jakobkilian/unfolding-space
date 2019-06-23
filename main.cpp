@@ -529,15 +529,10 @@ createWindows();}
             //active the vibration motors
             stopWritingVals=false;
 
-
-
-
-            cout << "wait now" << endl;
-delay(5000);
 timeSinceLastNewData=0;
 //            goto searchCam;
           }
-                  if((millis()-cameraStartTime)>4000){
+                  if((millis()-cameraStartTime)>10000){
           if (timeSinceLastNewData>4000){
             cout << "________________________________________________"<< endl<< endl;
             cout << "Library Crashed! Reinitialize Camera and Listener. last new frame:  "<<timeSinceLastNewData<< endl<< endl;
