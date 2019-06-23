@@ -472,7 +472,29 @@ createWindows();}
             //mute all LRAs
             muteAll();
             //go to the beginning and find camera again
-            goto searchCam;
+
+            royale::Vector<royale::String> camlist;
+            cout << "Searching for 3D camera in loop" << endl;
+            cout << "_______________________" << endl;
+            while (camlist.empty()){
+
+              // if no argument was given try to open the first connected camera
+              camlist= manager.getConnectedCameraList();
+              cout << "-";
+              cout.flush();
+              udpHandling();
+              if (!camlist.empty())
+              {
+                cout << endl;
+                cout << "Camera detected in loop!" << endl;
+                cameraDevice = manager.createCamera(camlist[0]);
+              }
+            }
+            camlist.clear();
+
+
+
+//            goto searchCam;
           }
           if (timeSinceLastNewData>4000){
             cout << "________________________________________________"<< endl<< endl;
