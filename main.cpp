@@ -233,19 +233,19 @@ udp::endpoint destination(
         royale::Vector<royale::String> camlist;
         cout << "Searching for 3D camera" << endl;
         cout << "_______________________" << endl;
-        while (camlist.empty()){
+        camlist= manager.getConnectedCameraList();
+
+        if (camlist.empty()){
+          cout << "no cam found" << endl;
 
           // if no argument was given try to open the first connected camera
-          camlist= manager.getConnectedCameraList();
-          cout << ".";
-          cout.flush();
-          udpHandling();
+}
           if (!camlist.empty())
           {
             cout << endl;
             cout << "Camera detected!" << endl;
             cameraDevice = manager.createCamera(camlist[0]);
-          }
+          
         }
         camlist.clear();
 
@@ -265,7 +265,7 @@ udp::endpoint destination(
           return 1;
         }
       }
-
+            cout << "test1" << endl;
       // IMPORTANT: call the initialize method before working with the camera device
       auto status = cameraDevice->initialize();
       if (status != royale::CameraStatus::SUCCESS)
@@ -273,6 +273,7 @@ udp::endpoint destination(
         cerr << "Cannot initialize the camera device, error string : " << getErrorString(status) << endl;
         return 1;
       }
+      cout << "test2" << endl;
 
       royale::Vector<royale::String> useCases;
       auto usecaseStatus = cameraDevice->getUseCases(useCases);
@@ -283,8 +284,10 @@ udp::endpoint destination(
         cerr << "getUseCases() returned: " << getErrorString(usecaseStatus) << endl;
         return 1;
       }
+      cout << "test3" << endl;
 
       cerr << useCases << endl;
+      cout << "test4" << endl;
 
       // choose a use case
       uint selectedUseCaseIdx = 0u;
@@ -482,7 +485,8 @@ udp::endpoint destination(
               //go to the beginning and find camera again
               royale::CameraManager manager;
               royale::Vector<royale::String> camlist;
-              cout << "_" << endl;
+              cout << "_";
+              cout.flush();
               camlist= manager.getConnectedCameraList();
               if (!camlist.empty())
               {
