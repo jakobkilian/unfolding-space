@@ -233,24 +233,24 @@ udp::endpoint destination(
         royale::Vector<royale::String> camlist;
         cout << "Searching for 3D camera" << endl;
         cout << "_______________________" << endl;
-                  camlist= manager.getConnectedCameraList();
+        camlist= manager.getConnectedCameraList();
 
-        while (currentKey != 27)
-                if (camlist.empty()){
-          camlist= manager.getConnectedCameraList();
-          cout << ".";
-          cout.flush();
-          udpHandling();
+        while (currentKey != 27){
+          if (camlist.empty()){
+            camlist= manager.getConnectedCameraList();
+            cout << ".";
+            cout.flush();
+            udpHandling();
 
+          }
+          if (!camlist.empty())
+          {
+            cout << endl;
+            cout << "Camera detected!" << endl;
+            cameraDevice = manager.createCamera(camlist[0]);
+            goto further;
+          }
         }
-        if (!camlist.empty())
-        {
-          cout << endl;
-          cout << "Camera detected!" << endl;
-          cameraDevice = manager.createCamera(camlist[0]);
-          goto further;
-        }
-      }
         camlist.clear();
 
       }
@@ -270,7 +270,7 @@ udp::endpoint destination(
           return 1;
         }
       }
-            cout << "test1" << endl;
+      cout << "test1" << endl;
       // IMPORTANT: call the initialize method before working with the camera device
       auto status = cameraDevice->initialize();
       if (status != royale::CameraStatus::SUCCESS)
