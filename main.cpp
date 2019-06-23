@@ -480,8 +480,8 @@ createWindows();}
               if (!camlist.empty())
               {
             cout << "_______________________" << endl;
-                goto foundCam;
-              }q
+                goto searchCam;
+              }
 //            goto searchCam;
           }
                   if((millis()-cameraStartTime)>10000){
