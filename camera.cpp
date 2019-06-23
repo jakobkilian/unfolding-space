@@ -1,6 +1,7 @@
 #include "camera.hpp"
 #include "glove.hpp"
 #include "poti.hpp"
+#include "init.hpp"
 #include <sample_utils/EventReporter.hpp>
 #include <array>
 

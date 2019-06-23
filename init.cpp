@@ -1,6 +1,7 @@
 #include "poti.hpp"
 #include "camera.hpp"
 #include "glove.hpp"
+#include "init.hpp"
 
 
 //from main: create the windows for the visual output und position them on the screen
