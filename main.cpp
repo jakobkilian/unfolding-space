@@ -253,6 +253,7 @@ udp::endpoint destination(
       // the camera device is now available and CameraManager can be deallocated here
       if (cameraDevice == nullptr)
       {
+        cameraDevice=0;
         // no cameraDevice available
         if (argc > 1)
         {
