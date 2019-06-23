@@ -233,46 +233,52 @@ udp::endpoint destination(
         royale::Vector<royale::String> camlist;
         cout << "Searching for 3D camera" << endl;
         cout << "_______________________" << endl;
-        camlist= manager.getConnectedCameraList();
+                  camlist= manager.getConnectedCameraList();
 
+while (key!=27){
         if (camlist.empty()){
-          cout << "no cam found" << endl;
-
-          // if no argument was given try to open the first connected camera
-}
-          if (!camlist.empty())
-          {
-            cout << endl;
-            cout << "Camera detected!" << endl;
-            cameraDevice = manager.createCamera(camlist[0]);
+          camlist= manager.getConnectedCameraList();
+          cout << ".";
+          cout.flush();
+          udpHandling();
 
         }
+        if (!camlist.empty())
+        {
+          cout << endl;
+          cout << "Camera detected!" << endl;
+          cameraDevice = manager.createCamera(camlist[0]);
+          goto further;
+        }
+      }
         camlist.clear();
 
       }
+      further:
       // the camera device is now available and CameraManager can be deallocated here
       if (cameraDevice == nullptr)
       {
-        cameraDevice=0;
         // no cameraDevice available
         if (argc > 1)
         {
           cerr << "Could not open " << argv[1] << endl;
+          return 1;
         }
         else
         {
           cerr << "Cannot create the camera device" << endl;
+          return 1;
         }
       }
-            cout << "before init" << endl;
+            cout << "test1" << endl;
       // IMPORTANT: call the initialize method before working with the camera device
       auto status = cameraDevice->initialize();
-      cout << "inititalized" << endl;
-
       if (status != royale::CameraStatus::SUCCESS)
       {
         cerr << "Cannot initialize the camera device, error string : " << getErrorString(status) << endl;
+        return 1;
       }
+      cout << "test2" << endl;
 
       royale::Vector<royale::String> useCases;
       auto usecaseStatus = cameraDevice->getUseCases(useCases);
@@ -283,8 +289,10 @@ udp::endpoint destination(
         cerr << "getUseCases() returned: " << getErrorString(usecaseStatus) << endl;
         return 1;
       }
+      cout << "test3" << endl;
 
       cerr << useCases << endl;
+      cout << "test4" << endl;
 
       // choose a use case
       uint selectedUseCaseIdx = 0u;
