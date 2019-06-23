@@ -235,8 +235,8 @@ udp::endpoint destination(
         cout << "_______________________" << endl;
                   camlist= manager.getConnectedCameraList();
 
-while (key!=27){
-        if (camlist.empty()){
+        while (currentKey != 27)
+                if (camlist.empty()){
           camlist= manager.getConnectedCameraList();
           cout << ".";
           cout.flush();
