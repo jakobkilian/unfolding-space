@@ -249,6 +249,7 @@ udp::endpoint destination(
         camlist.clear();
 
       }
+      foundCam:
       // the camera device is now available and CameraManager can be deallocated here
       if (cameraDevice == nullptr)
       {
@@ -493,42 +494,7 @@ createWindows();}
             }
             camlist.clear();
 
-
-
-
-            // IMPORTANT: call the initialize method before working with the camera device
-            auto status = cameraDevice->initialize();
-            if (status != royale::CameraStatus::SUCCESS)
-            {
-              cerr << "LOOP Cannot initialize the camera device, error string : " << getErrorString(status) << endl;
-              return 1;
-            }
-            else{
-              cerr << "LOOPis initialized " << getErrorString(status) << endl;
-
-
-            }
-
-
-            // set an operation mode
-            if (cameraDevice->setUseCase(useCases.at(selectedUseCaseIdx)) != royale::CameraStatus::SUCCESS)
-            {
-              cerr << "Error setting use case" << endl;
-              return 1;
-            }
-
-
-            // start capture mode
-            if (cameraDevice->startCapture() != royale::CameraStatus::SUCCESS)
-            {
-              cerr << "Error starting the capturing" << endl;
-              return 1;
-            }
-
-            cameraStartTime=millis();
-            //active the vibration motors
-            stopWritingVals=false;
-
+goto foundCam;
 timeSinceLastNewData=0;
 //            goto searchCam;
           }
