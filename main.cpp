@@ -245,7 +245,7 @@ udp::endpoint destination(
             cout << endl;
             cout << "Camera detected!" << endl;
             cameraDevice = manager.createCamera(camlist[0]);
-          
+
         }
         camlist.clear();
 
@@ -257,23 +257,21 @@ udp::endpoint destination(
         if (argc > 1)
         {
           cerr << "Could not open " << argv[1] << endl;
-          return 1;
         }
         else
         {
           cerr << "Cannot create the camera device" << endl;
-          return 1;
         }
       }
-            cout << "test1" << endl;
+            cout << "before init" << endl;
       // IMPORTANT: call the initialize method before working with the camera device
       auto status = cameraDevice->initialize();
+      cout << "inititalized" << endl;
+
       if (status != royale::CameraStatus::SUCCESS)
       {
         cerr << "Cannot initialize the camera device, error string : " << getErrorString(status) << endl;
-        return 1;
       }
-      cout << "test2" << endl;
 
       royale::Vector<royale::String> useCases;
       auto usecaseStatus = cameraDevice->getUseCases(useCases);
@@ -284,10 +282,8 @@ udp::endpoint destination(
         cerr << "getUseCases() returned: " << getErrorString(usecaseStatus) << endl;
         return 1;
       }
-      cout << "test3" << endl;
 
       cerr << useCases << endl;
-      cout << "test4" << endl;
 
       // choose a use case
       uint selectedUseCaseIdx = 0u;
