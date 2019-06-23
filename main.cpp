@@ -249,7 +249,6 @@ udp::endpoint destination(
         camlist.clear();
 
       }
-      foundCam:
       // the camera device is now available and CameraManager can be deallocated here
       if (cameraDevice == nullptr)
       {
@@ -474,28 +473,15 @@ createWindows();}
             muteAll();
             //go to the beginning and find camera again
             royale::CameraManager manager;
-
             royale::Vector<royale::String> camlist;
             cout << "Searching for 3D camera in loop" << endl;
             cout << "_______________________" << endl;
-            while (camlist.empty()){
-
-              // if no argument was given try to open the first connected camera
               camlist= manager.getConnectedCameraList();
-              cout << "-";
-              cout.flush();
-              udpHandling();
               if (!camlist.empty())
               {
-                cout << endl;
-                cout << "Camera detected in loop!" << endl;
-                cameraDevice = manager.createCamera(camlist[0]);
+            cout << "_______________________" << endl;
+                goto foundCam;
               }
-            }
-            camlist.clear();
-
-goto foundCam;
-timeSinceLastNewData=0;
 //            goto searchCam;
           }
                   if((millis()-cameraStartTime)>10000){
