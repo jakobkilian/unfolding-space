@@ -188,7 +188,7 @@ while (startcheck==true){
   if (!camlist.empty())
   {
     cout << "found cam - go on" << endl;
-startcheck==false;
+startcheck=false;
   }
 }
 
