@@ -223,7 +223,7 @@ udp::endpoint destination(
 
 
       // the camera manager will query for a connected camera
-      {
+
         royale::CameraManager manager;
         //EventListener registrieren
         //nicht mehr an dieser Stelle:
@@ -233,28 +233,19 @@ udp::endpoint destination(
         royale::Vector<royale::String> camlist;
         cout << "Searching for 3D camera" << endl;
         cout << "_______________________" << endl;
-        camlist= manager.getConnectedCameraList();
+                  camlist= manager.getConnectedCameraList();
 
-        while (currentKey != 27){
-          if (camlist.empty()){
-            camlist= manager.getConnectedCameraList();
-            cout << ".";
-            cout.flush();
-            udpHandling();
-
-          }
           if (!camlist.empty())
           {
             cout << endl;
             cout << "Camera detected!" << endl;
             cameraDevice = manager.createCamera(camlist[0]);
-            goto further;
+                    camlist.clear();
           }
-        }
-        camlist.clear();
+        else{
 
-      }
-      further:
+
+
       // the camera device is now available and CameraManager can be deallocated here
       if (cameraDevice == nullptr)
       {
@@ -270,7 +261,6 @@ udp::endpoint destination(
           return 1;
         }
       }
-      cout << "test1" << endl;
       // IMPORTANT: call the initialize method before working with the camera device
       auto status = cameraDevice->initialize();
       if (status != royale::CameraStatus::SUCCESS)
@@ -278,7 +268,6 @@ udp::endpoint destination(
         cerr << "Cannot initialize the camera device, error string : " << getErrorString(status) << endl;
         return 1;
       }
-      cout << "test2" << endl;
 
       royale::Vector<royale::String> useCases;
       auto usecaseStatus = cameraDevice->getUseCases(useCases);
@@ -289,10 +278,8 @@ udp::endpoint destination(
         cerr << "getUseCases() returned: " << getErrorString(usecaseStatus) << endl;
         return 1;
       }
-      cout << "test3" << endl;
 
       cerr << useCases << endl;
-      cout << "test4" << endl;
 
       // choose a use case
       uint selectedUseCaseIdx = 0u;
@@ -346,12 +333,11 @@ udp::endpoint destination(
         cerr << "Error registering data listener" << endl;
         return 1;
       }
+
       // register a EVENT listener
       cameraDevice->registerEventListener (&eventReporter);
 
 
-      if (gui){
-        createWindows();}
 
 
 
@@ -361,7 +347,11 @@ udp::endpoint destination(
           cerr << "Error starting the capturing" << endl;
           return 1;
         }
+}
 
+
+      if (gui){
+        createWindows();}
         cameraStartTime=millis();
         cameraDetached=false;
         //active the vibration motors
