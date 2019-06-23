@@ -472,6 +472,7 @@ createWindows();}
             //mute all LRAs
             muteAll();
             //go to the beginning and find camera again
+            royale::CameraManager manager;
 
             royale::Vector<royale::String> camlist;
             cout << "Searching for 3D camera in loop" << endl;
