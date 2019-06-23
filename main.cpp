@@ -488,73 +488,14 @@ createWindows();}
               {
                 cout << endl;
                 cout << "Camera detected in loop!" << endl;
-                cameraDevice = manager.createCamera(camlist[0]);
+                //cameraDevice = manager.createCamera(camlist[0]);
               }
             }
             camlist.clear();
-            // the camera device is now available and CameraManager can be deallocated here
-            if (cameraDevice == nullptr)
-            {
-              // no cameraDevice available
-              if (argc > 1)
-              {
-                cerr << "Could not open " << argv[1] << endl;
-                return 1;
-              }
-              else
-              {
-                cerr << "Cannot create the camera device" << endl;
-                return 1;
-              }
-            }
+
 
             // IMPORTANT: call the initialize method before working with the camera device
             auto status = cameraDevice->initialize();
-            if (status != royale::CameraStatus::SUCCESS)
-            {
-              cerr << "Cannot initialize the camera device, error string : " << getErrorString(status) << endl;
-              return 1;
-            }
-
-            royale::Vector<royale::String> useCases;
-            auto usecaseStatus = cameraDevice->getUseCases(useCases);
-
-            if (usecaseStatus != royale::CameraStatus::SUCCESS || useCases.empty())
-            {
-              cerr << "No use cases are available" << endl;
-              cerr << "getUseCases() returned: " << getErrorString(usecaseStatus) << endl;
-              return 1;
-            }
-
-            cerr << useCases << endl;
-
-            // choose a use case
-            uint selectedUseCaseIdx = 0u;
-            if (commandLineUseCase)
-            {
-              cerr << "got the argument:" << commandLineUseCase << endl;
-              auto useCaseFound = false;
-              if (commandLineUseCase >= 0 && commandLineUseCase < useCases.size())
-              {
-                uint8_t fpsUseCases[6] = {0,10,15,25,35,45}; //fix values coming from the pico flexx
-                selectedUseCaseIdx = commandLineUseCase;
-                fpsFromCam=fpsUseCases[commandLineUseCase];
-                useCaseFound = true;
-              }
-
-              if (!useCaseFound)
-              {
-                cerr << "Error: the chosen use case is not supported by this camera" << endl;
-                cerr << "A list of supported use cases is printed by sampleCameraInfo" << endl;
-                return 1;
-              }
-            }
-            else
-            {
-              cerr << "Here: autousecase id" << endl;
-              // choose the first use case
-              selectedUseCaseIdx = 0;
-            }
 
             // set an operation mode
             if (cameraDevice->setUseCase(useCases.at(selectedUseCaseIdx)) != royale::CameraStatus::SUCCESS)
@@ -563,16 +504,7 @@ createWindows();}
               return 1;
             }
 
-            // retrieve the lens parameters from Royale
-            royale::LensParameters lensParameters;
-            status = cameraDevice->getLensParameters(lensParameters);
-            if (status != royale::CameraStatus::SUCCESS)
-            {
-              cerr << "Can't read out the lens parameters" << endl;
-              return 1;
-            }
-
-timeSinceLastNewData=millis();
+timeSinceLastNewData=0;
 //            goto searchCam;
           }
           if (timeSinceLastNewData>4000){
