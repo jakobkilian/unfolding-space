@@ -512,7 +512,7 @@ cout.flush();
                   goto searchCam;
                 }}
               }
-            }
+
           }
           //__________ END OF KEY-LOOP
 
