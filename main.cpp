@@ -180,14 +180,14 @@ udp::endpoint destination(
       while (checkCam()==false){
         cout << "." ;
         cout.flush();
+        udpHandling();
       }
 
       //Mute the LRAs before ending the program by ctr + c (SIGINT)
       signal(SIGINT, endMuted);
 
       boostInit();
-      //Setup the LRAs on the Glove (I2C Connection, Settings, Calibration, etc.)
-      setupGlove();
+
 
       //Setup Connection to Digispark Board for Poti-Reads
       if (potiAv)
@@ -209,6 +209,9 @@ udp::endpoint destination(
       */
 
       searchCam:
+
+      //Setup the LRAs on the Glove (I2C Connection, Settings, Calibration, etc.)
+      setupGlove();
 
       // This is the data listener which will receive callbacks.  It's declared
       // before the cameraDevice so that, if this function exits with a 'return'
@@ -258,16 +261,8 @@ udp::endpoint destination(
       if (cameraDevice == nullptr)
       {
         // no cameraDevice available
-        if (argc > 1)
-        {
-          cerr << "Could not open " << argv[1] << endl;
-          return 1;
-        }
-        else
-        {
           cerr << "Cannot create the camera device" << endl;
           return 1;
-        }
       }
 
       // IMPORTANT: call the initialize method before working with the camera device
