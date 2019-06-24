@@ -33,7 +33,7 @@ bool cameraDetached;
 long cameraStartTime;
 
 //Does the system use a poti?
-bool potiAv=1;
+bool potiAv=0;
 
 //Does the system use the old and DRV-Breakoutboards or the new detachable DRV-PCB
 bool detachableDRV=0;
@@ -176,7 +176,12 @@ udp::endpoint destination(
     //_______________MAIN LOOP________________________________________________________________________________________________________________________________________________
     int main(int argc, char *argv[])
     {
-while (checkCam()==false){}
+      cout << "Looking for Cam" << endl;
+      //check if the cam is connected before init anything
+while (checkCam()==false){
+  cout << "." ;
+cout.flush();
+}
 
 
 
@@ -466,7 +471,7 @@ while (checkCam()==false){}
           }
           //RESTART WHEN CAMERA IS UNPLUGGED
           //Check how long camera is capturing - in the beginning it needs some time to be recognized -> 1000ms
-          if((millis()-cameraStartTime)>1000){
+          if((millis()-cameraStartTime)>3000){
             //If it says that it is not connected but still capturing, it should be unplugged:
             if (connected==0 && capturing==1)
             {
@@ -481,19 +486,17 @@ while (checkCam()==false){}
                 muteAll();
                 cameraDetached=true;
               }
-              //go to the beginning and find camera again
-              royale::CameraManager manager;
-              royale::Vector<royale::String> camlist;
-              cout << "_";
+            if (checkCam()==false){
+                cout << "." ;
               cout.flush();
-              camlist= manager.getConnectedCameraList();
-              if (!camlist.empty())
-              {
-                cout << "found cam - back to the inititalization" << endl;
+              }
+              else{
                 goto searchCam;
               }
+            }
 
             }
+
             if((millis()-cameraStartTime)>3000){
               if (cameraDetached==false){
                 if (timeSinceLastNewData>4000){
