@@ -176,21 +176,7 @@ udp::endpoint destination(
     //_______________MAIN LOOP________________________________________________________________________________________________________________________________________________
     int main(int argc, char *argv[])
     {
-bool startcheck=true;
-while (startcheck==true){
-
-  //go to the beginning and find camera again
-  royale::CameraManager manager;
-  royale::Vector<royale::String> camlist;
-  cout << "_";
-  cout.flush();
-  camlist= manager.getConnectedCameraList();
-  if (!camlist.empty())
-  {
-    cout << "found cam - go on" << endl;
-startcheck=false;
-  }
-}
+while (checkCam()==false){}
 
 
 

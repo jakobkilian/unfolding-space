@@ -13,3 +13,18 @@ void createWindows(){
   cv::resizeWindow("depImg8", 672,513);
   cv::moveWindow("depImg8", 5, 50);
 }
+
+
+bool checkCam(){
+    royale::CameraManager manager;
+    royale::Vector<royale::String> camlist;
+    cout << ".";
+    cout.flush();
+    camlist= manager.getConnectedCameraList();
+    if (!camlist.empty())
+    {
+      cout << "found a cam – go to init" << endl;
+  return true;
+    }
+    return false;
+}
