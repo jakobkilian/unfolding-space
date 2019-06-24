@@ -180,7 +180,6 @@ udp::endpoint destination(
       while (checkCam()==false){
         cout << "." ;
         cout.flush();
-        udpHandling();
       }
 
       //Mute the LRAs before ending the program by ctr + c (SIGINT)
@@ -257,6 +256,8 @@ udp::endpoint destination(
         camlist.clear();
 
       }
+      udpHandling();
+
       // the camera device is now available and CameraManager can be deallocated here
       if (cameraDevice == nullptr)
       {
@@ -282,8 +283,10 @@ udp::endpoint destination(
         cerr << "getUseCases() returned: " << getErrorString(usecaseStatus) << endl;
         return 1;
       }
+      udpHandling();
 
       cerr << useCases << endl;
+      udpHandling();
 
       // choose a use case
       uint selectedUseCaseIdx = 0u;
@@ -319,6 +322,7 @@ udp::endpoint destination(
         cerr << "Error setting use case" << endl;
         return 1;
       }
+      udpHandling();
 
       // retrieve the lens parameters from Royale
       royale::LensParameters lensParameters;
@@ -345,6 +349,7 @@ udp::endpoint destination(
         createWindows();}
 
 
+        udpHandling();
 
         // start capture mode
         if (cameraDevice->startCapture() != royale::CameraStatus::SUCCESS)

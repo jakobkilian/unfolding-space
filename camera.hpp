@@ -12,6 +12,7 @@ void printCurTime(const std::string&);
 cv::Mat passDepFrame();
 cv::Mat passNineFrame();
 void printOutput();
+void udpHandling();
 
 
 extern int globalCycleTime;
