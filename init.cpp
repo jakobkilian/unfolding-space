@@ -18,12 +18,9 @@ void createWindows(){
 bool checkCam(){
     royale::CameraManager manager;
     royale::Vector<royale::String> camlist;
-    cout << ".";
-    cout.flush();
     camlist= manager.getConnectedCameraList();
     if (!camlist.empty())
     {
-      cout << "found a cam – go to init" << endl;
   return true;
     }
     return false;
