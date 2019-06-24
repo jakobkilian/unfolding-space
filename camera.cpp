@@ -130,6 +130,7 @@ void DepthDataListener::onNewData(const DepthData *data)
 if(true){
   std::lock_guard<std::mutex> lock(depMutex);           //Do not read the image while it gets written
   depImg.create (cv::Size (width, height), CV_8UC3);    //images that get filled later
+  if (gui)
   tileImg.create (cv::Size (3, 3), CV_8UC1);            //images that get filled later
   bzero(histo, sizeof(int) * 9 * 256);                  //empty histogram array
 
@@ -209,11 +210,12 @@ if(true){                                       //need this if-true for the mute
       ninePixMatrix[i] =((tempMat[i]-255)*-1);            //umdrehen
     }
 */
-
+if (gui){
   if(true){                                             //need this if-true for the mutex
     std::lock_guard<std::mutex> lock(depMutex);         //lock again for writing process
     tileImg= cv::Mat(3, 3, CV_8UC1, &ninePixMatrix);    //Write the matr
   }
+}
 }
 
 // counting per 100 passed frames

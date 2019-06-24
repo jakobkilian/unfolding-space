@@ -398,6 +398,7 @@ udp::endpoint destination(
               status = cameraDevice->isCapturing (capturing);
 
               lastCallImshow=millis();
+              if (gui){
               if (newDepthImage==true) {
                 newDepthImage=false;
                 cv::Mat dep;
@@ -415,6 +416,7 @@ udp::endpoint destination(
                 currentKey=cv::waitKey(1);
                 processingImg=false;
               }
+            }
             }
 
             if (millis()-lastCallPoti>50) {
