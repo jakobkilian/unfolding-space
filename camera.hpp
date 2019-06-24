@@ -27,6 +27,8 @@ extern int loop;
 extern int fps;
 extern std::array<uint8_t,9> ninePixMatrix;
 
+extern bool gui;
+
 
 class DepthDataListener : public royale::IDepthDataListener
 {

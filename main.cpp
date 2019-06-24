@@ -39,7 +39,7 @@ bool potiAv=0;
 bool detachableDRV=0;
 
 //any visual output?
-bool gui=1;
+bool gui=0;
 
 //UDP STUFF
 using boost::asio::ip::udp;
@@ -176,14 +176,11 @@ udp::endpoint destination(
     //_______________MAIN LOOP________________________________________________________________________________________________________________________________________________
     int main(int argc, char *argv[])
     {
-      cout << "Looking for Cam" << endl;
       //check if the cam is connected before init anything
-while (checkCam()==false){
-  cout << "." ;
-cout.flush();
-}
-
-
+      while (checkCam()==false){
+        cout << "." ;
+        cout.flush();
+      }
 
       //Mute the LRAs before ending the program by ctr + c (SIGINT)
       signal(SIGINT, endMuted);
@@ -486,32 +483,32 @@ cout.flush();
                 muteAll();
                 cameraDetached=true;
               }
-            if (checkCam()==false){
+              if (checkCam()==false){
                 cout << "." ;
-              cout.flush();
+                cout.flush();
               }
               else{
                 goto searchCam;
               }
             }
 
-            }
+          }
 
-            if((millis()-cameraStartTime)>3000){
-              if (cameraDetached==false){
-                if (timeSinceLastNewData>4000){
-                  cout << "________________________________________________"<< endl<< endl;
-                  cout << "Library Crashed! Reinitialize Camera and Listener. last new frame:  "<<timeSinceLastNewData<< endl<< endl;
-                  cout << "________________________________________________"<< endl<< endl;
-                  libraryCrashNo++;
-                  //stop writing new values to the LRAs
-                  stopWritingVals=true;
-                  //mute all LRAs
-                  muteAll();
-                  //go to the beginning and find camera again
-                  goto searchCam;
-                }}
-              }
+          if((millis()-cameraStartTime)>3000){
+            if (cameraDetached==false){
+              if (timeSinceLastNewData>4000){
+                cout << "________________________________________________"<< endl<< endl;
+                cout << "Library Crashed! Reinitialize Camera and Listener. last new frame:  "<<timeSinceLastNewData<< endl<< endl;
+                cout << "________________________________________________"<< endl<< endl;
+                libraryCrashNo++;
+                //stop writing new values to the LRAs
+                stopWritingVals=true;
+                //mute all LRAs
+                muteAll();
+                //go to the beginning and find camera again
+                goto searchCam;
+              }}
+            }
 
           }
           //__________ END OF KEY-LOOP
