@@ -41,6 +41,8 @@ bool detachableDRV=0;
 //any visual output?
 bool gui=0;
 
+using boost::asio::ip::udp;
+
 
 udp::socket myInputSocket(io_service, udp::endpoint(udp::v4(), 52222));
 udp::resolver resolver(io_service);
@@ -51,7 +53,6 @@ udp::socket myInputSocket(io_service);
 
 
 //UDP STUFF
-using boost::asio::ip::udp;
 boost::asio::io_service io_service;
 udp::socket myOutputSocket(io_service, udp::endpoint(udp::v4(), 53333));
 udp::endpoint remote_endpoint;
