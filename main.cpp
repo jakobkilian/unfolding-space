@@ -41,24 +41,16 @@ bool detachableDRV=0;
 //any visual output?
 bool gui=0;
 
+//UDP STUFF
 using boost::asio::ip::udp;
 boost::asio::io_service io_service;
-udp::socket myInputSocket(io_service, udp::endpoint(udp::v4(), 52222));
-udp::resolver resolver(io_service);
-udp::resolver::query query(udp::v4(), 1, "daytime");
-udp::endpoint receiver_endpoint = *resolver.resolve(query);
-udp::socket myInputSocket(io_service);
-
-
-
-//UDP STUFF
 udp::socket myOutputSocket(io_service, udp::endpoint(udp::v4(), 53333));
 udp::endpoint remote_endpoint;
 boost::system::error_code ignored_error;
-udp::endpoint destination(boost::asio::ip::address_v4::broadcast(), 53333);
+udp::endpoint destination(
+  boost::asio::ip::address_v4::broadcast(), 53333);
 
   void boostInit(){
-    myInputSocket.open(udp::v4());
     myOutputSocket.open(udp::v4(),ignored_error);
     myOutputSocket.set_option(udp::socket::reuse_address(true));
     myOutputSocket.set_option(boost::asio::socket_base::broadcast(true));
@@ -378,15 +370,6 @@ udp::endpoint destination(boost::asio::ip::address_v4::broadcast(), 53333);
         long lastCallPoti=millis();
         while (currentKey != 27)
         {
-
-
-          boost::array<char, 128> recv_buf;
-          udp::endpoint sender_endpoint;
-          size_t len = myInputSocket.receive_from(
-              boost::asio::buffer(recv_buf), sender_endpoint);
-
-          std::cout.write(recv_buf.data(), len);
-
           //only do all of this stuff when the camera is attached
           if (cameraDetached==false){
             royale::String id;
