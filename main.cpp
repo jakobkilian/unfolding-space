@@ -9,6 +9,8 @@
 #include <string>
 #include <boost/array.hpp>
 #include <boost/asio.hpp>
+#include <boost/bind.hpp>
+#include <boost/shared_ptr.hpp>
 
 using std::cerr;
 using std::cout;
@@ -41,6 +43,7 @@ bool detachableDRV=0;
 //any visual output?
 bool gui=0;
 
+using boost::asio::ip::udp;
 
 
 class udp_server
