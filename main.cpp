@@ -45,7 +45,7 @@ using boost::asio::ip::udp;
 boost::asio::io_service io_service;
 udp::socket myInputSocket(io_service, udp::endpoint(udp::v4(), 52222));
 udp::resolver resolver(io_service);
-udp::resolver::query query(udp::v4(), argv[1], "daytime");
+udp::resolver::query query(udp::v4());
 udp::endpoint receiver_endpoint = *resolver.resolve(query);
 udp::socket myInputSocket(io_service);
 
