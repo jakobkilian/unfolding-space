@@ -418,14 +418,17 @@ udp::endpoint destination(boost::asio::ip::address_v4::broadcast(), 53333);
         long lastCall=0;
         long lastCallPoti=millis();
         while (currentKey != 27)
-        {      try
         {
+          try
+        {
+          std::cout << "lalala" << endl;
           boost::asio::io_service io_service;
           udp_server server(io_service);
           io_service.run();
         }
           catch (std::exception& e)
 {
+            std::cout << "____" << endl; 
   std::cerr << e.what() << std::endl;
 }
           //only do all of this stuff when the camera is attached
