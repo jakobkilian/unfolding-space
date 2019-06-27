@@ -41,14 +41,64 @@ bool detachableDRV=0;
 //any visual output?
 bool gui=0;
 
+
+
+class udp_server
+{
+public:
+  udp_server(boost::asio::io_service& io_service)
+    : socket_(io_service, udp::endpoint(udp::v4(), 52222))
+  {
+    start_receive();
+  }
+
+private:
+  void start_receive()
+  {
+    socket_.async_receive_from(
+        boost::asio::buffer(recv_buffer_), remote_endpoint_,
+        boost::bind(&udp_server::handle_receive, this,
+          boost::asio::placeholders::error,
+          boost::asio::placeholders::bytes_transferred));
+  }
+
+  void handle_receive(const boost::system::error_code& error,
+      std::size_t /*bytes_transferred*/)
+  {
+    if (!error || error == boost::asio::error::message_size)
+    {
+      boost::shared_ptr<std::string> message(
+          new std::string(make_daytime_string()));
+
+      socket_.async_send_to(boost::asio::buffer(*message), remote_endpoint_,
+          boost::bind(&udp_server::handle_send, this, message,
+            boost::asio::placeholders::error,
+            boost::asio::placeholders::bytes_transferred));
+
+      start_receive();
+    }
+  }
+
+  void handle_send(boost::shared_ptr<std::string> /*message*/,
+      const boost::system::error_code& /*error*/,
+      std::size_t /*bytes_transferred*/)
+  {
+  }
+
+  udp::socket socket_;
+  udp::endpoint remote_endpoint_;
+  boost::array<char, 1> recv_buffer_;
+};
+
+
+
 //UDP STUFF
 using boost::asio::ip::udp;
 boost::asio::io_service io_service;
 udp::socket myOutputSocket(io_service, udp::endpoint(udp::v4(), 53333));
 udp::endpoint remote_endpoint;
 boost::system::error_code ignored_error;
-udp::endpoint destination(
-  boost::asio::ip::address_v4::broadcast(), 53333);
+udp::endpoint destination(boost::asio::ip::address_v4::broadcast(), 53333);
 
   void boostInit(){
     myOutputSocket.open(udp::v4(),ignored_error);
@@ -176,6 +226,13 @@ udp::endpoint destination(
     //_______________MAIN LOOP________________________________________________________________________________________________________________________________________________
     int main(int argc, char *argv[])
     {
+
+      try
+{
+  boost::asio::io_service io_service;
+  udp_server server(io_service);
+  io_service.run();
+}
       //check if the cam is connected before init anything
       while (checkCam()==false){
         cout << "." ;
@@ -370,6 +427,10 @@ udp::endpoint destination(
         long lastCallPoti=millis();
         while (currentKey != 27)
         {
+          catch (std::exception& e)
+{
+  std::cerr << e.what() << std::endl;
+}
           //only do all of this stuff when the camera is attached
           if (cameraDetached==false){
             royale::String id;
