@@ -70,13 +70,7 @@ private:
   {
     if (!error || error == boost::asio::error::message_size)
     {
-      boost::shared_ptr<std::string> message(
-          new std::string(make_daytime_string()));
 
-      socket_.async_send_to(boost::asio::buffer(*message), remote_endpoint_,
-          boost::bind(&udp_server::handle_send, this, message,
-            boost::asio::placeholders::error,
-            boost::asio::placeholders::bytes_transferred));
 
       start_receive();
     }
@@ -230,12 +224,7 @@ udp::endpoint destination(boost::asio::ip::address_v4::broadcast(), 53333);
     int main(int argc, char *argv[])
     {
 
-      try
-{
-  boost::asio::io_service io_service;
-  udp_server server(io_service);
-  io_service.run();
-}
+
       //check if the cam is connected before init anything
       while (checkCam()==false){
         cout << "." ;
@@ -429,7 +418,12 @@ udp::endpoint destination(boost::asio::ip::address_v4::broadcast(), 53333);
         long lastCall=0;
         long lastCallPoti=millis();
         while (currentKey != 27)
+        {      try
         {
+          boost::asio::io_service io_service;
+          udp_server server(io_service);
+          io_service.run();
+        }
           catch (std::exception& e)
 {
   std::cerr << e.what() << std::endl;
