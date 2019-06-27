@@ -9,8 +9,6 @@
 #include <string>
 #include <boost/array.hpp>
 #include <boost/asio.hpp>
-#include <boost/bind.hpp>
-#include <boost/shared_ptr.hpp>
 
 using std::cerr;
 using std::cout;
@@ -43,49 +41,12 @@ bool detachableDRV=0;
 //any visual output?
 bool gui=0;
 
-using boost::asio::ip::udp;
 
-
-class udp_server
-{
-public:
-  udp_server(boost::asio::io_service& io_service)
-    : socket_(io_service, udp::endpoint(udp::v4(), 52222))
-  {
-    start_receive();
-  }
-
-private:
-  void start_receive()
-  {
-    socket_.async_receive_from(
-        boost::asio::buffer(recv_buffer_), remote_endpoint_,
-        boost::bind(&udp_server::handle_receive, this,
-          boost::asio::placeholders::error,
-          boost::asio::placeholders::bytes_transferred));
-  }
-
-  void handle_receive(const boost::system::error_code& error,
-      std::size_t /*bytes_transferred*/)
-  {
-    if (!error || error == boost::asio::error::message_size)
-    {
-
-
-      start_receive();
-    }
-  }
-
-  void handle_send(boost::shared_ptr<std::string> /*message*/,
-      const boost::system::error_code& /*error*/,
-      std::size_t /*bytes_transferred*/)
-  {
-  }
-
-  udp::socket socket_;
-  udp::endpoint remote_endpoint_;
-  boost::array<char, 1> recv_buffer_;
-};
+udp::socket myInputSocket(io_service, udp::endpoint(udp::v4(), 52222));
+udp::resolver resolver(io_service);
+udp::resolver::query query(udp::v4(), argv[1], "daytime");
+udp::endpoint receiver_endpoint = *resolver.resolve(query);
+udp::socket myInputSocket(io_service);
 
 
 
@@ -98,6 +59,7 @@ boost::system::error_code ignored_error;
 udp::endpoint destination(boost::asio::ip::address_v4::broadcast(), 53333);
 
   void boostInit(){
+    myInputSocket.open(udp::v4());
     myOutputSocket.open(udp::v4(),ignored_error);
     myOutputSocket.set_option(udp::socket::reuse_address(true));
     myOutputSocket.set_option(boost::asio::socket_base::broadcast(true));
@@ -223,8 +185,6 @@ udp::endpoint destination(boost::asio::ip::address_v4::broadcast(), 53333);
     //_______________MAIN LOOP________________________________________________________________________________________________________________________________________________
     int main(int argc, char *argv[])
     {
-
-
       //check if the cam is connected before init anything
       while (checkCam()==false){
         cout << "." ;
@@ -419,22 +379,15 @@ udp::endpoint destination(boost::asio::ip::address_v4::broadcast(), 53333);
         long lastCallPoti=millis();
         while (currentKey != 27)
         {
-          try
-        {
-          std::cout << "la" << endl;
-          boost::asio::io_service io_service;
-          std::cout << "lala" << endl;
-          udp_server server(io_service);
-          std::cout << "lalala" << endl;
-          io_service.run();
-          std::cout << "lalalala" << endl;
 
-        }
-          catch (std::exception& e)
-{
-            std::cout << "____" << endl;
-  std::cerr << e.what() << std::endl;
-}
+
+          boost::array<char, 128> recv_buf;
+          udp::endpoint sender_endpoint;
+          size_t len = myInputSocket.receive_from(
+              boost::asio::buffer(recv_buf), sender_endpoint);
+
+          std::cout.write(recv_buf.data(), len);
+
           //only do all of this stuff when the camera is attached
           if (cameraDetached==false){
             royale::String id;
