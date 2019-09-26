@@ -43,7 +43,7 @@ cv::Mat depImgMod;
 cv::Mat tileImg;
 
 bool newDepthImage;
-bool stopWritingVals = false;
+bool motorsMuted = false;
 long lastNewData = millis();
 
 int globalCycleTime;
