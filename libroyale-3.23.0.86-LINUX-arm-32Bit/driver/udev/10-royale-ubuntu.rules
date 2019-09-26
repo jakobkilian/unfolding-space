@@ -1,0 +1,114 @@
+# This is a rules file for Linux's udev.  When a USB camera is plugged in,
+# it will allow all users in the "plugdev" group to access the device.
+#
+# Put this file in /etc/udev/rules.d/
+
+# PicoS
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1c28", ATTRS{idProduct}=="c00f", MODE="0666", SYMLINK+="camboard_pico_7119k-%k", GROUP="plugdev"
+
+# PicoFlexx
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1c28", ATTRS{idProduct}=="c012", MODE="0666", SYMLINK+="camboard_pico_flexx-%k", GROUP="plugdev"
+
+# Eval Board
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="058b", ATTRS{idProduct}=="00a0", MODE="0666", SYMLINK+="camboard_evalboard-%k", GROUP="plugdev"
+
+# UVC C2
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="058b", ATTRS{idProduct}=="00a7", MODE="0666", SYMLINK+="camboard_uvc_c2-%k", GROUP="plugdev"
+
+# Animator Board UVC
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="058b", ATTRS{idProduct}=="00a6", MODE="0666", SYMLINK+="camboard_animatorboard_uvc-%k", GROUP="plugdev"
+
+# Animator Board Admundsen
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="058b", ATTRS{idProduct}=="00a1", MODE="0666", SYMLINK+="camboard_animatorboard-%k", GROUP="plugdev"
+
+# Skylla
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1c28", ATTRS{idProduct}=="c013", MODE="0666", SYMLINK+="camboard_uvc_skylla-%k", GROUP="plugdev"
+
+# Charybdis
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1c28", ATTRS{idProduct}=="c014", MODE="0666", SYMLINK+="camboard_uvc_charybdis-%k", GROUP="plugdev"
+
+# PicoMaxx
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1c28", ATTRS{idProduct}=="c016", MODE="0666", SYMLINK+="camboard_pico_maxx1-%k", GROUP="plugdev"
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1c28", ATTRS{idProduct}=="c017", MODE="0666", SYMLINK+="camboard_pico_maxx2-%k", GROUP="plugdev"
+
+# PicoMonstar
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1c28", ATTRS{idProduct}=="c018", MODE="0666", SYMLINK+="camboard_pico_monstar1-%k", GROUP="plugdev"
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1c28", ATTRS{idProduct}=="c019", MODE="0666", SYMLINK+="camboard_pico_monstar2-%k", GROUP="plugdev"
+
+# Daedalus
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1c28", ATTRS{idProduct}=="c01a", MODE="0666", SYMLINK+="camboard_uvc_daedalus-%k", GROUP="plugdev"
+
+# Willingen
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1c28", ATTRS{idProduct}=="c01c", MODE="0666", SYMLINK+="willingen-%k", GROUP="plugdev"
+
+# Rabenscheid
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1c28", ATTRS{idProduct}=="c01d", MODE="0666", SYMLINK+="rabenscheid-%k", GROUP="plugdev"
+
+# Alea
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1c28", ATTRS{idProduct}=="c01e", MODE="0666", SYMLINK+="camboard_uvc_alea-%k", GROUP="plugdev"
+
+# Apollo
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1c28", ATTRS{idProduct}=="c01f", MODE="0666", SYMLINK+="apollo-%k", GROUP="plugdev"
+
+# Skylla non-UVC
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1c28", ATTRS{idProduct}=="c020", MODE="0666", SYMLINK+="skylla_non_uvc-%k", GROUP="plugdev"
+
+# Charybdis non-UVC
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1c28", ATTRS{idProduct}=="c021", MODE="0666", SYMLINK+="charybdis_non_uvc-%k", GROUP="plugdev"
+
+# Daedalus non-UVC
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1c28", ATTRS{idProduct}=="c022", MODE="0666", SYMLINK+="daedalus_non_uvc-%k", GROUP="plugdev"
+
+# Alea non-UVC
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1c28", ATTRS{idProduct}=="c023", MODE="0666", SYMLINK+="alea_non_uvc-%k", GROUP="plugdev"
+
+# PicoMaxx non-UVC
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1c28", ATTRS{idProduct}=="c024", MODE="0666", SYMLINK+="camboard_pico_maxx_non_uvc-%k", GROUP="plugdev"
+
+# PicoMonstar non-UVC
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1c28", ATTRS{idProduct}=="c025", MODE="0666", SYMLINK+="camboard_pico_monstar_non_uvc-%k", GROUP="plugdev"
+
+# Apollo non-UVC
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1c28", ATTRS{idProduct}=="c027", MODE="0666", SYMLINK+="apollo-%k", GROUP="plugdev"
+
+# Salome
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1c28", ATTRS{idProduct}=="c028", MODE="0666", SYMLINK+="salome-%k", GROUP="plugdev"
+
+# FacePlus / Lewis non-UVC
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1c28", ATTRS{idProduct}=="c02a", MODE="0666", SYMLINK+="faceplus_non_uvc-%k", GROUP="plugdev"
+
+# FacePlus / Lewis UVC
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1c28", ATTRS{idProduct}=="c02b", MODE="0666", SYMLINK+="faceplus_uvc-%k", GROUP="plugdev"
+
+# Equinox Amundsen
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1c28", ATTRS{idProduct}=="c02c", MODE="0666", SYMLINK+="equinox-%k", GROUP="plugdev"
+
+# x1 Amundsen
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1c28", ATTRS{idProduct}=="c02d", MODE="0666", SYMLINK+="x1-%k", GROUP="plugdev"
+
+# f1 Amundsen
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1c28", ATTRS{idProduct}=="c02e", MODE="0666", SYMLINK+="f1-%k", GROUP="plugdev"
+
+# m1 Amundsen
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1c28", ATTRS{idProduct}=="c02f", MODE="0666", SYMLINK+="m1-%k", GROUP="plugdev"
+
+# U7 Amundsen
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1c28", ATTRS{idProduct}=="c030", MODE="0666", SYMLINK+="u7-%k", GROUP="plugdev"
+
+# Selene
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1c28", ATTRS{idProduct}=="c031", MODE="0666", SYMLINK+="selene-%k", GROUP="plugdev"
+
+# Orpheus
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1c28", ATTRS{idProduct}=="c032", MODE="0666", SYMLINK+="orpheus-%k", GROUP="plugdev"
+
+# pmd Module
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1c28", ATTRS{idProduct}=="c033", MODE="0666", SYMLINK+="pmdmodule-%k", GROUP="plugdev"
+
+# Gaia
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1c28", ATTRS{idProduct}=="c034", MODE="0666", SYMLINK+="gaia-%k", GROUP="plugdev"
+
+# Byt
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1c28", ATTRS{idProduct}=="c035", MODE="0666", SYMLINK+="byt-%k", GROUP="plugdev"
+
+# Holkin
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1c28", ATTRS{idProduct}=="c036", MODE="0666", SYMLINK+="holkin-%k", GROUP="plugdev"
