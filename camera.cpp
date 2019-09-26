@@ -234,7 +234,7 @@ void DepthDataListener::onNewData(const DepthData *data) {
   // this if-block is needed for mutex
   if (true) {
     std::lock_guard<std::mutex> lock(tileMutex);
-    if (stopWritingVals != true) // Check if values should be written
+    if (motorsMuted != true) // Check if values should be written
       writeValues(9, &(ninePixMatrix[0]));
   }
   // WRITE
