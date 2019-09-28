@@ -41,9 +41,6 @@ Not included (due to license restrictions) is the libroyale library for the Tof 
 
 The Code is written in C++ as it was the only supported language by the Pico Flexx library. I am Designer and I didn't study how to write proper code from the beginning. I hope you forgive me for my amateurish code and documentation and feel free to comment and to help me! I am bloody new to Github and to the conventions...
 
-## Arduino code
-As a Raspberry doesn't have a D/A conerter on board, you need a small Arduino or microcomputer attached to it. I used a Digispark equipped with a potentiometer, as they are exremely small and affordable. You only have to upload the attached Arduino Code and maybe adjust the Serial Port. The Digispark will then send the current position to the Raspi whenever there is a change.
-
 
 ### Installation
 
@@ -69,7 +66,8 @@ containts the initialization process and the endless loop
 
 To run the enclosed Processing Sketch on your phone you have to go to [Processing.org](https://processing.org/download/), download the Processing IDE and install it on your computer. Next you connect your phone via USB cable to the computer and then you can run the sketch directly on your phone. The newly created app will remain on your phone afterwards.
 
-
+## Arduino code
+As a Raspberry doesn't have a D/A conerter on board, you need a small Arduino or microcomputer attached to it. I used a Digispark equipped with a potentiometer, as they are exremely small and affordable. You only have to upload the attached Arduino Code and maybe adjust the Serial Port. The Digispark will then send the current position to the Raspi whenever there is a change.
 
 
 ## Support and Contributing
