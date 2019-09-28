@@ -236,7 +236,7 @@ int registerWrite(unsigned char ucRegAddress, char cValue) {
 //________________________________________________
 // Write all vibration strength value to the DRV2605s
 void writeValues(int valc, uint8_t *vals) {
-  uint8_t order[9] = {2, 5, 6, 1, 3, 7, 0, 4, 8};
+  uint8_t order[9] = {5, 2, 1, 4, 6, 0, 8, 7, 3};
   for (int i = 0; i != valc; ++i) {
     drvSelect(order[i]); // route the value to the right TCA and DRV
     registerWrite(RTP_INPUT, altCurve[vals[i]]);
