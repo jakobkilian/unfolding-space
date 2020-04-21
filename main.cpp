@@ -9,18 +9,23 @@
 //----------------------------------------------------------------------
 // INCLUDES
 //----------------------------------------------------------------------
+#include <ctime>
 #include "camera.hpp"
 #include "glove.hpp"
 #include "init.hpp"
 #include "poti.hpp"
 #include "time.h"
 #include <boost/array.hpp>
+#include <boost/bind.hpp>
+#include <boost/shared_ptr.hpp>
 #include <boost/asio.hpp>
 #include <iostream>
 #include <royale/IEvent.hpp>
 #include <signal.h>
 #include <string>
+#include <thread>
 
+using boost::asio::ip::udp;
 using std::cerr;
 using std::cout;
 using std::endl;
@@ -30,13 +35,10 @@ using std::endl;
 //----------------------------------------------------------------------
 // any visual output on the raspberry? (or just udp and terminal output...)
 bool gui = 0;
-
 // Does the system use a poti?
 bool potiAv = 0;
-
 // Does the system use the old DRV-Breakoutboards or the new detachable DRV-PCB?
 bool detachableDRV = 0;
-
 // recording mode available?
 bool recordMode = false;
 
@@ -61,79 +63,71 @@ long cameraStartTime;      // timestamp when camera started capturing
 bool record = false;       // currently recording?
 
 //----------------------------------------------------------------------
-// STUFF FOR UDP CONNECTION
+// UDP CONNECTION
 //----------------------------------------------------------------------
-using boost::asio::ip::udp;
-boost::asio::io_service io_service;
-// output socket is on port 53333, could be any port
-udp::socket myOutputSocket(io_service, udp::endpoint(udp::v4(), 53333));
-udp::endpoint remote_endpoint;
-boost::system::error_code ignored_error;
-udp::endpoint destination(boost::asio::ip::address_v4::broadcast(), 53333);
-
-//________________________________________________
-void boostInit() {
-  myOutputSocket.open(udp::v4(), ignored_error);
-  myOutputSocket.set_option(udp::socket::reuse_address(true));
-  myOutputSocket.set_option(boost::asio::socket_base::broadcast(true));
-}
-
-//________________________________________________
-void sendString(std::string thisString, int thisId) {
-  myOutputSocket.send_to(
-      boost::asio::buffer(std::to_string(thisId) + ":" + thisString),
-      destination, 0, ignored_error);
-}
-
-//________________________________________________
-void sendInt(int thisInt, int thisId) {
-  myOutputSocket.send_to(boost::asio::buffer(std::to_string(thisId) + ":" +
-                                             std::to_string(thisInt)),
-                         destination, 0, ignored_error);
-}
-
-//________________________________________________
-void sendLong(long thisLong, int thisId) {
-  myOutputSocket.send_to(boost::asio::buffer(std::to_string(thisId) + ":" +
-                                             std::to_string(thisLong)),
-                         destination, 0, ignored_error);
-}
-
-//________________________________________________
-void sendBool(bool thisBool, int thisId) {
-  myOutputSocket.send_to(boost::asio::buffer(std::to_string(thisId) + ":" +
-                                             std::to_string(thisBool)),
-                         destination, 0, ignored_error);
-}
-
-//________________________________________________
-void sendDouble(bool thisDouble, int thisId) {
-  myOutputSocket.send_to(boost::asio::buffer(std::to_string(thisId) + ":" +
-                                             std::to_string(thisDouble)),
-                         destination, 0, ignored_error);
-}
-
 // Send the Set of Data to the Android App
-void udpHandling() {
-  sendString(std::to_string(time(0)), 0);
-  sendLong(timeSinceLastNewData, 1);
-  sendInt(longestTimeNoData, 2);
-  sendInt(fps, 3);
-  sendInt(globalPotiVal, 4);
-  sendDouble(coreTempDouble, 5);
-  sendBool(connected, 6);
-  sendBool(capturing, 7);
-  sendInt(libraryCrashNo, 8);
-  sendInt(droppedAtBridge, 9);
-  sendInt(droppedAtFC, 10);
-  sendInt(tenSecsDrops, 11);
-  sendInt(deliveredFrames, 12);
-  sendInt(globalCycleTime, 13);
-  sendInt(globalPauseTime, 14);
-  for (size_t i = 0; i < 9; i++) {
-    sendInt(ninePixMatrix[i], i + 15);
+std::string packValStr()
+{
+  std::string tmpStr;
+  //Add the values to the string. TODO: slim everything a bit down? Does string cost time?
+  tmpStr += std::to_string(0) + ":" + std::to_string(frameCounter) + "|";
+  tmpStr += std::to_string(1) + ":" + std::to_string(timeSinceLastNewData) + "|";
+  tmpStr += std::to_string(2) + ":" + std::to_string(longestTimeNoData) + "|";
+  tmpStr += std::to_string(3) + ":" + std::to_string(fps) + "|";
+  //tmpStr += std::to_string(4) + ":" + std::to_string(globalPotiVal) + "|";
+  //tmpStr += std::to_string(5) + ":" + std::to_string(coreTempDouble) + "|";
+  tmpStr += std::to_string(6) + ":" + std::to_string(connected) + "|";
+  tmpStr += std::to_string(7) + ":" + std::to_string(capturing) + "|";
+  tmpStr += std::to_string(8) + ":" + std::to_string(libraryCrashNo) + "|";
+  tmpStr += std::to_string(9) + ":" + std::to_string(droppedAtBridge) + "|";
+  tmpStr += std::to_string(10) + ":" + std::to_string(droppedAtFC) + "|";
+  tmpStr += std::to_string(11) + ":" + std::to_string(tenSecsDrops) + "|";
+  tmpStr += std::to_string(12) + ":" + std::to_string(deliveredFrames) + "|";
+  tmpStr += std::to_string(13) + ":" + std::to_string(globalCycleTime) + "|";
+  tmpStr += std::to_string(14) + ":" + std::to_string(globalPauseTime) + "|";
+  for (size_t i = 0; i < 9; i++)
+  {
+    tmpStr += std::to_string(i + 15) + ":" + std::to_string(ninePixMatrix[i]) + "|";
   }
+  tmpStr += std::to_string(24) + ":" + std::to_string(millis()) + "|";
+  return tmpStr;
 }
+
+//UDP Server Class
+class udp_server
+{
+public:
+  udp_server(boost::asio::io_service &io_service) : socket_(io_service, udp::endpoint(udp::v4(), 9009))
+  {
+    start_receive();
+  }
+
+private:
+  void start_receive()
+  {
+    //Look out for calls on port 9009
+    socket_.async_receive_from(boost::asio::buffer(recv_buffer_), remote_endpoint_, boost::bind(&udp_server::handle_receive, this, boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred));
+  }
+
+  void handle_receive(const boost::system::error_code &error, std::size_t /*bytes_transferred*/)
+  {
+    if (!error || error == boost::asio::error::message_size)
+    {
+      //send the ready packed string with all the values from packValStr
+      boost::shared_ptr<std::string> message(new std::string(packValStr()));
+      socket_.async_send_to(boost::asio::buffer(*message), remote_endpoint_, boost::bind(&udp_server::handle_send, this, message, boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred));
+      //start listening again
+      start_receive();
+    }
+  }
+
+  void handle_send(boost::shared_ptr<std::string> /*message*/, const boost::system::error_code & /*error*/, std::size_t /*bytes_transferred*/)
+  {
+  }
+  udp::socket socket_;
+  udp::endpoint remote_endpoint_;
+  boost::array<char, 1> recv_buffer_;
+};
 
 //----------------------------------------------------------------------
 // OTHER FUNCTIONS AND CLASSES
@@ -143,7 +137,8 @@ void udpHandling() {
 // Royale Event Listener reports dropped frames as string.
 // This functions extracts the number of frames that got lost at Bridge/FC.
 // I believe, that dropped frames cause instability – PMDtec confirmed this
-void extractDrops(royale::String str) {
+void extractDrops(royale::String str)
+{
   using namespace std;
   stringstream ss;
   /* Storing the whole string into string stream */
@@ -152,11 +147,13 @@ void extractDrops(royale::String str) {
   string temp;
   int found;
   int i = 0;
-  while (!ss.eof()) {
+  while (!ss.eof())
+  {
     /* extracting word by word from stream */
     ss >> temp;
     /* Checking the given word is integer or not */
-    if (stringstream(temp) >> found) {
+    if (stringstream(temp) >> found)
+    {
       if (i == 0)
         droppedAtBridge = found;
       if (i == 1)
@@ -174,13 +171,16 @@ void extractDrops(royale::String str) {
 //________________________________________________
 // Gets called by Royale irregularily.
 // Holds the camera state, errors and info about drops
-class EventReporter : public royale::IEventListener {
+class EventReporter : public royale::IEventListener
+{
 public:
   virtual ~EventReporter() = default;
 
-  virtual void onEvent(std::unique_ptr<royale::IEvent> &&event) override {
+  virtual void onEvent(std::unique_ptr<royale::IEvent> &&event) override
+  {
     royale::EventSeverity severity = event->severity();
-    switch (severity) {
+    switch (severity)
+    {
     case royale::EventSeverity::ROYALE_INFO:
       // cerr << "info: " << event->describe() << endl;
       extractDrops(event->describe());
@@ -204,7 +204,8 @@ public:
 
 //________________________________________________
 // Read out the core temperature and save it in coreTempDouble
-void getCoreTemp() {
+void getCoreTemp()
+{
   std::string coreTemp;
   std::ifstream tempFile("/sys/class/thermal/thermal_zone0/temp");
   tempFile >> coreTemp;
@@ -215,20 +216,23 @@ void getCoreTemp() {
 
 //________________________________________________
 // When an error occurs(camera gets detached): prevent freezing, but mute all
-void endMuted(int dummy) {
+void endMuted(int dummy)
+{
   motorsMuted = true;
   muteAll();
   exit(0);
 }
 
 //----------------------------------------------------------------------
-// MAIN LOOP
+// UNFOLDING - This is the main part, now in a seperate thread
 //----------------------------------------------------------------------
-int main(int argc, char *argv[]) {
 
+int unfolding()
+{
   //_____________________INIT CAMERA____________________________________
   // check if the cam is connected before init anything
-  while (checkCam() == false) {
+  while (checkCam() == false)
+  {
     cout << ".";
     cout.flush();
   }
@@ -237,14 +241,15 @@ int main(int argc, char *argv[]) {
   signal(SIGINT, endMuted);
 
   // initialize boost library
-  boostInit();
+  //boostInit();
 
   // Setup Connection to Digispark Board for Poti-Reads
   if (potiAv)
     initPoti();
 
   // Just needed if frames should be recorded
-  if (recordMode) {
+  if (recordMode)
+  {
     // Get Time to create filename for video recording
     time_t now = time(0);
     tm *ltm = localtime(&now);
@@ -257,9 +262,9 @@ int main(int argc, char *argv[]) {
                           e + "_" + "depth.avi";
     std::string tilefile = "outputs/" + a + "_" + b + "_" + c + "_" + d + "_" +
                            e + "_" + "tiles.avi";
-    cv::VideoWriter depVideo(depfile, CV_FOURCC('X', 'V', 'I', 'D'), 10,
+    cv::VideoWriter depVideo(depfile, cv::VideoWriter::fourcc('X', 'V', 'I', 'D'), 10,
                              cv::Size(224, 171));
-    cv::VideoWriter tileVideo(tilefile, CV_FOURCC('X', 'V', 'I', 'D'), 10,
+    cv::VideoWriter tileVideo(tilefile, cv::VideoWriter::fourcc('X', 'V', 'I', 'D'), 10,
                               cv::Size(3, 3));
   }
 
@@ -282,7 +287,7 @@ searchCam:
   uint commandLineUseCase;
 
   // commandLineUseCase = std::move (arg);
-  commandLineUseCase = atoi(argv[1]);
+  commandLineUseCase = 3;
   // the camera manager will query for a connected camera
   {
     royale::CameraManager manager;
@@ -293,14 +298,14 @@ searchCam:
     royale::Vector<royale::String> camlist;
     cout << "Searching for 3D camera" << endl;
     cout << "_______________________" << endl;
-    while (camlist.empty()) {
+    while (camlist.empty())
+    {
       // if no argument was given try to open the first connected camera
       camlist = manager.getConnectedCameraList();
       cout << ".";
       cout.flush();
-      udpHandling(); // send values via udp
-
-      if (!camlist.empty()) {
+      if (!camlist.empty())
+      {
         cout << endl;
         cout << "Camera detected!" << endl;
         cameraDevice = manager.createCamera(camlist[0]);
@@ -308,10 +313,10 @@ searchCam:
     }
     camlist.clear();
   }
-  udpHandling(); // send values via udp
 
   //  camera device is now available, CameraManager can be deallocated here
-  if (cameraDevice == nullptr) {
+  if (cameraDevice == nullptr)
+  {
     // no cameraDevice available
     cerr << "Cannot create the camera device" << endl;
     return 1;
@@ -319,7 +324,8 @@ searchCam:
 
   // IMPORTANT: call the initialize method before working with camera device
   auto status = cameraDevice->initialize();
-  if (status != royale::CameraStatus::SUCCESS) {
+  if (status != royale::CameraStatus::SUCCESS)
+  {
     cerr << "Cannot initialize the camera device, error string : "
          << getErrorString(status) << endl;
     return 1;
@@ -328,36 +334,38 @@ searchCam:
   royale::Vector<royale::String> useCases;
   auto usecaseStatus = cameraDevice->getUseCases(useCases);
 
-  if (usecaseStatus != royale::CameraStatus::SUCCESS || useCases.empty()) {
+  if (usecaseStatus != royale::CameraStatus::SUCCESS || useCases.empty())
+  {
     cerr << "No use cases are available" << endl;
     cerr << "getUseCases() returned: " << getErrorString(usecaseStatus) << endl;
     return 1;
   }
-  udpHandling(); // send values via udp
-
   cerr << useCases << endl;
-  udpHandling(); // send values via udp
-
   // choose a use case
   uint selectedUseCaseIdx = 0u;
-  if (commandLineUseCase) {
+  if (commandLineUseCase)
+  {
     cerr << "got the argument:" << commandLineUseCase << endl;
     auto useCaseFound = false;
-    if (commandLineUseCase >= 0 && commandLineUseCase < useCases.size()) {
+    if (commandLineUseCase >= 0 && commandLineUseCase < useCases.size())
+    {
       uint8_t fpsUseCases[6] = {0, 10, 15, 25, 35, 45}; // pico flexx specs
       selectedUseCaseIdx = commandLineUseCase;
       fpsFromCam = fpsUseCases[commandLineUseCase];
       useCaseFound = true;
     }
 
-    if (!useCaseFound) {
+    if (!useCaseFound)
+    {
       cerr << "Error: the chosen use case is not supported by this camera"
            << endl;
       cerr << "A list of supported use cases is printed by sampleCameraInfo"
            << endl;
       return 1;
     }
-  } else {
+  }
+  else
+  {
     cerr << "Here: autousecase id" << endl;
     // choose the first use case
     selectedUseCaseIdx = 0;
@@ -365,40 +373,40 @@ searchCam:
 
   // set an operation mode
   if (cameraDevice->setUseCase(useCases.at(selectedUseCaseIdx)) !=
-      royale::CameraStatus::SUCCESS) {
+      royale::CameraStatus::SUCCESS)
+  {
     cerr << "Error setting use case" << endl;
     return 1;
   }
-  udpHandling(); // send values via udp
-
   // retrieve the lens parameters from Royale
   royale::LensParameters lensParameters;
   status = cameraDevice->getLensParameters(lensParameters);
-  if (status != royale::CameraStatus::SUCCESS) {
+  if (status != royale::CameraStatus::SUCCESS)
+  {
     cerr << "Can't read out the lens parameters" << endl;
     return 1;
   }
 
-  //ä listener.setLensParameters(lensParameters);
+  //listener.setLensParameters(lensParameters);
 
   // register a data listener
   if (cameraDevice->registerDataListener(&listener) !=
-      royale::CameraStatus::SUCCESS) {
+      royale::CameraStatus::SUCCESS)
+  {
     cerr << "Error registering data listener" << endl;
     return 1;
   }
   // register a EVENT listener
   cameraDevice->registerEventListener(&eventReporter);
 
-  if (gui) {
+  if (gui)
+  {
     createWindows();
   }
-  udpHandling(); // send values via udp
-
   //_____________________START CAPTURING_________________________________
-
   // start capture mode
-  if (cameraDevice->startCapture() != royale::CameraStatus::SUCCESS) {
+  if (cameraDevice->startCapture() != royale::CameraStatus::SUCCESS)
+  {
     cerr << "Error starting the capturing" << endl;
     return 1;
   }
@@ -416,7 +424,8 @@ searchCam:
   while (currentKey != 27) //...until Esc is pressed
   {
     // only do all of this stuff when the camera is attached
-    if (cameraDetached == false) {
+    if (cameraDetached == false)
+    {
       royale::String id;
       royale::String name;
       uint16_t maxSensorWidth;
@@ -425,12 +434,14 @@ searchCam:
       // time passed since LastNewData
       timeSinceLastNewData = millis() - lastNewData;
       // check if it is a new record
-      if (longestTimeNoData < timeSinceLastNewData) {
+      if (longestTimeNoData < timeSinceLastNewData)
+      {
         longestTimeNoData = timeSinceLastNewData;
       }
 
       // do this every 66ms (15 fps)
-      if (millis() - lastCallImshow > 66) {
+      if (millis() - lastCallImshow > 66)
+      {
         lastCallImshow = millis();
         // Get all the data of the royal lib to see if camera is working
         royale::Vector<royale::Pair<royale::String, royale::String>> cameraInfo;
@@ -443,9 +454,11 @@ searchCam:
         status = cameraDevice->isConnected(connected);
         status = cameraDevice->isCapturing(capturing);
 
-        if (gui) { // only show when gui is active
+        if (gui)
+        { // only show when gui is active
           // Draw tile image and depth image in windows
-          if (newDepthImage == true) {
+          if (newDepthImage == true)
+          {
             newDepthImage = false;
             cv::Mat dep;
             cv::Mat tile;
@@ -453,7 +466,8 @@ searchCam:
             tile = passNineFrame();
             cv::cvtColor(dep, dep, cv::COLOR_HSV2RGB, 3);
             cv::flip(dep, dep, -1);
-            if (record == true) {
+            if (record == true)
+            {
               // depVideo.write(dep);
               // tileVideo.write(tile);
             }
@@ -465,12 +479,13 @@ searchCam:
         }
       }
       // do this every 50ms (20 fps)
-      if (millis() - lastCallPoti > 50) {
+      if (millis() - lastCallPoti > 100)
+      {
         lastCallPoti = millis();
-        udpHandling(); // send values via udp
         if (potiAv)
           updatePoti();
-        if (record == true) {
+        if (record == true)
+        {
           printf("___recording!___\n");
         }
         printf("time since last new data: %i ms \n", timeSinceLastNewData);
@@ -481,9 +496,10 @@ searchCam:
                droppedAtBridge, droppedAtFC, deliveredFrames, tenSecsDrops);
         printOutput();
       }
-
+      /*
       // do this every 5000ms (every 10 seconds)
-      if (millis() - lastCall > 10000) {
+      if (millis() - lastCall > 100000)
+      {
         lastCall = millis();
         tenSecsDrops = 0;
         getCoreTemp(); // read raspi's core temperature
@@ -511,15 +527,18 @@ searchCam:
              << endl
              << endl
              << endl;
-      }
+      }*/
 
       // start/stop recording, when recording mode is available
-      if (recordMode) {
-        if (currentKey == 'r') {
+      if (recordMode)
+      {
+        if (currentKey == 'r')
+        {
           record = true;
         }
 
-        if (currentKey == 's') {
+        if (currentKey == 's')
+        {
           record = false;
         }
       }
@@ -527,10 +546,13 @@ searchCam:
 
     // RESTART WHEN CAMERA IS UNPLUGGED
     // Ignore first 3secs
-    if ((millis() - cameraStartTime) > 3000) {
+    if ((millis() - cameraStartTime) > 3000)
+    {
       // connected but still capturing -> unplugged!
-      if (connected == 0 && capturing == 1) {
-        if (cameraDetached == false) {
+      if (connected == 0 && capturing == 1)
+      {
+        if (cameraDetached == false)
+        {
           cout << "________________________________________________" << endl
                << endl;
           cout << "Camera Detached! Reinitialize Camera and Listener" << endl
@@ -544,18 +566,24 @@ searchCam:
           muteAll();
           cameraDetached = true;
         }
-        if (checkCam() == false) {
+        if (checkCam() == false)
+        {
           cout << "."; // print dots as a sign for each failed frame
           cout.flush();
-        } else {
+        }
+        else
+        {
           goto searchCam; // jump back to the beginning
         }
       }
     }
 
-    if ((millis() - cameraStartTime) > 3000) { // ignore the first 3 secs
-      if (cameraDetached == false) {           // if camera should be there...
-        if (timeSinceLastNewData > 4000) {     // but there is no frame for 4s
+    if ((millis() - cameraStartTime) > 3000)
+    { // ignore the first 3 secs
+      if (cameraDetached == false)
+      { // if camera should be there...
+        if (timeSinceLastNewData > 4000)
+        { // but there is no frame for 4s
           cout << "________________________________________________" << endl
                << endl;
           cout << "Library Crashed! Reinitialize Camera and Listener. last new "
@@ -575,15 +603,56 @@ searchCam:
       }
     }
   }
-
   //_____________________END OF PROGRAMM________________________________
   // stop capturing mode
-  if (cameraDevice->stopCapture() != royale::CameraStatus::SUCCESS) {
+  if (cameraDevice->stopCapture() != royale::CameraStatus::SUCCESS)
+  {
     cerr << "Error stopping the capturing" << endl;
     return 1;
   }
   motorsMuted = true;
   // mute all motors
   muteAll();
+  return 0;
+}
+
+//TODO: maybe this is not the best way to handle this and exit (!) from the program
+class mainThreadWrapper
+{
+public:
+  boost::asio::io_service io_service;
+  void runUdp()
+  {
+    udp_server server(io_service);
+    io_service.run();
+  }
+  void runUnfolding()
+  {
+    int unfReturn = unfolding();
+    printf("Unfolding Thread has been exited with a #%i \n", unfReturn);
+    printf("Stopping the UDP server now... \n");
+    io_service.stop();
+  }
+  std::thread runUdpThread()
+  {
+    return std::thread([=] { runUdp(); });
+  }
+  std::thread runUnfoldingThread()
+  {
+    return std::thread([=] { runUnfolding(); });
+  }
+};
+
+//----------------------------------------------------------------------
+// MAIN LOOP
+//----------------------------------------------------------------------
+int main(int argc, char *argv[])
+{
+  printf("Starting Unfolding Space \n");
+  mainThreadWrapper *w = new mainThreadWrapper();
+  std::thread udpTh = w->runUdpThread();
+  std::thread unfTh = w->runUnfoldingThread();
+  udpTh.join();
+  unfTh.join();
   return 0;
 }

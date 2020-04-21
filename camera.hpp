@@ -22,7 +22,7 @@ void printCurTime(const std::string &);
 cv::Mat passDepFrame();
 cv::Mat passNineFrame();
 void printOutput();
-void udpHandling();
+std::string packValStr();
 
 extern int globalCycleTime;
 extern int globalPauseTime;
@@ -34,14 +34,15 @@ extern std::mutex depMutex;
 extern long lastNewData;
 extern int frameCounter;
 extern int kCounter;
-extern int fps;
+extern float fps;
 extern std::array<uint8_t, 9> ninePixMatrix;
 extern bool gui;
 
 //----------------------------------------------------------------------
 // CLASSES
 //----------------------------------------------------------------------
-class DepthDataListener : public royale::IDepthDataListener {
+class DepthDataListener : public royale::IDepthDataListener
+{
   // lens matrices used for the undistortion of
   // the image
   cv::Mat cameraMatrix;
