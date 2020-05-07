@@ -6,6 +6,7 @@
  * Project: unfoldingspace.jakobkilian.de
  */
 
+
 //----------------------------------------------------------------------
 // INCLUDES
 //----------------------------------------------------------------------
@@ -34,6 +35,8 @@ using boost::asio::ip::udp;
 using std::cerr;
 using std::cout;
 using std::endl;
+using namespace std::chrono;
+
 
 //----------------------------------------------------------------------
 // SETTINGS
@@ -327,11 +330,14 @@ void endMuted(int dummy) {
   exit(0);
 }
 
+
+
 //----------------------------------------------------------------------
 // UNFOLDING - This is the main part, now in a seperate thread
 //----------------------------------------------------------------------
 
 int unfolding() {
+
   //_____________________INIT CAMERA____________________________________
   // check if the cam is connected before init anything
   while (checkCam() == false) {
@@ -504,6 +510,7 @@ searchCam:
   motorsMuted = false;         // activate the vibration motors
   long lastCallImshow = millis();
   long lastCall = 0;
+    long lastCallTemp = 0;
   long lastCallPoti = millis();
 
   //_____________________ENDLESS LOOP_________________________________
@@ -572,22 +579,42 @@ searchCam:
           if (potiAv) updatePoti();
           if (record == true) {
             printf("___recording!___\n");
-          } /*
-           printf("time since last new data: %i ms \n", timeSinceLastNewData);
-           printf("No of library crashes: %i times \n", libraryCrashNo);
-           printf("longest time with no new data was: %i \n",
-           longestTimeNoData); printf("temp.: \t%.1f°C\n", coreTempDouble);
-           printf("drops:\t%i | %i\t deliver:\t%i \t drops in last 10sec: %i\n",
-                  droppedAtBridge, droppedAtFC, deliveredFrames, tenSecsDrops);
-           printOutput();
-           */
+          }
+
+          // calc fps
+          int secondsSinceReset = ((millis() - resetFC) / 1000);
+          if (secondsSinceReset > 0) {
+            fps = frameCounter / secondsSinceReset;
+          }
+          if (frameCounter > 999) {
+            frameCounter = 0;
+            resetFC = millis();
+          }
+
+          // printf("time since last new data: %i ms \n", timeSinceLastNewData);
+          // printf("No of library crashes: %i times \n", libraryCrashNo);
+          // printf("longest time with no new data was: %i \n", longestTimeNoData);
+          // printf("temp.: \t%.1f°C\n", coreTempDouble);
+          // printf("drops:\t%i | %i\t deliver:\t%i \t drops in last 10sec: %i\n",
+          //        droppedAtBridge, droppedAtFC, deliveredFrames, tenSecsDrops);
+          // printf("frame:\t %i \t time:\t %i \t fps: %.1f \n", frameCounter,
+          //        secondsSinceReset, fps);
+          // printf("cycle:\t %ims \t pause: %ims \n", globalCycleTime,
+          //        globalPauseTime);
+          // printf("Range:\t %.1f m\n\n\n", maxDepth);
+          // printOutput();
         }
 
         // do this every 5000ms (every 1 seconds)
-        if (millis() - lastCall > 1000) {
+        if (millis() - lastCallTemp > 1000) {
+          lastCallTemp = millis();
+          getCoreTemp();  // read raspi's core temperature
+        }
+
+        // do this every 5000ms (every 1 seconds)
+        if (millis() - lastCall > 10000) {
           lastCall = millis();
           tenSecsDrops = 0;
-          getCoreTemp();  // read raspi's core temperature
         }
 
         // start/stop recording, when recording mode is available

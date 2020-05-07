@@ -14,6 +14,10 @@
 #include <opencv2/opencv.hpp>
 #include <royale.hpp>
 #include <string.h>
+#include <chrono>
+
+using namespace std::chrono;
+
 
 //----------------------------------------------------------------------
 // DECLARATIONS
@@ -39,6 +43,8 @@ extern int kCounter;
 extern float fps;
 extern std::array<uint8_t, 9> ninePixMatrix;
 extern bool gui;
+extern long resetFC;
+
 
 //----------------------------------------------------------------------
 // CLASSES
@@ -60,4 +66,19 @@ public:
 private:
   float adjustDepthValue(float zValue, float max);
   float adjustDepthValueForImage(float zValue, float max);
+};
+
+
+class storeTimePoint {
+  // new: save the steps in an array of time_points to print them at the end...
+  std::array<steady_clock::time_point, 100> t;
+  std::array<std::string, 100> n;
+  int size;
+  int i;
+
+ public:
+  storeTimePoint(int s);
+  void store(int pos, std::string name);
+  void reset();
+  void print();
 };

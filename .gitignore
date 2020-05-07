@@ -34,3 +34,5 @@
 *.DS_Store
 
 git-strategy
+.vscode*
+unfolding-app

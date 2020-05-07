@@ -12,7 +12,10 @@
 #include "camera.hpp"
 
 #include <array>
+#include <chrono>
 #include <sample_utils/EventReporter.hpp>
+#include <string>  // std::string, std::to_string
+#include <thread>
 
 #include "glove.hpp"
 #include "init.hpp"
@@ -22,6 +25,7 @@ using std::cerr;
 using std::cout;
 using std::endl;
 using namespace royale;
+using namespace std::chrono;
 
 //----------------------------------------------------------------------
 // DECLARATIONS AND VARIABLES
@@ -33,7 +37,6 @@ float maxDepth = 1.5;       // The depth of viewing range.
                             // are ignored. Value can be changed by poti.
 
 int frameCounter;  // counter for single frames
-int kCounter;      // counter for 1000 frames
 float fps;         // av. frames per second
 std::array<uint8_t, 9> ninePixMatrix;
 int globalPotiVal;
@@ -108,12 +111,40 @@ void getPauseDur() {
   lastPrintCurTime = millis();
 }
 
+// StoreTimePoint Class
+storeTimePoint::storeTimePoint(int s) {
+  size = 100;
+  size = s < size ? s : size;
+}
+
+void storeTimePoint::store(int pos, std::string name) {
+  if (pos < size) {
+    t[pos] = steady_clock::now();
+    n[pos] = name;
+  } else {
+    cout << "storeTimePoint ERROR: End of Array \n";
+  }
+}
+void storeTimePoint::print() {
+  for (int x = 0; x < size - 1; x++) {
+    cout << n[x + 1] << "\t was:\t "
+         << duration_cast<microseconds>(t[x + 1] - t[x]).count() << "\tus\n";
+  }
+  cout << "OVERALL duration was: "
+       << duration_cast<milliseconds>(t[size - 1] - t[0]).count() << "\tms\n";
+}
+
+storeTimePoint camTP(5);
+
+// void storeTime(int i) { t[i] = steady_clock::now }
+
 //----------------------------------------------------------------------
 // MAIN FUNCTION
 //----------------------------------------------------------------------
 
 // gets called everytime there is a new depth frame from the Pico Flexx
 void DepthDataListener::onNewData(const DepthData *data) {
+  camTP.store(0, "start");
   int histo[9][256];       // historgram, needed to find closest obj
   lastNewData = millis();  // timestamp when new frame arrives
                            // (to check if a crash of libroyale occured)
@@ -135,7 +166,7 @@ void DepthDataListener::onNewData(const DepthData *data) {
   height = data->height;            // get height from depth image
   int tileWidth = width / 3 + 1;    // respectiveley width of one tile
   int tileHeight = height / 3 + 1;  // respectiveley height of one tile
-
+  camTP.store(1, "no1");
   // this if-block is needed for mutex
   if (true) {
     std::lock_guard<std::mutex> lock(depMutex);
@@ -147,12 +178,12 @@ void DepthDataListener::onNewData(const DepthData *data) {
     for (int y = 0; y < height; y++) {
       uint8_t *depImgPtr = depImg.ptr<uint8_t>(y);
       for (int x = 0; x < width; x++) {
-        auto curPoint = data->points.at(
-            y * width + x);  // save currently observed pixel in curPoint
-        bool valid = curPoint.depthConfidence >
-                     10;  // check its validity (if bigger than 10 -> valid)
-        int tileIdx = (x / tileWidth) +
-                      3 * (y / tileHeight);  // select the respective tile
+        // save currently observed pixel in curPoint
+        auto curPoint = data->points.at(y * width + x);
+        // check its validity (if bigger than 10 -> valid)
+        bool valid = curPoint.depthConfidence > 10;
+        // select the respective tile
+        int tileIdx = (x / tileWidth) + 3 * (y / tileHeight);
 
         // WRITE VALID PIXELS in DepImg and histogram
         if (valid) {
@@ -186,7 +217,7 @@ void DepthDataListener::onNewData(const DepthData *data) {
     }
   }
   newDepthImage = true;  // New Depth Image is ready
-
+  camTP.store(2, "no2");
   // this if-block is needed for mutex
   if (true) {
     std::lock_guard<std::mutex> lock(tileMutex);
@@ -227,21 +258,20 @@ void DepthDataListener::onNewData(const DepthData *data) {
       }
     }
   }
-
-  // counting every 1000 passed frames
-  //  if (frameCounter == 1000) {
-  //    kCounter++;
-  //    frameCounter = 0;
-  //  }
+  camTP.store(3, "no3");
   frameCounter++;  // counting every frame
 
   // WRITE VALUES TO GLOVE
   // this if-block is needed for mutex
   if (true) {
     std::lock_guard<std::mutex> lock(tileMutex);
-    if (motorsMuted != true && calibRunning != true)  // Check if values should be written
-      writeValues(9, &(ninePixMatrix[0]));
+    if (motorsMuted != true &&
+        calibRunning != true)  // Check if values should be written
+      std::thread{writeValues, 9, &(ninePixMatrix[0])}.detach();
+    // writeValues(9, &(ninePixMatrix[0]));
   }
+  camTP.store(4, "no4");
+  //camTP.print();
   // WRITE
   getCycleDur();  // Calculate how long this cycle took
 }
@@ -273,19 +303,6 @@ float DepthDataListener::adjustDepthValueForImage(float zValue, float max) {
 
 // print Output to the Terminal Window for debugging and monitoring
 void printOutput() {
-  int secondsSinceReset = ((millis() - resetFC) / 1000);
-  if (secondsSinceReset > 0) {
-    fps = frameCounter / secondsSinceReset;
-  }
-  if (frameCounter > 999) {
-    frameCounter = 0;
-    resetFC = millis();
-  }
-  printf("frame:\t %i \t time:\t %i \t fps: %.1f \n", frameCounter,
-         secondsSinceReset, fps);
-  printf("cycle:\t %ims \t pause: %ims \n", globalCycleTime, globalPauseTime);
-  printf("Range:\t %.1f m\n\n\n", maxDepth);
-
   // print the values if the tiles as matrix
   // this if-block is needed for mutex
   if (true) {
