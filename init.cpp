@@ -32,7 +32,6 @@ void createWindows() {
 //________________________________________________
 // check if there is a cam
 bool checkCam() {
-  udpHandling();
   royale::CameraManager manager;
   royale::Vector<royale::String> camlist;
   camlist = manager.getConnectedCameraList();
