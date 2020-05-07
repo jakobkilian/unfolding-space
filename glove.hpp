@@ -25,6 +25,7 @@
 void setupGlove();
 void muteAll();
 void writeValues(int valc, uint8_t *vals);
-
+void testMotorNo(int i, int val);
+void doCalibration();
 // drv board detachable?
 extern bool detachableDRV;

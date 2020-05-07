@@ -20,6 +20,7 @@
 //----------------------------------------------------------------------
 void printCurTime(const std::string &);
 cv::Mat passDepFrame();
+cv::Mat passUdpFrame(int);
 cv::Mat passNineFrame();
 void printOutput();
 std::string packValStr();
@@ -27,6 +28,7 @@ std::string packValStr();
 extern int globalCycleTime;
 extern int globalPauseTime;
 extern bool motorsMuted;
+extern bool calibRunning;
 extern bool noChangeInMatrix;
 extern bool newDepthImage;
 extern bool processingImg;

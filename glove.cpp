@@ -10,6 +10,7 @@
 // INCLUDES
 //----------------------------------------------------------------------
 #include "glove.hpp"
+
 #include "camera.hpp"
 
 //----------------------------------------------------------------------
@@ -18,7 +19,7 @@
 int registerWrite(unsigned char, char);
 uint8_t registerRead(unsigned char);
 int drvSelect(uint8_t);
-int setupLRA();
+int setupLRA(bool);
 void myi2cSetup();
 void calibAll();
 void resetAll();
@@ -94,11 +95,11 @@ uint8_t altCurve[] = {
 // VARIABLES
 //----------------------------------------------------------------------
 uint8_t asciiArt[] = {'.', '-', '+', 'x', 'o', 'O'};
-uint8_t vibVal[9];          // current vibration strength of the motors
-uint8_t lastVibVal[9];      // last vibration strength
-uint8_t maxCalibPasses = 5; // max trys for calib before skipping
-uint8_t availableLRAs = 0;  // number of LRAs
-bool calibSuccess[9];       // was calibration successfull?
+uint8_t vibVal[9];           // current vibration strength of the motors
+uint8_t lastVibVal[9];       // last vibration strength
+uint8_t maxCalibPasses = 2;  // max trys for calib before skipping
+uint8_t availableLRAs = 0;   // number of LRAs
+bool calibSuccess[9];        // was calibration successfull?
 int retVal;
 
 // Should there be a calibration in the beginning? Else: Take standard Values
@@ -135,8 +136,8 @@ void setupGlove() {
   // resetAll(); //to stop ongoing vibrations or faulty settings
   // Write settings to all drivers and start simultaneous auto calibration
   for (int u = 0; u < 9; u++) {
-    drvSelect(u); // select the driver to write to
-    while (setupLRA() != 0) {
+    drvSelect(u);  // select the driver to write to
+    while (setupLRA(startupCalib) != 0) {
       // printf("writing settings to no %i failed \n", u); //Send all register
       // settings and "GO" bit to start auto calibration
     }
@@ -144,66 +145,7 @@ void setupGlove() {
   // the following calibration process can be skipped (startupCalib=false).
   // The standard values do their job well enough
   if (startupCalib) {
-    delay(300);
-    // Check if autocalibration already was finished and successfull. If not, do
-    // subsequent calibration passes
-    for (int u = 0; u < 0; u++) {
-      drvSelect(u); // select the driver to write to
-      printf("\n\n\n\nDRV No: %i\n", u);
-      printf("_________________\n");
-      int calibCounter = 0;
-      // Get GO bit - when cleared auto calibration has been finished
-      uint8_t getGO = 0x01;
-      while ((getGO & 0x01) != 0x00) {
-        getGO = registerRead(GO);
-        delay(5);
-      }
-      // Get status register to check if auto calibration was successfull
-      uint8_t getStatus = registerRead(STATUS);
-      if ((getStatus & 0x08) == 0x00) {
-        calibSuccess[u] = true;
-      } else {
-        // Cancel when there were too many calibration passes
-        while (calibCounter < maxCalibPasses) {
-          // Start next calibration
-          printf("LRA %i returned status %x. Calib pass no %i\n", u, getStatus,
-                 calibCounter);
-          while (setupLRA() != 0) {
-            printf("setup of actuator No %i failed\n",
-                   u); // Send all register settings and "GO" bit to start auto
-                       // calibration
-          }
-          delay(300);
-          getGO = 0x01;
-          while ((getGO & 0x01) != 0x00) {
-            getGO = registerRead(GO);
-            delay(5);
-          }
-          getStatus = registerRead(STATUS);
-          if ((getStatus & 0x08) == 0x00) {
-            calibSuccess[u] = true;
-            break;
-          }
-          calibCounter++; // count the calibration passes
-        }
-        if (calibCounter == maxCalibPasses) {
-        }
-        printf("FATAL: cannot calibrate LRA No %i", u);
-      }
-      // If Calibration was successfull print results and switch to active mode
-      if (calibSuccess[u] == true) {
-        while (registerWrite(MODE, 0x05) != 0) // set DRV to RTP Mode
-        {
-          printf("setting No %i in RTP mode failed\n", u);
-        }
-        while (registerWrite(RTP_INPUT, 0x00) != 0) // set vibration value to 0
-        {
-          printf("setting RTP value at No %i to zero failed\n", u);
-        }
-        printStatusToSerial(getStatus);
-      }
-    }
-    printSummary();
+    doCalibration();
   }
 }
 
@@ -236,9 +178,11 @@ int registerWrite(unsigned char ucRegAddress, char cValue) {
 //________________________________________________
 // Write all vibration strength value to the DRV2605s
 void writeValues(int valc, uint8_t *vals) {
-  uint8_t order[9] = {5, 2, 1, 4, 6, 0, 8, 7, 3};
+  // uint8_t order[9] = {5, 2, 1, 4, 6, 0, 8, 7, 3};
+  uint8_t order[9] = {5, 8, 2, 6, 0, 3, 7, 1, 4};
+
   for (int i = 0; i != valc; ++i) {
-    drvSelect(order[i]); // route the value to the right TCA and DRV
+    drvSelect(order[i]);  // route the value to the right TCA and DRV
     registerWrite(RTP_INPUT, altCurve[vals[i]]);
   }
 }
@@ -277,37 +221,37 @@ int drvSelect(uint8_t i) {
 
 //________________________________________________
 // Set the settings of the DRVs by writing to their registers
-int setupLRA() {
+int setupLRA(bool calib) {
   if (registerWrite(MODE, 0x07) != 0)
-    return -1; // Device ready (no standby) | Auto calibration mode
+    return -1;  // Device ready (no standby) | Auto calibration mode
   if (registerWrite(FB_CON, 0xA6) != 0)
-    return -1; // Mode = LRA | Brake Factor = 3x | Loop Gain = Medium | BEMF
-               // Gain = 15x
+    return -1;  // Mode = LRA | Brake Factor = 3x | Loop Gain = Medium | BEMF
+                // Gain = 15x
   if (registerWrite(RATED_VOLTAGE, 0x46) != 0)
-    return -1; // Rated Voltage Value of 70 - Calcuclation explained in
-               // datasheet p.24
+    return -1;  // Rated Voltage Value of 70 - Calcuclation explained in
+                // datasheet p.24
   // if (registerWrite(OD_CLAMP, 0x5A) != 0) return -1;     //Overdrive Clamp
   // Value of 90 (a little more than rms cause there is no val in LRAs
   // datasheet)
   // - Calcuclation explained in datasheet p.25
   if (registerWrite(CONTRL1, 0x90) != 0)
-    return -1; // Drive Time Value of 16 (235Hz/1000/2 - 0.5 *10) - Calcuclation
-               // explained in datasheet p.24
+    return -1;  // Drive Time Value of 16 (235Hz/1000/2 - 0.5 *10) -
+                // Calcuclation explained in datasheet p.24
   if (registerWrite(CONTRL2, 0x75) != 0)
-    return -1; // Unidirectional Input Mode on
+    return -1;  // Unidirectional Input Mode on
   if (registerWrite(CONTRL3, 0xE2) != 0)
-    return -1; // Closed/Auto-resonance Mode on
-  if (registerWrite(CONTRL4, 0x30) != 0)
-    return -1;                // Calib length of 500ms
-  if (startupCalib == true) { // only when there should be a calib at startup
+    return -1;  // Closed/Auto-resonance Mode on
+  if (registerWrite(CONTRL4, 0x30) != 0) return -1;  // Calib length of 500ms
+  if (calib) {  // only when there should be a calib at startup
     if (registerWrite(GO, 0x01) != 0)
-      return -1; // GO to start Auto-Calib process
-  }
-  while (registerWrite(MODE, 0x05) != 0) // set DRV to RTP Mode
-  {
-  }
-  while (registerWrite(RTP_INPUT, 0x00) != 0) // set vibration value to 0
-  {
+      return -1;  // GO to start Auto-Calib process
+  } else {
+    while (registerWrite(MODE, 0x05) != 0)  // set DRV to RTP Mode
+    {
+    }
+    while (registerWrite(RTP_INPUT, 0x00) != 0)  // set vibration value to 0
+    {
+    }
   }
   return 0;
 }
@@ -318,9 +262,10 @@ void muteAll() {
   for (int i = 0; i < 9; ++i) {
     drvSelect(i);
     registerWrite(RTP_INPUT, 0);
+    delay(1);
   }
   delay(10);
-  printf("Muted all LRAs \n");
+  // printf("Muted all LRAs \n");
 }
 
 //________________________________________________
@@ -330,7 +275,7 @@ void resetAll() {
     drvSelect(u);
     delay(1);
     // First: Set DEV_RESET bit to 1
-    while (registerWrite(MODE, 0x80) != 0) // Do until the shield is reset
+    while (registerWrite(MODE, 0x80) != 0)  // Do until the shield is reset
     {
       printf("Reset failed\n");
     }
@@ -341,7 +286,7 @@ void resetAll() {
     delay(1);
     // Check DEV_RESET bit until it gets cleared (reset finished)
     uint8_t getMODE = 0x80;
-    while ((getMODE & 0x80) != 0x00) // Do until the shield is reset
+    while ((getMODE & 0x80) != 0x00)  // Do until the shield is reset
     {
       getMODE = registerRead(MODE);
       delay(1);
@@ -352,7 +297,7 @@ void resetAll() {
     }
     // Check standby bit until it gets cleared (device active)
     getMODE = 0x00;
-    while ((getMODE & 0x04) != 0x00) // Check until it is active
+    while ((getMODE & 0x04) != 0x00)  // Check until it is active
     {
       getMODE = registerRead(MODE);
       delay(1);
@@ -366,13 +311,13 @@ void resetAll() {
 // print result of calibration pass
 void printStatusToSerial(uint8_t status) {
   printf("return:\t\t%x\ncommunication:\t", status);
-  if ((status & 0xE0) == 0x00) // check if the board gives the right ID back
+  if ((status & 0xE0) == 0x00)  // check if the board gives the right ID back
   {
     printf("NO ANSWER\n");
   }
-  if ((status & 0xE0) != 0x00) { // if it does, check the rest of the status
+  if ((status & 0xE0) != 0x00) {  // if it does, check the rest of the status
     printf("CONNECTED\ncalib success:\t");
-    if ((status & 0x8) == 0x00) // check is calib was successfull
+    if ((status & 0x8) == 0x00)  // check is calib was successfull
       printf("YES\n");
     else {
       printf("NO\n");
@@ -412,8 +357,79 @@ void printSummary() {
       printf("READY\n");
       availableLRAs++;
     } else {
-      printf("-\n");
+      printf("not ready! \n");
     }
   }
   printf("\ntotal of:\t%i\n", availableLRAs);
+}
+
+// Do the Calibration Process
+void doCalibration() {
+  resetAll();
+  for (int u = 0; u < 9; u++) {
+    drvSelect(u);  // select the driver to write to
+    while (setupLRA(true) != 0) {
+      // printf("writing settings to no %i failed \n", u); //Send all register
+      // settings and "GO" bit to start auto calibration
+    }
+  }
+  // Check if autocalibration already was finished and successfull. If not, do
+  // subsequent calibration passes
+  for (int u = 0; u < 9; u++) {
+    drvSelect(u);  // select the driver to write to
+    printf("\n\n\n\nDRV No: %i\n", u);
+    printf("_________________\n");
+    int calibCounter = 0;
+    // Get GO bit - when cleared auto calibration has been finished
+    uint8_t getGO = 0x01;
+    while ((getGO & 0x01) != 0x00) {
+      getGO = registerRead(GO);
+      delay(5);
+    }
+    // Get status register to check if auto calibration was successfull
+    uint8_t getStatus = registerRead(STATUS);
+    if ((getStatus & 0x08) == 0x00) {
+      calibSuccess[u] = true;
+    } else {
+      // Cancel when there were too many calibration passes
+      while (calibCounter < maxCalibPasses) {
+        // Start next calibration
+        printf("LRA %i returned status %x. Calib pass no %i\n", u, getStatus,
+               calibCounter);
+        while (setupLRA(true) != 0) {
+          printf("setup of actuator No %i failed\n",
+                 u);  // Send all register settings and "GO" bit to start auto
+                      // calibration
+        }
+        delay(50);
+        getGO = 0x01;
+        while ((getGO & 0x01) != 0x00) {
+          getGO = registerRead(GO);
+          delay(5);
+        }
+        getStatus = registerRead(STATUS);
+        if ((getStatus & 0x08) == 0x00) {
+          calibSuccess[u] = true;
+          break;
+        }
+        calibCounter++;  // count the calibration passes
+      }
+      if (calibCounter == maxCalibPasses) {
+      }
+      printf("FATAL: cannot calibrate LRA No %i", u);
+    }
+    // If Calibration was successfull print results and switch to active mode
+    if (calibSuccess[u] == true) {
+      while (registerWrite(MODE, 0x05) != 0)  // set DRV to RTP Mode
+      {
+        printf("setting No %i in RTP mode failed\n", u);
+      }
+      while (registerWrite(RTP_INPUT, 0x00) != 0)  // set vibration value to 0
+      {
+        printf("setting RTP value at No %i to zero failed\n", u);
+      }
+      printStatusToSerial(getStatus);
+    }
+  }
+  printSummary();
 }
