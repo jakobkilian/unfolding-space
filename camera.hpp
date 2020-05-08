@@ -10,14 +10,15 @@
 //----------------------------------------------------------------------
 // INCLUDES
 //----------------------------------------------------------------------
+#include <string.h>
+
+#include <condition_variable>
 #include <mutex>
 #include <opencv2/opencv.hpp>
 #include <royale.hpp>
-#include <string.h>
-#include <chrono>
+#include <thread>
 
 using namespace std::chrono;
-
 
 //----------------------------------------------------------------------
 // DECLARATIONS
@@ -44,30 +45,31 @@ extern float fps;
 extern std::array<uint8_t, 9> ninePixMatrix;
 extern bool gui;
 extern long resetFC;
-
+extern std::condition_variable ddCond;  // depthData condition varibale
+extern std::mutex ddMut;                // depthData condition varibale
+extern bool newDD; 
 
 //----------------------------------------------------------------------
 // CLASSES
 //----------------------------------------------------------------------
-class DepthDataListener : public royale::IDepthDataListener
-{
+class DepthDataListener : public royale::IDepthDataListener {
   // lens matrices used for the undistortion of
   // the image
   cv::Mat cameraMatrix;
   cv::Mat distortionCoefficients;
   bool undistortImage = false;
 
-public:
+ public:
   DepthDataListener() : undistortImage(false) {}
   void onNewData(const royale::DepthData *data);
+  void copyData( royale::DepthData *data);
   void setLensParameters(const royale::LensParameters &lensParameters);
   void toggleUndistort();
 
-private:
+ private:
   float adjustDepthValue(float zValue, float max);
   float adjustDepthValueForImage(float zValue, float max);
 };
-
 
 class storeTimePoint {
   // new: save the steps in an array of time_points to print them at the end...
@@ -75,10 +77,14 @@ class storeTimePoint {
   std::array<std::string, 100> n;
   int size;
   int i;
+  int pos;
 
  public:
   storeTimePoint(int s);
-  void store(int pos, std::string name);
+  void store(std::string name);
   void reset();
   void print();
 };
+
+extern royale::DepthData sharedData;
+extern storeTimePoint camTP;

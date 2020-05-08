@@ -117,24 +117,31 @@ storeTimePoint::storeTimePoint(int s) {
   size = s < size ? s : size;
 }
 
-void storeTimePoint::store(int pos, std::string name) {
+void storeTimePoint::store(std::string name) {
+  pos++;
   if (pos < size) {
     t[pos] = steady_clock::now();
     n[pos] = name;
   } else {
+    pos = size - 1;
     cout << "storeTimePoint ERROR: End of Array \n";
   }
 }
 void storeTimePoint::print() {
-  for (int x = 0; x < size - 1; x++) {
+  for (int x = 0; x < pos; x++) {
     cout << n[x + 1] << "\t was:\t "
          << duration_cast<microseconds>(t[x + 1] - t[x]).count() << "\tus\n";
   }
   cout << "OVERALL duration was: "
-       << duration_cast<milliseconds>(t[size - 1] - t[0]).count() << "\tms\n";
+       << duration_cast<milliseconds>(t[pos] - t[0]).count() << "\tms\n";
+  pos = -1;
 }
 
-storeTimePoint camTP(5);
+storeTimePoint camTP(20);
+
+std::condition_variable ddCond;  // depthData condition varibale
+std::mutex ddMut;                // depthData condition varibale
+bool newDD = false;
 
 // void storeTime(int i) { t[i] = steady_clock::now }
 
@@ -144,7 +151,24 @@ storeTimePoint camTP(5);
 
 // gets called everytime there is a new depth frame from the Pico Flexx
 void DepthDataListener::onNewData(const DepthData *data) {
-  camTP.store(0, "start");
+  camTP.store("start");
+  {
+    std::lock_guard<std::mutex> ddLock(ddMut);
+    camTP.store("lock");
+    sharedData = *data;
+    camTP.store("copy");
+    newDD = true;
+  }
+  camTP.store("unlock");
+
+  // wake other thread
+  ddCond.notify_one();
+  camTP.store("notif");
+}
+
+void DepthDataListener::copyData(DepthData *data) {
+  camTP.store("funct");
+
   int histo[9][256];       // historgram, needed to find closest obj
   lastNewData = millis();  // timestamp when new frame arrives
                            // (to check if a crash of libroyale occured)
@@ -166,13 +190,13 @@ void DepthDataListener::onNewData(const DepthData *data) {
   height = data->height;            // get height from depth image
   int tileWidth = width / 3 + 1;    // respectiveley width of one tile
   int tileHeight = height / 3 + 1;  // respectiveley height of one tile
-  camTP.store(1, "no1");
   // this if-block is needed for mutex
   if (true) {
     std::lock_guard<std::mutex> lock(depMutex);
     depImg.create(cv::Size(width, height), CV_8UC3);   // gets filled later
     if (gui) tileImg.create(cv::Size(3, 3), CV_8UC1);  // gets filled later
     bzero(histo, sizeof(int) * 9 * 256);               // clear histogram array
+    camTP.store("bf");
 
     // READING DEPTH IMAGE pixel by pixel
     for (int y = 0; y < height; y++) {
@@ -188,26 +212,29 @@ void DepthDataListener::onNewData(const DepthData *data) {
         // WRITE VALID PIXELS in DepImg and histogram
         if (valid) {
           // Depth Value in relation to maxDepth (max depth range)
-          uint8_t depth = (uint8_t)adjustDepthValue(curPoint.z, maxDepth);
+          float depth = adjustDepthValue(curPoint.z, maxDepth);
+          // HERE the costly stuff begins: copiing values in histogram and
+          // DepImg
           // save this pixel's depth value in histo
-          histo[tileIdx][depth]++;
-          // create a Hue value from 0-180 for the visual output
-          depImgPtr[x * 3] = adjustDepthValueForImage(curPoint.z, maxDepth);
-          // Saturation is always the same
-          depImgPtr[x * 3 + 1] = 0;
-          // create brightness value relative to depth value
-          depImgPtr[x * 3 + 2] = adjustDepthValue(curPoint.z, maxDepth);
+          histo[tileIdx][(uint8_t)depth]++;
+          //if pixel is in range put the right grey tone
+          if (depth < 255) {
+            // create a Hue value from 0-180 for the visual output
+            depImgPtr[x * 3] = adjustDepthValueForImage(curPoint.z, maxDepth);
+            // Saturation is always the same
+            depImgPtr[x * 3 + 1] = 0;
+            // create brightness value relative to depth value
+            depImgPtr[x * 3 + 2] = depth;
+          }
+          // if pixel is out of –> make it white / invisible
+          else {
+            depImgPtr[x * 3] = 255;
+            depImgPtr[x * 3 + 1] = 0;
+            depImgPtr[x * 3 + 2] = 255;
+          }
         }
-
-        // if pixel is out of range but valid –> make it white / invisible
-        if (adjustDepthValue(curPoint.z, maxDepth) == 255) {
-          depImgPtr[x * 3] = 255;
-          depImgPtr[x * 3 + 1] = 0;
-          depImgPtr[x * 3 + 2] = 255;
-        }
-
         // If pixel is not valid –> make it gray
-        if (!valid) {
+        else {
           depImgPtr[x * 3] = 7;
           depImgPtr[x * 3 + 1] = 10;
           depImgPtr[x * 3 + 2] = 245;
@@ -217,7 +244,8 @@ void DepthDataListener::onNewData(const DepthData *data) {
     }
   }
   newDepthImage = true;  // New Depth Image is ready
-  camTP.store(2, "no2");
+  camTP.store("aft for");
+
   // this if-block is needed for mutex
   if (true) {
     std::lock_guard<std::mutex> lock(tileMutex);
@@ -258,7 +286,8 @@ void DepthDataListener::onNewData(const DepthData *data) {
       }
     }
   }
-  camTP.store(3, "no3");
+  camTP.store("aft his");
+
   frameCounter++;  // counting every frame
 
   // WRITE VALUES TO GLOVE
@@ -267,13 +296,15 @@ void DepthDataListener::onNewData(const DepthData *data) {
     std::lock_guard<std::mutex> lock(tileMutex);
     if (motorsMuted != true &&
         calibRunning != true)  // Check if values should be written
-      std::thread{writeValues, 9, &(ninePixMatrix[0])}.detach();
+      writeValues( 9, &(ninePixMatrix[0]));
+      //std::thread{writeValues, 9, &(ninePixMatrix[0])}.detach();
     // writeValues(9, &(ninePixMatrix[0]));
   }
-  camTP.store(4, "no4");
-  //camTP.print();
+
   // WRITE
   getCycleDur();  // Calculate how long this cycle took
+  camTP.store("end");
+  camTP.print();
 }
 
 float DepthDataListener::adjustDepthValue(float zValue, float max) {

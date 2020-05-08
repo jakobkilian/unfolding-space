@@ -171,7 +171,7 @@ int registerWrite(unsigned char ucRegAddress, char cValue) {
            data);
     return -1;
   }
-  delayMicroseconds(100);
+  //delayMicroseconds(100);
   return 0;
 }
 

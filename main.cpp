@@ -6,7 +6,6 @@
  * Project: unfoldingspace.jakobkilian.de
  */
 
-
 //----------------------------------------------------------------------
 // INCLUDES
 //----------------------------------------------------------------------
@@ -36,7 +35,6 @@ using std::cerr;
 using std::cout;
 using std::endl;
 using namespace std::chrono;
-
 
 //----------------------------------------------------------------------
 // SETTINGS
@@ -73,6 +71,9 @@ bool record = false;    // currently recording?
 // Motor test stuff
 bool testMotors;
 uint8_t motorTestMatrix[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+
+DepthDataListener listener;
+royale::DepthData sharedData;
 
 //----------------------------------------------------------------------
 // UDP CONNECTION
@@ -330,14 +331,11 @@ void endMuted(int dummy) {
   exit(0);
 }
 
-
-
 //----------------------------------------------------------------------
 // UNFOLDING - This is the main part, now in a seperate thread
 //----------------------------------------------------------------------
 
 int unfolding() {
-
   //_____________________INIT CAMERA____________________________________
   // check if the cam is connected before init anything
   while (checkCam() == false) {
@@ -385,7 +383,6 @@ searchCam:
   // before the cameraDevice so that, if this function exits with a 'return'
   // statement while  camera is still capturing, it will still be in scope
   // until the cameraDevice's destructor implicitly de-registers  listener.
-  DepthDataListener listener;
 
   // Event Listener
   EventReporter eventReporter;
@@ -510,7 +507,7 @@ searchCam:
   motorsMuted = false;         // activate the vibration motors
   long lastCallImshow = millis();
   long lastCall = 0;
-    long lastCallTemp = 0;
+  long lastCallTemp = 0;
   long lastCallPoti = millis();
 
   //_____________________ENDLESS LOOP_________________________________
@@ -593,10 +590,12 @@ searchCam:
 
           // printf("time since last new data: %i ms \n", timeSinceLastNewData);
           // printf("No of library crashes: %i times \n", libraryCrashNo);
-          // printf("longest time with no new data was: %i \n", longestTimeNoData);
-          // printf("temp.: \t%.1f°C\n", coreTempDouble);
-          // printf("drops:\t%i | %i\t deliver:\t%i \t drops in last 10sec: %i\n",
-          //        droppedAtBridge, droppedAtFC, deliveredFrames, tenSecsDrops);
+          // printf("longest time with no new data was: %i \n",
+          // longestTimeNoData); printf("temp.: \t%.1f°C\n", coreTempDouble);
+          // printf("drops:\t%i | %i\t deliver:\t%i \t drops in last 10sec:
+          // %i\n",
+          //        droppedAtBridge, droppedAtFC, deliveredFrames,
+          //        tenSecsDrops);
           // printf("frame:\t %i \t time:\t %i \t fps: %.1f \n", frameCounter,
           //        secondsSinceReset, fps);
           // printf("cycle:\t %ims \t pause: %ims \n", globalCycleTime,
@@ -716,6 +715,18 @@ class mainThreadWrapper {
     printf("Stopping the UDP server now... \n");
     io_service.stop();
   }
+
+  void runCopyDepthData() {}
+
+  void runSendDepthData() {
+    while (1) {
+      std::unique_lock<std::mutex> ddLock(ddMut);
+      ddCond.wait(ddLock, [] { return newDD; });
+      listener.copyData(&sharedData);
+      newDD=false;
+    }
+  }
+
   std::thread runUdpThread() {
     return std::thread([=] { runUdp(); });
   }
@@ -724,6 +735,12 @@ class mainThreadWrapper {
   }
   std::thread runUdpBroadcasting() {
     return std::thread([=] { runBroad(); });
+  }
+  std::thread runCopyDepthDataThread() {
+    return std::thread([=] { runCopyDepthData(); });
+  }
+  std::thread runSendDepthDataThread() {
+    return std::thread([=] { runSendDepthData(); });
   }
 };
 
@@ -736,8 +753,13 @@ int main(int argc, char *argv[]) {
   std::thread udpTh = w->runUdpThread();
   std::thread unfTh = w->runUnfoldingThread();
   std::thread udpBroad = w->runUdpBroadcasting();
+  std::thread ddCopyTh = w->runCopyDepthDataThread();
+  std::thread ddSendTh = w->runSendDepthDataThread();
+
   udpTh.join();
   unfTh.join();
   udpBroad.join();
+  ddCopyTh.join();
+  ddSendTh.join();
   return 0;
 }
