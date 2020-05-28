@@ -15,6 +15,7 @@
 #include <boost/array.hpp>
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/shared_ptr.hpp>
 #include <chrono>
 #include <ctime>
@@ -29,6 +30,8 @@
 #include "init.hpp"
 #include "poti.hpp"
 #include "time.h"
+#include "timelog.hpp"
+#include "udp.hpp"
 
 using boost::asio::ip::udp;
 using std::cerr;
@@ -39,18 +42,16 @@ using namespace std::chrono;
 //----------------------------------------------------------------------
 // SETTINGS
 //----------------------------------------------------------------------
-// any visual output on the raspberry? (or just udp and terminal output...)
-bool gui = 0;
 // Does the system use a poti?
 bool potiAv = 0;
 // Does the system use the old DRV-Breakoutboards or the new detachable DRV-PCB?
 bool detachableDRV = 0;
-// recording mode available?
-bool recordMode = false;
 
 //----------------------------------------------------------------------
 // DECLARATIONS AND VARIABLES
 //----------------------------------------------------------------------
+
+//Todo: global stuff
 long timeSinceLastNewData;  // time passed since last "onNewData"
 double coreTempDouble;      // Temperature of the Raspi core
 int droppedAtBridge;    // How many frames got dropped at Bridge (in libroyale)
@@ -58,7 +59,6 @@ int droppedAtFC;        // How many frames got dropped at FC (in libroyale)
 int deliveredFrames;    // Number of frames delivered
 int tenSecsDrops;       // Number of drops in the last 10 seconds
 int fpsFromCam;         // wich royal use case is used? (how many fps?)
-bool processingImg;     // Image is currently processed
 int currentKey = 0;     //
 int libraryCrashNo;     // counter for the crashes of the library
 int longestTimeNoData;  // the longest timespan without new data since start
@@ -66,187 +66,11 @@ bool connected;         // camera is currently connected
 bool capturing;         // camera is currently capturing
 bool cameraDetached;    // camera got detached
 long cameraStartTime;   // timestamp when camera started capturing
-bool record = false;    // currently recording?
-
-// Motor test stuff
 bool testMotors;
-uint8_t motorTestMatrix[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+int motorTestMatrix[] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 DepthDataListener listener;
-royale::DepthData sharedData;
 
-//----------------------------------------------------------------------
-// UDP CONNECTION
-//----------------------------------------------------------------------
-
-// Helper
-template <typename T>
-std::string add(unsigned char id, T const &value) {
-  std::ostringstream oss;
-  oss << id << ":" << std::to_string(value) << "|";
-  std::string s = oss.str();
-  // printf(id);
-  return s;
-}
-
-// Send the Set of Data to the Android App
-std::string packValStr(bool sendImg, int imgSize) {
-  std::string tmpStr;
-  // Add the values to the string. TODO: slim everything a bit down? Does string
-  // cost time?
-  tmpStr += add(0, frameCounter);
-  tmpStr += add(1, timeSinceLastNewData);
-  tmpStr += add(2, longestTimeNoData);
-  tmpStr += add(3, (int)fps);
-  tmpStr += add(4, globalPotiVal);
-  tmpStr += add(5, coreTempDouble);
-  tmpStr += add(6, connected);
-  tmpStr += add(7, capturing);
-  tmpStr += add(8, libraryCrashNo);
-  tmpStr += add(9, droppedAtBridge);
-  tmpStr += add(10, droppedAtFC);
-  tmpStr += add(11, tenSecsDrops);
-  tmpStr += add(12, deliveredFrames);
-  tmpStr += add(13, globalCycleTime);
-  tmpStr += add(14, globalPauseTime);
-  tmpStr += add(15, motorsMuted);
-  tmpStr += add(16, testMotors);
-
-  for (size_t i = 0; i < 9; i++) {
-    if (!testMotors) {
-      tmpStr += add(i + 17, ninePixMatrix[i]);
-    } else {
-      tmpStr += add(i + 17, motorTestMatrix[i]);
-    }
-  }
-  tmpStr += add(26, millis());
-  // Send detailed picture if wanted
-  if (sendImg) {
-    tmpStr += "#|";
-    cv::Mat dep;
-    dep = passUdpFrame(imgSize);
-    cv::cvtColor(dep, dep, cv::COLOR_HSV2RGB, 3);
-    cv::flip(dep, dep, -1);
-    for (int i = 0; i < dep.rows; i++) {
-      for (int j = 0; j < dep.cols; j++) {
-        unsigned char t = dep.at<cv::Vec3b>(i, j)[0];
-        tmpStr += t;
-      }
-    }
-  }
-  return tmpStr;
-}
-
-// UDP Server Class
-class udp_brodcasting {
- public:
-  udp_brodcasting(boost::asio::io_service &io_service)
-      : broad_socket_(io_service, udp::endpoint(udp::v4(), 9007)) {
-    broad_socket_.open(udp::v4(), ignored_error);
-    broad_socket_.set_option(udp::socket::reuse_address(true));
-    broad_socket_.set_option(boost::asio::socket_base::broadcast(true));
-    broad_endpoint_ =
-        udp::endpoint(boost::asio::ip::address_v4::broadcast(), 9008);
-  }
-  udp::socket broad_socket_;
-  udp::endpoint broad_endpoint_;
-  boost::system::error_code ignored_error;
-
- public:
-  void sendBroadcast() {
-    if (!ignored_error) {
-      broad_socket_.send_to(boost::asio::buffer("Unfolding 1"), broad_endpoint_,
-                            0, ignored_error);
-    } else {
-      broad_socket_.send_to(boost::asio::buffer("Unfolding 1"), broad_endpoint_,
-                            0, ignored_error);
-      cout << "Broadcast ERROR: " << ignored_error << endl;
-    }
-  }
-};
-
-// UDP Server Class
-class udp_server {
- public:
-  udp_server(boost::asio::io_service &io_service)
-      : socket_(io_service, udp::endpoint(udp::v4(), 9009)) {
-    start_receive();
-  }
-  udp::socket socket_;
-  udp::endpoint remote_endpoint_;
-  boost::array<char, 4> recv_buffer_;
-
- private:
-  void start_receive() {
-    // Look out for calls on port 9009
-    socket_.async_receive_from(
-        boost::asio::buffer(recv_buffer_), remote_endpoint_,
-        boost::bind(&udp_server::handle_receive, this,
-                    boost::asio::placeholders::error,
-                    boost::asio::placeholders::bytes_transferred));
-  }
-
-  void handle_receive(const boost::system::error_code &error,
-                      std::size_t /*bytes_transferred*/) {
-    bool sendImg = false;
-    int imgSize = 0;
-    int incSize = std::find(recv_buffer_.begin(), recv_buffer_.end(), '\0') -
-                  recv_buffer_.begin();
-    if (incSize > 0) {
-      // printf("not empty\n");
-      auto incoming = std::find(recv_buffer_.begin(), recv_buffer_.end(), 'i');
-      if (incoming != recv_buffer_.end()) {
-        int tmp = (*std::next(incoming, 1) - 48);
-        sendImg = true;
-        imgSize = tmp;
-      }
-      incoming = std::find(recv_buffer_.begin(), recv_buffer_.end(), 'm');
-      if (incoming != recv_buffer_.end()) {
-        motorsMuted = !motorsMuted;
-        testMotors = false;
-        muteAll();
-      }
-      incoming = std::find(recv_buffer_.begin(), recv_buffer_.end(), 't');
-      if (incoming != recv_buffer_.end()) {
-        testMotors = !testMotors;
-        motorsMuted = testMotors;
-        muteAll();
-      }
-
-      incoming = std::find(recv_buffer_.begin(), recv_buffer_.end(), 'z');
-      if (incoming != recv_buffer_.end()) {
-        int tmp = (*std::next(incoming, 1) - 48);
-        motorTestMatrix[tmp] = motorTestMatrix[tmp] == 0 ? 254 : 0;
-        // motorTestMatrix[tmp] = abs(motorTestMatrix[tmp] - 255);
-      }
-
-      incoming = std::find(recv_buffer_.begin(), recv_buffer_.end(), 'c');
-      if (incoming != recv_buffer_.end()) {
-        calibRunning = true;
-        muteAll();
-        motorsMuted = true;
-        doCalibration();
-        calibRunning = false;
-      }
-    }
-    if (!error || error == boost::asio::error::message_size) {
-      // send the ready packed string with all the values from packValStr
-      boost::shared_ptr<std::string> message(
-          new std::string(packValStr(sendImg, imgSize)));
-      socket_.async_send_to(
-          boost::asio::buffer(*message), remote_endpoint_,
-          boost::bind(&udp_server::handle_send, this, message,
-                      boost::asio::placeholders::error,
-                      boost::asio::placeholders::bytes_transferred));
-      // start listening again
-      start_receive();
-    }
-  }
-
-  void handle_send(boost::shared_ptr<std::string> /*message*/,
-                   const boost::system::error_code & /*error*/,
-                   std::size_t /*bytes_transferred*/) {}
-};
 
 //----------------------------------------------------------------------
 // OTHER FUNCTIONS AND CLASSES
@@ -327,58 +151,20 @@ void getCoreTemp() {
 // When an error occurs(camera gets detached): prevent freezing, but mute all
 void endMuted(int dummy) {
   motorsMuted = true;
+  delay(1);
   muteAll();
+  delay(1);
   exit(0);
 }
 
-//----------------------------------------------------------------------
-// UNFOLDING - This is the main part, now in a seperate thread
-//----------------------------------------------------------------------
+//**********************************************************************
+//****************************** UNFOLDING *****************************
+//********** This is the main part, now in a seperate thread ***********
+//**********************************************************************
+timelog mainTimeLog(20);
 
 int unfolding() {
-  //_____________________INIT CAMERA____________________________________
-  // check if the cam is connected before init anything
-  while (checkCam() == false) {
-    cout << ".";
-    cout.flush();
-  }
-
-  // Mute the LRAs before ending the program by ctr + c (SIGINT)
-  signal(SIGINT, endMuted);
-
-  // initialize boost library
-  // boostInit();
-
-  // Setup Connection to Digispark Board for Poti-Reads
-  if (potiAv) initPoti();
-
-  // Just needed if frames should be recorded
-  if (recordMode) {
-    // Get Time to create filename for video recording
-    time_t now = time(0);
-    tm *ltm = localtime(&now);
-    std::string a = std::to_string(ltm->tm_mon);
-    std::string b = std::to_string(ltm->tm_mday);
-    std::string c = std::to_string(ltm->tm_hour);
-    std::string d = std::to_string(ltm->tm_min);
-    std::string e = std::to_string(ltm->tm_sec);
-    std::string depfile = "outputs/" + a + "_" + b + "_" + c + "_" + d + "_" +
-                          e + "_" + "depth.avi";
-    std::string tilefile = "outputs/" + a + "_" + b + "_" + c + "_" + d + "_" +
-                           e + "_" + "tiles.avi";
-    cv::VideoWriter depVideo(depfile,
-                             cv::VideoWriter::fourcc('X', 'V', 'I', 'D'), 10,
-                             cv::Size(224, 171));
-    cv::VideoWriter tileVideo(tilefile,
-                              cv::VideoWriter::fourcc('X', 'V', 'I', 'D'), 10,
-                              cv::Size(3, 3));
-  }
-
-searchCam:
-
-  // Setup the LRAs on the Glove (I2C Connection, Settings, Calibration, etc.)
-  setupGlove();
-
+  mainTimeLog.store("-");
   // This is the data listener which will receive callbacks.  It's declared
   // before the cameraDevice so that, if this function exits with a 'return'
   // statement while  camera is still capturing, it will still be in scope
@@ -387,35 +173,40 @@ searchCam:
   // Event Listener
   EventReporter eventReporter;
 
+  royale::CameraManager manager;
+  royale::Vector<royale::String> camlist;
   // this represents the main camera device object
   std::unique_ptr<royale::ICameraDevice> cameraDevice;
-  uint commandLineUseCase;
-
+  uint commandLineUseCase = 1;
   // commandLineUseCase = std::move (arg);
-  commandLineUseCase = 3;
-  // the camera manager will query for a connected camera
-  {
-    royale::CameraManager manager;
-    // EventListener registrieren
-    // nicht mehr an dieser Stelle:
-    // manager.registerEventListener (&eventReporter);
-
-    royale::Vector<royale::String> camlist;
-    cout << "Searching for 3D camera" << endl;
-    cout << "_______________________" << endl;
-    while (camlist.empty()) {
-      // if no argument was given try to open the first connected camera
-      camlist = manager.getConnectedCameraList();
-      cout << ".";
-      cout.flush();
-      if (!camlist.empty()) {
-        cout << endl;
-        cout << "Camera detected!" << endl;
-        cameraDevice = manager.createCamera(camlist[0]);
-      }
+searchCam:
+  //_____________________INIT CAMERA____________________________________
+  // check if the cam is connected before init anything
+  while (camlist.empty()) {
+    camlist = manager.getConnectedCameraList();
+    if (!camlist.empty()) {
+      cameraDevice = manager.createCamera(camlist[0]);
+      break;
     }
-    camlist.clear();
+    cout << ".";
+    cout.flush();
   }
+  // if camlist is not NULL
+  camlist.clear();
+
+  mainTimeLog.store("search");
+  // Mute the LRAs before ending the program by ctr + c (SIGINT)
+  signal(SIGINT, endMuted);
+  signal(SIGTERM, endMuted);
+  // initialize boost library
+  // boostInit();
+
+  // Setup Connection to Digispark Board for Poti-Reads
+  if (potiAv) initPoti();
+
+  // Setup the LRAs on the Glove (I2C Connection, Settings, Calibration, etc.)
+  setupGlove();
+  mainTimeLog.store("glove");
 
   //  camera device is now available, CameraManager can be deallocated here
   if (cameraDevice == nullptr) {
@@ -423,15 +214,16 @@ searchCam:
     cerr << "Cannot create the camera device" << endl;
     return 1;
   }
-
   // IMPORTANT: call the initialize method before working with camera device
+  // #costly: rpi4 1000ms
   auto status = cameraDevice->initialize();
+  mainTimeLog.store("cam");
+
   if (status != royale::CameraStatus::SUCCESS) {
     cerr << "Cannot initialize the camera device, error string : "
          << getErrorString(status) << endl;
     return 1;
   }
-
   royale::Vector<royale::String> useCases;
   auto usecaseStatus = cameraDevice->getUseCases(useCases);
 
@@ -465,7 +257,6 @@ searchCam:
     // choose the first use case
     selectedUseCaseIdx = 0;
   }
-
   // set an operation mode
   if (cameraDevice->setUseCase(useCases.at(selectedUseCaseIdx)) !=
       royale::CameraStatus::SUCCESS) {
@@ -488,19 +279,18 @@ searchCam:
     cerr << "Error registering data listener" << endl;
     return 1;
   }
+  mainTimeLog.store("regist");
   // register a EVENT listener
   cameraDevice->registerEventListener(&eventReporter);
 
-  if (gui) {
-    createWindows();
-  }
   //_____________________START CAPTURING_________________________________
   // start capture mode
+  //#costly: rpi4 500ms
   if (cameraDevice->startCapture() != royale::CameraStatus::SUCCESS) {
     cerr << "Error starting the capturing" << endl;
     return 1;
   }
-
+  mainTimeLog.store("capt");
   // Reset some things
   cameraStartTime = millis();  // set timestamp for capturing start
   cameraDetached = false;      // camera is attached and ready
@@ -509,13 +299,13 @@ searchCam:
   long lastCall = 0;
   long lastCallTemp = 0;
   long lastCallPoti = millis();
-
+  mainTimeLog.print("Initializing Unfolding", "ms", "ms");
   //_____________________ENDLESS LOOP_________________________________
   while (currentKey != 27)  //...until Esc is pressed
   {
     if (!calibRunning) {
       // only do all of this stuff when the camera is attached
-      if (cameraDetached == false) {
+      if (!cameraDetached) {
         royale::String id;
         royale::String name;
         uint16_t maxSensorWidth;
@@ -523,7 +313,6 @@ searchCam:
         bool calib;
         // time passed since LastNewData
         timeSinceLastNewData = millis() - lastNewData;
-        // check if it is a new record
         if (longestTimeNoData < timeSinceLastNewData) {
           longestTimeNoData = timeSinceLastNewData;
         }
@@ -545,136 +334,108 @@ searchCam:
           status = cameraDevice->isConnected(connected);
           status = cameraDevice->isCapturing(capturing);
 
-          if (gui) {  // only show when gui is active
-            // Draw tile image and depth image in windows
-            if (newDepthImage == true) {
-              newDepthImage = false;
-              cv::Mat dep;
-              cv::Mat tile;
-              dep = passDepFrame();
-              tile = passNineFrame();
-              cv::cvtColor(dep, dep, cv::COLOR_HSV2RGB, 3);
-              cv::flip(dep, dep, -1);
-              if (record == true) {
-                // depVideo.write(dep);
-                // tileVideo.write(tile);
+          // do this every 50ms (20 fps)
+          if (millis() - lastCallPoti > 100) {
+            lastCallPoti = millis();
+            if (testMotors) {
+              sendValuesToGlove(motorTestMatrix, 9);
+            }
+
+            if (potiAv) updatePoti();
+   
+            // calc fps
+            int secondsSinceReset = ((millis() - 0) / 1000);
+            if (secondsSinceReset > 0) {
+              fps = frameCounter / secondsSinceReset;
+            }
+            if (frameCounter > 999) {
+              frameCounter = 0;
+              // 0 = millis();
+            }
+
+            // printf("time since last new data: %i ms \n",
+            // timeSinceLastNewData); printf("No of library crashes: %i times
+            // \n", libraryCrashNo); printf("longest time with no new data was:
+            // %i \n", longestTimeNoData); printf("temp.: \t%.1f°C\n",
+            // coreTempDouble); printf("drops:\t%i | %i\t deliver:\t%i \t drops
+            // in last 10sec: %i\n",
+            //        droppedAtBridge, droppedAtFC, deliveredFrames,
+            //        tenSecsDrops);
+            // printf("frame:\t %i \t time:\t %i \t fps: %.1f \n", frameCounter,
+            //        secondsSinceReset, fps);
+            // printf("cycle:\t %ims \t pause: %ims \n", globalCycleTime,
+            //        globalPauseTime);
+            // printf("Range:\t %.1f m\n\n\n", maxDepth);
+            // printOutput();
+          }
+
+          // do this every 5000ms (every 1 seconds)
+          if (millis() - lastCallTemp > 1000) {
+            lastCallTemp = millis();
+            getCoreTemp();  // read raspi's core temperature
+          }
+
+          // do this every 5000ms (every 1 seconds)
+          if (millis() - lastCall > 10000) {
+            lastCall = millis();
+            tenSecsDrops = 0;
+          }
+        }
+
+        // RESTART WHEN CAMERA IS UNPLUGGED
+        // Ignore first 3secs
+        if ((millis() - cameraStartTime) > 3000) {
+          // connected but still capturing -> unplugged!
+          if (connected == 0 && capturing == 1) {
+            if (cameraDetached == false) {
+              cout << "________________________________________________" << endl
+                   << endl;
+              cout << "Camera Detached! Reinitialize Camera and Listener"
+                   << endl
+                   << endl;
+              cout << "________________________________________________" << endl
+                   << endl;
+              cout << "Searching for 3D camera in loop" << endl;
+              // stop writing new values to the LRAs
+              motorsMuted = true;
+              // mute all LRAs
+              muteAll();
+              cameraDetached = true;
+            }
+            royale::CameraManager manager;
+            royale::Vector<royale::String> camlist;
+            while (camlist.empty()) {
+              camlist = manager.getConnectedCameraList();
+              if (!camlist.empty()) {
+                camlist.clear();
+                goto searchCam;  // jump back to the beginning
               }
-              cv::imshow("depImg8", dep);
-              cv::imshow("tileImg8", tile);
-              currentKey = cv::waitKey(1);
-              processingImg = false;
+              cout << ".";
+              cout.flush();
             }
           }
         }
-        // do this every 50ms (20 fps)
-        if (millis() - lastCallPoti > 100) {
-          lastCallPoti = millis();
-          if (testMotors) {
-            writeValues(9, &(motorTestMatrix[0]));
-          }
 
-          if (potiAv) updatePoti();
-          if (record == true) {
-            printf("___recording!___\n");
-          }
-
-          // calc fps
-          int secondsSinceReset = ((millis() - resetFC) / 1000);
-          if (secondsSinceReset > 0) {
-            fps = frameCounter / secondsSinceReset;
-          }
-          if (frameCounter > 999) {
-            frameCounter = 0;
-            resetFC = millis();
-          }
-
-          // printf("time since last new data: %i ms \n", timeSinceLastNewData);
-          // printf("No of library crashes: %i times \n", libraryCrashNo);
-          // printf("longest time with no new data was: %i \n",
-          // longestTimeNoData); printf("temp.: \t%.1f°C\n", coreTempDouble);
-          // printf("drops:\t%i | %i\t deliver:\t%i \t drops in last 10sec:
-          // %i\n",
-          //        droppedAtBridge, droppedAtFC, deliveredFrames,
-          //        tenSecsDrops);
-          // printf("frame:\t %i \t time:\t %i \t fps: %.1f \n", frameCounter,
-          //        secondsSinceReset, fps);
-          // printf("cycle:\t %ims \t pause: %ims \n", globalCycleTime,
-          //        globalPauseTime);
-          // printf("Range:\t %.1f m\n\n\n", maxDepth);
-          // printOutput();
-        }
-
-        // do this every 5000ms (every 1 seconds)
-        if (millis() - lastCallTemp > 1000) {
-          lastCallTemp = millis();
-          getCoreTemp();  // read raspi's core temperature
-        }
-
-        // do this every 5000ms (every 1 seconds)
-        if (millis() - lastCall > 10000) {
-          lastCall = millis();
-          tenSecsDrops = 0;
-        }
-
-        // start/stop recording, when recording mode is available
-        if (recordMode) {
-          if (currentKey == 'r') {
-            record = true;
-          }
-
-          if (currentKey == 's') {
-            record = false;
-          }
-        }
-      }
-
-      // RESTART WHEN CAMERA IS UNPLUGGED
-      // Ignore first 3secs
-      if ((millis() - cameraStartTime) > 3000) {
-        // connected but still capturing -> unplugged!
-        if (connected == 0 && capturing == 1) {
-          if (cameraDetached == false) {
-            cout << "________________________________________________" << endl
-                 << endl;
-            cout << "Camera Detached! Reinitialize Camera and Listener" << endl
-                 << endl;
-            cout << "________________________________________________" << endl
-                 << endl;
-            cout << "Searching for 3D camera in loop" << endl;
-            // stop writing new values to the LRAs
-            motorsMuted = true;
-            // mute all LRAs
-            muteAll();
-            cameraDetached = true;
-          }
-          if (checkCam() == false) {
-            cout << ".";  // print dots as a sign for each failed frame
-            cout.flush();
-          } else {
-            goto searchCam;  // jump back to the beginning
-          }
-        }
-      }
-
-      if ((millis() - cameraStartTime) > 3000) {  // ignore the first 3 secs
-        if (cameraDetached == false) {        // if camera should be there...
-          if (timeSinceLastNewData > 4000) {  // but there is no frame for 4s
-            cout << "________________________________________________" << endl
-                 << endl;
-            cout << "Library Crashed! Reinitialize Camera and Listener. last "
-                    "new "
-                    "frame:  "
-                 << timeSinceLastNewData << endl
-                 << endl;
-            cout << "________________________________________________" << endl
-                 << endl;
-            libraryCrashNo++;
-            // stop writing new values to the LRAs
-            motorsMuted = true;
-            // mute all LRAs
-            muteAll();
-            // go to the beginning and find camera again
-            goto searchCam;
+        if ((millis() - cameraStartTime) > 3000) {  // ignore the first 3 secs
+          if (cameraDetached == false) {        // if camera should be there...
+            if (timeSinceLastNewData > 4000) {  // but there is no frame for 4s
+              cout << "________________________________________________" << endl
+                   << endl;
+              cout << "Library Crashed! Reinitialize Camera and Listener. last "
+                      "new "
+                      "frame:  "
+                   << timeSinceLastNewData << endl
+                   << endl;
+              cout << "________________________________________________" << endl
+                   << endl;
+              libraryCrashNo++;
+              // stop writing new values to the LRAs
+              motorsMuted = true;
+              // mute all LRAs
+              muteAll();
+              // go to the beginning and find camera again
+              goto searchCam;
+            }
           }
         }
       }
@@ -691,53 +452,79 @@ searchCam:
   muteAll();
   return 0;
 }
-
-// TODO: maybe this is not the best way to handle this and exit (!) from the
-// program
+// TODO: maybe this is not the best way to handle this?
 class mainThreadWrapper {
  public:
-  boost::asio::io_service io_service;
-  boost::asio::io_service io_service2;
-  void runUdp() {
-    udp_server server(io_service);
-    io_service.run();
+  udp_server *udpSendServer;
+  boost::asio::io_service udpSendService;
+  boost::asio::io_service udpBroadService;
+
+  // Sending the data out at specified moments when there is nothing else to do
+  void runUdpSend() {
+    //inst server with max of 10 clients
+    udpSendServer = new udp_server(udpSendService, 3);
+    udpSendService.run();
   }
-  void runBroad() {
-    udp_brodcasting server2(io_service2);
+  std::thread runUdpSendThread() {
+    return std::thread([=] { runUdpSend(); });
+  }
+
+  // Receiving requests from clients and putting them in the queue
+  void runUdpRec() {
+    // udp_server udpSendServer(udpSendService);
+    // io_service.run();
+  }
+  std::thread runUdpRecThread() {
+    return std::thread([=] { runUdpRec(); });
+  }
+
+  // Broadcasting a online-message every half  second
+  void runUdpBroad() {
+    udp_brodcasting udpBroadServer(udpBroadService);
     while (1) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-      server2.sendBroadcast();
+      std::this_thread::sleep_for(std::chrono::milliseconds(500));
+      udpBroadServer.sendBroadcast();
     }
   }
+  std::thread runUdpBroadThread() {
+    return std::thread([=] { runUdpBroad(); });
+  }
+
+  // Run the Main Code with the endless loop
   void runUnfolding() {
     int unfReturn = unfolding();
     printf("Unfolding Thread has been exited with a #%i \n", unfReturn);
     printf("Stopping the UDP server now... \n");
-    io_service.stop();
-  }
-
-  void runCopyDepthData() {}
-
-  void runSendDepthData() {
-    while (1) {
-      std::unique_lock<std::mutex> ddLock(ddMut);
-      ddCond.wait(ddLock, [] { return newDD; });
-      listener.copyData(&sharedData);
-      newDD=false;
-    }
-  }
-
-  std::thread runUdpThread() {
-    return std::thread([=] { runUdp(); });
+    udpSendService.stop();
+    udpBroadService.stop();
   }
   std::thread runUnfoldingThread() {
     return std::thread([=] { runUnfolding(); });
   }
-  std::thread runUdpBroadcasting() {
-    return std::thread([=] { runBroad(); });
+
+  // Processing the Data, Creating Depth Image, Histogram and 9-Tiles Array
+  void runCopyDepthData() {
+    while (1) {
+      std::unique_lock<std::mutex> pdCondLock(pdCondMutex);
+      pdCond.wait(pdCondLock, [] { return pdFlag; });
+      listener.processData();
+      pdFlag = false;
+    }
   }
   std::thread runCopyDepthDataThread() {
     return std::thread([=] { runCopyDepthData(); });
+  }
+
+  // Sending the Data to the glove (Costly due to register writing via i2c)
+  void runSendDepthData() {
+    while (1) {
+      std::unique_lock<std::mutex> svCondLock(svCondMutex);
+      svCond.wait(svCondLock, [] { return svFlag; });
+      sendValuesToGlove(tilesArray, 9);
+      // TODO: sollte gleichzeitig zu send ausgeführt werden...
+      udpSendServer->postSend();
+      svFlag = false;
+    }
   }
   std::thread runSendDepthDataThread() {
     return std::thread([=] { runSendDepthData(); });
@@ -748,17 +535,18 @@ class mainThreadWrapper {
 // MAIN LOOP
 //----------------------------------------------------------------------
 int main(int argc, char *argv[]) {
-  printf("Starting Unfolding Space \n");
+  // create thread wrapper instance and the threads
   mainThreadWrapper *w = new mainThreadWrapper();
-  std::thread udpTh = w->runUdpThread();
+  std::thread udpSendTh = w->runUdpSendThread();
+  // std::thread udpRecTh = w->runUdpRecThread();
+  std::thread udpBroadTh = w->runUdpBroadThread();
   std::thread unfTh = w->runUnfoldingThread();
-  std::thread udpBroad = w->runUdpBroadcasting();
   std::thread ddCopyTh = w->runCopyDepthDataThread();
   std::thread ddSendTh = w->runSendDepthDataThread();
-
-  udpTh.join();
+  udpSendTh.join();
+  // udpRecTh.join();
+  udpBroadTh.join();
   unfTh.join();
-  udpBroad.join();
   ddCopyTh.join();
   ddSendTh.join();
   return 0;

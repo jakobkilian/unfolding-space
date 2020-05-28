@@ -12,6 +12,7 @@
 #include "glove.hpp"
 
 #include "camera.hpp"
+#include "timelog.hpp"
 
 //----------------------------------------------------------------------
 // DECLARATION OF FUNCTIONS
@@ -101,6 +102,8 @@ uint8_t maxCalibPasses = 2;  // max trys for calib before skipping
 uint8_t availableLRAs = 0;   // number of LRAs
 bool calibSuccess[9];        // was calibration successfull?
 int retVal;
+int lastTCA;
+uint8_t order[9] = {5, 8, 2, 6, 0, 3, 7, 1, 4};
 
 // Should there be a calibration in the beginning? Else: Take standard Values
 bool startupCalib = false;
@@ -120,9 +123,10 @@ uint8_t initI2CDevice(uint8_t addr) {
   int respectiveAddr = wiringPiI2CSetup(addr);
   if (respectiveAddr < 0) {
     printf("I2CSetup Failed, %i\n", respectiveAddr);
-  } else {
-    printf("I2CSetup successfull: %i \n", respectiveAddr);
   }
+  // else {
+  // printf("I2CSetup successfull: %i \n", respectiveAddr);
+  //}
   return respectiveAddr;
 }
 
@@ -171,20 +175,42 @@ int registerWrite(unsigned char ucRegAddress, char cValue) {
            data);
     return -1;
   }
-  //delayMicroseconds(100);
+  // delayMicroseconds(100);
   return 0;
 }
 
-//________________________________________________
-// Write all vibration strength value to the DRV2605s
-void writeValues(int valc, uint8_t *vals) {
-  // uint8_t order[9] = {5, 2, 1, 4, 6, 0, 8, 7, 3};
-  uint8_t order[9] = {5, 8, 2, 6, 0, 3, 7, 1, 4};
-
-  for (int i = 0; i != valc; ++i) {
-    drvSelect(order[i]);  // route the value to the right TCA and DRV
-    registerWrite(RTP_INPUT, altCurve[vals[i]]);
+void sendValuesToGlove(int inValues[], int size) {
+  // WRITE VALUES TO GLOVE
+  int values[] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+  mainTimeLog.store("send");
+  {
+    std::lock_guard<std::mutex> lock(tilesMutex);
+    for (int i = 0; i < size; i++) {
+      values[i] = inValues[i];
+    }
   }
+  mainTimeLog.store("copy");
+  // Write Values to the registers of the motor drivers (drv..)
+  // All drv have same addr. -> two i2c multiplexer (tca) are needed.
+  if (!motorsMuted && !calibRunning) {
+    // For speed's sake start with drvs that are on the first tca
+    for (int i = 0; i < size; ++i) {
+      if (order[i] <= 4) {
+        drvSelect(order[i]);  // route the value to the right TCA and DRV
+        registerWrite(RTP_INPUT, altCurve[values[i]]);
+      }
+    }
+    mainTimeLog.store("TCA1");
+    // Now all drv on the 2nd tca together
+    for (int i = 0; i < size; ++i) {
+      if (order[i] > 4) {
+        drvSelect(order[i]);  // route the value to the right TCA and DRV
+        registerWrite(RTP_INPUT, altCurve[values[i]]);
+      }
+    }
+  }
+  mainTimeLog.store("TCA2");
+  mainTimeLog.print("Cycle", "us", "ms");
 }
 
 //________________________________________________
@@ -197,24 +223,30 @@ int drvSelect(uint8_t i) {
       printf("can't connect to tca0 in 0-4:  %i\n", retVal);
       return -1;
     }
-    retVal = wiringPiI2CWrite(tca1, 0);
-    if (retVal < 0) {
-      printf("can't connect to tca1 in 0-4:  %i\n", retVal);
-      return -2;
+    if (lastTCA != 0) {
+      retVal = wiringPiI2CWrite(tca1, 0);
+      if (retVal < 0) {
+        printf("can't connect to tca1 in 0-4:  %i\n", retVal);
+        return -2;
+      }
     }
-  }
-  if (i > 4) {
+    lastTCA = 0;
+
+  } else if (i > 4) {
     uint8_t regVal = 1 << (i - 5);
     retVal = wiringPiI2CWrite(tca1, regVal);
     if (retVal < 0) {
       printf("can't connect to tca0 in 5-8:  %i\n", retVal);
       return -3;
     }
-    retVal = wiringPiI2CWrite(tca0, 0);
-    if (retVal < 0) {
-      printf("can't connect to tca1 in 5-8:  %i\n", retVal);
-      return -4;
+    if (lastTCA != 1) {
+      retVal = wiringPiI2CWrite(tca0, 0);
+      if (retVal < 0) {
+        printf("can't connect to tca1 in 5-8:  %i\n", retVal);
+        return -4;
+      }
     }
+    lastTCA = 1;
   }
   return 0;
 }

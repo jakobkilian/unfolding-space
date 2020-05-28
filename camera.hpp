@@ -18,36 +18,64 @@
 #include <royale.hpp>
 #include <thread>
 
+#include "timelog.hpp"
+
 using namespace std::chrono;
 
 //----------------------------------------------------------------------
 // DECLARATIONS
 //----------------------------------------------------------------------
-void printCurTime(const std::string &);
 cv::Mat passDepFrame();
 cv::Mat passUdpFrame(int);
 cv::Mat passNineFrame();
 void printOutput();
 std::string packValStr();
 
-extern int globalCycleTime;
-extern int globalPauseTime;
+//TODO: global variables from main.cpp
+extern long timeSinceLastNewData;  // time passed since last "onNewData"
+extern double coreTempDouble;      // Temperature of the Raspi core
+extern int droppedAtBridge;    // How many frames got dropped at Bridge (in libroyale)
+extern int droppedAtFC;        // How many frames got dropped at FC (in libroyale)
+extern int deliveredFrames;    // Number of frames delivered
+extern int tenSecsDrops;       // Number of drops in the last 10 seconds
+extern int fpsFromCam;         // wich royal use case is used? (how many fps?)
+extern int currentKey;     //
+extern int libraryCrashNo;     // counter for the crashes of the library
+extern int longestTimeNoData;  // the longest timespan without new data since start
+extern bool connected;         // camera is currently connected
+extern bool capturing;         // camera is currently capturing
+extern bool cameraDetached;    // camera got detached
+extern long cameraStartTime;   // timestamp when camera started capturing
+extern bool record;            // currently recording?
 extern bool motorsMuted;
+extern bool testMotors;
+extern int motorTestMatrix[9];
 extern bool calibRunning;
-extern bool noChangeInMatrix;
-extern bool newDepthImage;
-extern bool processingImg;
-extern std::mutex depMutex;
 extern long lastNewData;
 extern int frameCounter;
 extern int kCounter;
 extern float fps;
-extern std::array<uint8_t, 9> ninePixMatrix;
-extern bool gui;
-extern long resetFC;
-extern std::condition_variable ddCond;  // depthData condition varibale
-extern std::mutex ddMut;                // depthData condition varibale
-extern bool newDD; 
+
+// Data and their Mutexes
+extern cv::Mat depImg;  // full depth image (one byte p. pixel)
+extern std::mutex depImgMutex;
+extern int tilesArray[];  // 9 tiles | motor vals
+extern std::mutex tilesMutex;
+extern std::mutex motorTestMutex;
+extern royale::DepthData dataCopy;  // storage of last depthFrame from libroyal
+extern std::mutex dataCopyMutex;
+
+// Notifying processing data (pd) thread to end waiting
+extern std::condition_variable pdCond;  // depthData condition varibale
+extern std::mutex pdCondMutex;          // depthData condition varibale
+extern bool pdFlag;
+
+// Notifying send values to motors (sv) thread to end waiting
+extern std::condition_variable svCond;  // send Values condition varibale
+extern std::mutex svCondMutex;          // send Values condition varibale
+extern bool svFlag;
+
+extern int lockFailCounter;
 
 //----------------------------------------------------------------------
 // CLASSES
@@ -62,29 +90,35 @@ class DepthDataListener : public royale::IDepthDataListener {
  public:
   DepthDataListener() : undistortImage(false) {}
   void onNewData(const royale::DepthData *data);
-  void copyData( royale::DepthData *data);
+  void processData();
   void setLensParameters(const royale::LensParameters &lensParameters);
-  void toggleUndistort();
 
  private:
-  float adjustDepthValue(float zValue, float max);
+  uint8_t adjustDepthValue(float zValue, float max);
   float adjustDepthValueForImage(float zValue, float max);
 };
 
-class storeTimePoint {
-  // new: save the steps in an array of time_points to print them at the end...
-  std::array<steady_clock::time_point, 100> t;
-  std::array<std::string, 100> n;
-  int size;
-  int i;
-  int pos;
+extern royale::DepthData dataCopy;
 
- public:
-  storeTimePoint(int s);
-  void store(std::string name);
-  void reset();
-  void print();
-};
+// // TODO: unsauber das hier zu machen....?
+// class mainThreadWrapper {
+//  public:
+//   udp_server *udpSendServer;
+//   boost::asio::io_service udpSendService;
+//   boost::asio::io_service udpBroadService;
+//   void runUdpSend();
+//   std::thread runUdpSendThread();
+//   void runUdpRec();
+//   std::thread runUdpRecThread();
+//   void runUdpBroad();
+//   std::thread runUdpBroadThread();
+//   void runUnfolding();
+//   std::thread runUnfoldingThread();
+//   void runCopyDepthData();
+//   std::thread runCopyDepthDataThread();
+//   void runSendDepthData() ;
+//   std::thread runSendDepthDataThread();
+// };
 
-extern royale::DepthData sharedData;
-extern storeTimePoint camTP;
+
+// extern mainThreadWrapper *w;

@@ -10,21 +10,23 @@
 //----------------------------------------------------------------------
 // INCLUDES
 //----------------------------------------------------------------------
-#include <ctime>
-#include <fstream>
-#include <sstream>
 #include <stdint.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <wiringPi.h>
 #include <wiringPiI2C.h>
 
+#include <array>
+#include <ctime>
+#include <fstream>
+#include <sstream>
+
 //----------------------------------------------------------------------
 // DECLARATIONS
 //----------------------------------------------------------------------
 void setupGlove();
 void muteAll();
-void writeValues(int valc, uint8_t *vals);
+void sendValuesToGlove(int values[],int size);
 void testMotorNo(int i, int val);
 void doCalibration();
 // drv board detachable?
