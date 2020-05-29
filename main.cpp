@@ -168,7 +168,8 @@ int unfolding() {
 
   Monitoring monit;
   monit.testPrint();
-
+  monit.changeTestVar(2);
+  monit.testPrint();
   // This is the data listener which will receive callbacks.  It's declared
   // before the cameraDevice so that, if this function exits with a 'return'
   // statement while  camera is still capturing, it will still be in scope
