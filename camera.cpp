@@ -60,7 +60,7 @@ cv::Mat depImg;  // full depth image (one byte p. pixel)
 std::mutex depImgMutex;
 int tilesArray[] = {0, 0, 0, 0, 0, 0, 0, 0, 0};  // 9 tiles | motor vals
 std::mutex tilesMutex;
- std::mutex motorTestMutex;
+std::mutex motorTestMutex;
 royale::DepthData dataCopy;  // storage of last depthFrame from libroyal
 std::mutex dataCopyMutex;
 
@@ -74,14 +74,15 @@ std::condition_variable svCond;  // send Values condition varibale
 std::mutex svCondMutex;          // send Values condition varibale
 bool svFlag = false;
 
-//----------------------------------------------------------------------
-// MAIN FUNCTION
-//----------------------------------------------------------------------
-
-// gets called everytime there is a new depth frame from the Pico Flexx
-// As this is a callback function and the code is unknown we want it to
-// return as fast as possible. Therefore it only copies the data and
-// returns immidiately when the preceding frame is not yet copied.
+//
+/******************************************************************************
+ *                                 ON NEW DATA
+ *                               ***************
+ * gets called everytime there is a new depth frame from the Pico Flexx
+ * As this is a callback function and the code is unknown we want it to
+ * return as fast as possible. Therefore it only copies the data and
+ * returns immidiately when the preceding frame is not yet copied.
+ ******************************************************************************/
 void DepthDataListener::onNewData(const DepthData *data) {
   mainTimeLog.store("start");
   // lock needs >1 mutexes to lock. pdCondMutex therefore has no
@@ -106,10 +107,16 @@ void DepthDataListener::onNewData(const DepthData *data) {
   pdCond.notify_one();
   mainTimeLog.store("notif");
 }
+//                                    _____
+//                                 [onNewData]
+//____________________________________________________________________________
 
-// Process data
-// Create depth Image (depImg) and calculate the 9 tiles of it from which the 9
-// vibration motors get their vibration strength value (tilesArray)
+/******************************************************************************
+ *                                PROCESS DATA
+ *                               ***************
+ * Create depth Image (depImg) and calculate the 9 tiles of it from which the 9
+ * vibration motors get their vibration strength value (tilesArray)
+ ******************************************************************************/
 void DepthDataListener::processData() {
   mainTimeLog.store("funct");
   int histo[9][256];  // historgram, needed to find closest obj
@@ -242,6 +249,13 @@ void DepthDataListener::processData() {
   mainTimeLog.store("pro end");
   // mainTimeLog.print("Receiving Frame", "us", "ms");
 }
+//                                    _____
+//                                [process data]
+//____________________________________________________________________________
+
+/******************************************************************************
+ *                                   OTHER
+ ******************************************************************************/
 
 // print Output to the Terminal Window for debugging and monitoring
 void printOutput() {
@@ -263,20 +277,6 @@ void printOutput() {
     }
     printf("\n\n\n");
   }
-}
-
-// This function can be called by main.cpp to get the depth values of the nine
-// tiles
-cv::Mat passNineFrame() { return tileImg; }
-
-// This function can be called by main.cpp to get the detailed depth image
-cv::Mat passDepFrame() {
-  std::lock_guard<std::mutex> lock(depImgMutex);
-  depImgMod.create(cv::Size(width, height), CV_8UC3);
-  // cv::cvtColor(depImg, depImgMod, CV_GRAY2RGB);
-
-  // depImg.copyTo(depImgMod);
-  return depImgMod;
 }
 
 cv::Mat passUdpFrame(int incSize) {

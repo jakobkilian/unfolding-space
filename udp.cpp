@@ -2,7 +2,6 @@
 
 #include <boost/array.hpp>
 #include <boost/asio.hpp>
-#include <boost/bind.hpp>
 #include <vector>
 
 #include "camera.hpp"
@@ -12,33 +11,13 @@
 
 using boost::asio::ip::udp;
 
-//****************************************************************
-//                        UDP BROADCASTING
-//****************************************************************
-// UDP Broadcasting Class:
-// runs independently from main udp_server class to regularly send out
-// a "I am online" notification to all clients
-udp_brodcasting::udp_brodcasting(boost::asio::io_service &io_service)
-    : broad_socket_(io_service, udp::endpoint(udp::v4(), 9007)) {
-  broad_socket_.open(udp::v4(), error);
-  broad_socket_.set_option(udp::socket::reuse_address(true));
-  broad_socket_.set_option(boost::asio::socket_base::broadcast(true));
-  broad_endpoint_ =
-      udp::endpoint(boost::asio::ip::address_v4::broadcast(), 9008);
-}
-void udp_brodcasting::sendBroadcast() {
-  if (!error) {
-    broad_socket_.send_to(boost::asio::buffer("Unfolding 1"), broad_endpoint_,
-                          0, error);
-  } else {
-    broad_socket_.send_to(boost::asio::buffer("Unfolding 1"), broad_endpoint_,
-                          0, error);
-  }
-}
-
-//****************************************************************
-//                          UDP CLIENT
-//****************************************************************
+/******************************************************************************
+ *                                 UDP CLIENT
+ *                               ***************
+ * UDP Client Class
+ * For each client that sends a data-request to the server an instance of this
+ *class is generated to save the client's IP, Port and needs.
+ ******************************************************************************/
 udp_client::udp_client(udp::endpoint e) {
   endpoint = e;
   counter = 0;
@@ -65,30 +44,58 @@ bool udp_client::checkState() { return isActive; }
 bool udp_client::isEqual(udp::endpoint *checkEndpoint) {
   return endpoint == *checkEndpoint;
 }
+//                                    _____
+//                                 [onNewData]
+//____________________________________________________________________________
 
-//****************************************************************
-//                         UDP SERVER
-//****************************************************************
-
-// UDP Server Class
-// This class receives requests from clients and also handlese the
-// replies to them. Receiving and Sendung should happen in two threads.
-
+//
+/******************************************************************************
+ *                                 UDP SERVER
+ *                               ***************
+ * UDP Server Class
+ * This class broadcasts its online status, receives requests from clients and
+ * also handlese the replies to them. Concurrency is managed by a
+ * boost asio strand which subsequently invokes the tasks
+ ******************************************************************************/
 udp_server::udp_server(boost::asio::io_service &io_service, int max)
-    : strand_(io_service),
+    : udpRecLog(20),   // time log instance
+      udpSendLog(20),  // time log instance
+      strand_(io_service),
       socket_(io_service, udp::endpoint(udp::v4(), 9009)),
-      udpRecLog(20),
-      udpSendLog(20) {
-  strand_.post(strand_.wrap(boost::bind(&udp_server::start_receive, this)));
+      broad_socket_(io_service, udp::endpoint(udp::v4(), 9007)),
+      timer1_(io_service, boost::posix_time::seconds(1)) {
+  // invoke first broadcast
+  timer1_.async_wait(strand_.wrap(std::bind(&udp_server::broadcast, this)));
+  // invoke first receive
+  strand_.post(strand_.wrap(std::bind(&udp_server::start_receive, this)));
   imgSize = 0;
   sendImg = false;
   maxClients = max;
-}
-// This is called externally whenever there is a new frame
-void udp_server::postSend() {
-  strand_.post(strand_.wrap(boost::bind(&udp_server::packAndSend, this)));
+  // Open second Socket for broadcasting
+  broad_socket_.open(udp::v4(), errorBroad);
+  broad_socket_.set_option(udp::socket::reuse_address(true));
+  broad_socket_.set_option(boost::asio::socket_base::broadcast(true));
+  broad_endpoint_ =
+      udp::endpoint(boost::asio::ip::address_v4::broadcast(), 9008);
 }
 
+//_______ Broadcast Online Status _______
+void udp_server::broadcast() {
+  broad_socket_.send_to(boost::asio::buffer("Unfolding 1"), broad_endpoint_, 0,
+                        errorBroad);
+  timer1_.expires_at(timer1_.expires_at() + boost::posix_time::seconds(1));
+  timer1_.async_wait(strand_.wrap(std::bind(&udp_server::broadcast, this)));
+}
+
+//_______ Post packAndSend() _______
+// Add / post a function to the strand that packs and sends the data to all
+// registered clients
+void udp_server::postSend() {
+  strand_.post(strand_.wrap(std::bind(&udp_server::packAndSend, this)));
+}
+
+//_______ Pack and Send Data _______
+// Pack all the data to one String and hand it over to async_send_to
 void udp_server::packAndSend() {
   udpSendLog.store("-");
   for (size_t i = 0; i < udpClient.size(); i++) {
@@ -101,9 +108,7 @@ void udp_server::packAndSend() {
           new std::string(packValStr(sendImg, imgSize)));
       socket_.async_send_to(
           boost::asio::buffer(*message), udpClient[i].endpoint,
-          boost::bind(&udp_server::handle_send, this, message,
-                      boost::asio::placeholders::error,
-                      boost::asio::placeholders::bytes_transferred));
+          std::bind(&udp_server::handle_send, this, message));
       udpSendLog.store("after send");
     } else {
       // Delete nonactive instance by counting from the first one
@@ -113,17 +118,17 @@ void udp_server::packAndSend() {
   udpSendLog.print("Pack and Send", "us", "ms");
 }
 
+
+//_______ Set Socket to Receiving _______
 void udp_server::start_receive() {
   // Look out for calls on port 9009
   socket_.async_receive_from(
       boost::asio::buffer(recv_buffer_), remote_endpoint_,
-      boost::bind(&udp_server::handle_receive, this,
-                  boost::asio::placeholders::error,
-                  boost::asio::placeholders::bytes_transferred));
+      std::bind(&udp_server::handle_receive, this));
 }
-// if there is a ne request...
-void udp_server::handle_receive(const boost::system::error_code &error,
-                                std::size_t /*bytes_transferred*/) {
+
+//_______ Handle Received Packets _______
+void udp_server::handle_receive() {
   udpRecLog.store("-");
   int i = 0;
   bool inList = false;
@@ -189,20 +194,18 @@ void udp_server::handle_receive(const boost::system::error_code &error,
   }
   udpRecLog.store("deciding on action");
 
-  if (!error || error == boost::asio::error::message_size) {
+  if (!errorRec || errorRec == boost::asio::error::message_size) {
     // bool flag?
   }
 
   // start listening again
-  strand_.post(strand_.wrap(boost::bind(&udp_server::start_receive, this)));
+  strand_.post(strand_.wrap(std::bind(&udp_server::start_receive, this)));
   udpRecLog.store("post new receive");
   udpRecLog.print("Receiving one Frame", "us", "ms");
 }
 
 // Invoked after sending message
-void udp_server::handle_send(boost::shared_ptr<std::string> /*message*/,
-                             const boost::system::error_code & /*error*/,
-                             std::size_t /*bytes_transferred*/) {}
+void udp_server::handle_send(boost::shared_ptr<std::string> message) {}
 
 //________ HELPERs_______
 template <typename T>
@@ -268,3 +271,6 @@ std::string udp_server::packValStr(bool sendImg, int imgSize) {
   udpSendLog.store("pack image");
   return tmpStr;
 }
+//                                    _____
+//                                 [udp server]
+//____________________________________________________________________________

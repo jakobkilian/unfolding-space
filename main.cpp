@@ -6,6 +6,7 @@
  * Project: unfoldingspace.jakobkilian.de
  */
 
+
 //----------------------------------------------------------------------
 // INCLUDES
 //----------------------------------------------------------------------
@@ -14,7 +15,6 @@
 #include <algorithm>
 #include <boost/array.hpp>
 #include <boost/asio.hpp>
-#include <boost/bind.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/shared_ptr.hpp>
 #include <chrono>
@@ -28,6 +28,7 @@
 #include "camera.hpp"
 #include "glove.hpp"
 #include "init.hpp"
+#include "monitoring.hpp"
 #include "poti.hpp"
 #include "time.h"
 #include "timelog.hpp"
@@ -51,7 +52,7 @@ bool detachableDRV = 0;
 // DECLARATIONS AND VARIABLES
 //----------------------------------------------------------------------
 
-//Todo: global stuff
+// Todo: global stuff
 long timeSinceLastNewData;  // time passed since last "onNewData"
 double coreTempDouble;      // Temperature of the Raspi core
 int droppedAtBridge;    // How many frames got dropped at Bridge (in libroyale)
@@ -70,7 +71,6 @@ bool testMotors;
 int motorTestMatrix[] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 DepthDataListener listener;
-
 
 //----------------------------------------------------------------------
 // OTHER FUNCTIONS AND CLASSES
@@ -165,6 +165,10 @@ timelog mainTimeLog(20);
 
 int unfolding() {
   mainTimeLog.store("-");
+
+  Monitoring monit;
+  monit.testPrint();
+
   // This is the data listener which will receive callbacks.  It's declared
   // before the cameraDevice so that, if this function exits with a 'return'
   // statement while  camera is still capturing, it will still be in scope
@@ -342,7 +346,7 @@ searchCam:
             }
 
             if (potiAv) updatePoti();
-   
+
             // calc fps
             int secondsSinceReset = ((millis() - 0) / 1000);
             if (secondsSinceReset > 0) {
@@ -461,33 +465,12 @@ class mainThreadWrapper {
 
   // Sending the data out at specified moments when there is nothing else to do
   void runUdpSend() {
-    //inst server with max of 10 clients
+    // inst server with max of 10 clients
     udpSendServer = new udp_server(udpSendService, 3);
     udpSendService.run();
   }
   std::thread runUdpSendThread() {
     return std::thread([=] { runUdpSend(); });
-  }
-
-  // Receiving requests from clients and putting them in the queue
-  void runUdpRec() {
-    // udp_server udpSendServer(udpSendService);
-    // io_service.run();
-  }
-  std::thread runUdpRecThread() {
-    return std::thread([=] { runUdpRec(); });
-  }
-
-  // Broadcasting a online-message every half  second
-  void runUdpBroad() {
-    udp_brodcasting udpBroadServer(udpBroadService);
-    while (1) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(500));
-      udpBroadServer.sendBroadcast();
-    }
-  }
-  std::thread runUdpBroadThread() {
-    return std::thread([=] { runUdpBroad(); });
   }
 
   // Run the Main Code with the endless loop
@@ -538,14 +521,10 @@ int main(int argc, char *argv[]) {
   // create thread wrapper instance and the threads
   mainThreadWrapper *w = new mainThreadWrapper();
   std::thread udpSendTh = w->runUdpSendThread();
-  // std::thread udpRecTh = w->runUdpRecThread();
-  std::thread udpBroadTh = w->runUdpBroadThread();
   std::thread unfTh = w->runUnfoldingThread();
   std::thread ddCopyTh = w->runCopyDepthDataThread();
   std::thread ddSendTh = w->runSendDepthDataThread();
   udpSendTh.join();
-  // udpRecTh.join();
-  udpBroadTh.join();
   unfTh.join();
   ddCopyTh.join();
   ddSendTh.join();

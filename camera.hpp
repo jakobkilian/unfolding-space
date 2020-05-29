@@ -25,28 +25,27 @@ using namespace std::chrono;
 //----------------------------------------------------------------------
 // DECLARATIONS
 //----------------------------------------------------------------------
-cv::Mat passDepFrame();
 cv::Mat passUdpFrame(int);
-cv::Mat passNineFrame();
 void printOutput();
-std::string packValStr();
 
-//TODO: global variables from main.cpp
+// TODO: global variables from main.cpp
 extern long timeSinceLastNewData;  // time passed since last "onNewData"
 extern double coreTempDouble;      // Temperature of the Raspi core
-extern int droppedAtBridge;    // How many frames got dropped at Bridge (in libroyale)
-extern int droppedAtFC;        // How many frames got dropped at FC (in libroyale)
-extern int deliveredFrames;    // Number of frames delivered
-extern int tenSecsDrops;       // Number of drops in the last 10 seconds
-extern int fpsFromCam;         // wich royal use case is used? (how many fps?)
-extern int currentKey;     //
-extern int libraryCrashNo;     // counter for the crashes of the library
-extern int longestTimeNoData;  // the longest timespan without new data since start
-extern bool connected;         // camera is currently connected
-extern bool capturing;         // camera is currently capturing
-extern bool cameraDetached;    // camera got detached
-extern long cameraStartTime;   // timestamp when camera started capturing
-extern bool record;            // currently recording?
+extern int
+    droppedAtBridge;     // How many frames got dropped at Bridge (in libroyale)
+extern int droppedAtFC;  // How many frames got dropped at FC (in libroyale)
+extern int deliveredFrames;  // Number of frames delivered
+extern int tenSecsDrops;     // Number of drops in the last 10 seconds
+extern int fpsFromCam;       // wich royal use case is used? (how many fps?)
+extern int currentKey;       //
+extern int libraryCrashNo;   // counter for the crashes of the library
+extern int
+    longestTimeNoData;  // the longest timespan without new data since start
+extern bool connected;  // camera is currently connected
+extern bool capturing;  // camera is currently capturing
+extern bool cameraDetached;   // camera got detached
+extern long cameraStartTime;  // timestamp when camera started capturing
+extern bool record;           // currently recording?
 extern bool motorsMuted;
 extern bool testMotors;
 extern int motorTestMatrix[9];
@@ -81,14 +80,7 @@ extern int lockFailCounter;
 // CLASSES
 //----------------------------------------------------------------------
 class DepthDataListener : public royale::IDepthDataListener {
-  // lens matrices used for the undistortion of
-  // the image
-  cv::Mat cameraMatrix;
-  cv::Mat distortionCoefficients;
-  bool undistortImage = false;
-
  public:
-  DepthDataListener() : undistortImage(false) {}
   void onNewData(const royale::DepthData *data);
   void processData();
   void setLensParameters(const royale::LensParameters &lensParameters);
@@ -96,6 +88,10 @@ class DepthDataListener : public royale::IDepthDataListener {
  private:
   uint8_t adjustDepthValue(float zValue, float max);
   float adjustDepthValueForImage(float zValue, float max);
+  // TODO: set globals as private...
+  // long timeSinceLastNewData;  // time passed since last "onNewData"
+  // int longestTimeNoData;  // the longest timespan without new data since start
+  // int frameCounter;
 };
 
 extern royale::DepthData dataCopy;
@@ -119,6 +115,5 @@ extern royale::DepthData dataCopy;
 //   void runSendDepthData() ;
 //   std::thread runSendDepthDataThread();
 // };
-
 
 // extern mainThreadWrapper *w;

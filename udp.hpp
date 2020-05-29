@@ -4,22 +4,8 @@
 #include <boost/array.hpp>
 #include <boost/asio.hpp>
 #include <vector>
+
 #include "timelog.hpp"
-
-
-//****************************************************************
-//                        UDP BROADCASTING
-//****************************************************************
-class udp_brodcasting {
- public:
-  udp_brodcasting(boost::asio::io_service &io_service);
-  boost::asio::ip::udp::socket broad_socket_;
-  boost::asio::ip::udp::endpoint broad_endpoint_;
-  boost::system::error_code error;
-
- public:
-  void sendBroadcast();
-};
 
 //****************************************************************
 //                          UDP CLIENT
@@ -61,9 +47,15 @@ class udp_server {
   int maxClients;
   void packAndSend();
   void start_receive();
-  void handle_receive(const boost::system::error_code &error, std::size_t);
-  void handle_send(boost::shared_ptr<std::string>,
-                   const boost::system::error_code &, std::size_t);
+  void handle_receive();
+  void handle_send(boost::shared_ptr<std::string>);
+  // broadcasting
+  void broadcast();
+  boost::asio::ip::udp::socket broad_socket_;
+  boost::asio::ip::udp::endpoint broad_endpoint_;
+  boost::system::error_code errorBroad;
+  boost::system::error_code errorRec;
+  boost::asio::deadline_timer timer1_;
 
   // Helper
   template <typename T>
