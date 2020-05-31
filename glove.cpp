@@ -13,6 +13,7 @@
 
 #include "camera.hpp"
 #include "timelog.hpp"
+#include "globals.hpp"
 
 //----------------------------------------------------------------------
 // DECLARATION OF FUNCTIONS
@@ -179,12 +180,12 @@ int registerWrite(unsigned char ucRegAddress, char cValue) {
   return 0;
 }
 
-void sendValuesToGlove(int inValues[], int size) {
+void sendValuesToGlove(unsigned char inValues[], int size) {
   // WRITE VALUES TO GLOVE
-  int values[] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+  unsigned char values[] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
   mainTimeLog.store("send");
   {
-    std::lock_guard<std::mutex> lock(tilesMutex);
+    std::lock_guard<std::mutex> lock(glob::m_tiles);
     for (int i = 0; i < size; i++) {
       values[i] = inValues[i];
     }
@@ -192,7 +193,7 @@ void sendValuesToGlove(int inValues[], int size) {
   mainTimeLog.store("copy");
   // Write Values to the registers of the motor drivers (drv..)
   // All drv have same addr. -> two i2c multiplexer (tca) are needed.
-  if (!motorsMuted && !calibRunning) {
+  if (!glob::isMuted && !glob::royalStats.isCalibRunning) {
     // For speed's sake start with drvs that are on the first tca
     for (int i = 0; i < size; ++i) {
       if (order[i] <= 4) {

@@ -1,9 +1,11 @@
 #include "timelog.hpp"
-#include "camera.hpp"
-#include <string>
-#include <iostream>
-#include <chrono>
+
 #include <array>
+#include <chrono>
+#include <iostream>
+#include <string>
+
+#include "camera.hpp"
 
 using namespace std::chrono;
 using std::cout;
@@ -24,7 +26,7 @@ void timelog::store(std::string name) {
   }
 }
 void timelog::print(const std::string instName, const std::string incr,
-                           const std::string sum) {
+                    const std::string sum) {
   cout << "\n";
   cout << "-------------------------------\n";
   cout << "Failed Locks: "

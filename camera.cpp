@@ -18,8 +18,8 @@
 #include <string>  // std::string, std::to_string
 #include <thread>
 
+#include "globals.hpp"
 #include "glove.hpp"
-#include "init.hpp"
 #include "poti.hpp"
 #include "timelog.hpp"
 
@@ -39,17 +39,13 @@ float maxDepth = 1.5;       // The depth of viewing range.
                             // are ignored. Value can be changed by poti.
 
 int frameCounter;  // counter for single frames
-float fps;         // av. frames per second
 int globalPotiVal;
+// Counts when there is onNewData() while the previous wasn't finished yet.
+// We don't want this -> royal library gets unstable
 int lockFailCounter = 0;
 
-int cycleTime;
 int lastPrintCurTime;
 cv::Mat depImgMod;
-cv::Mat tileImg;
-
-bool motorsMuted = false;
-bool calibRunning = false;
 long lastNewData = millis();
 
 int width;  // needed by passdepim zeug TODO
@@ -58,9 +54,6 @@ int height;
 // Data and their Mutexes
 cv::Mat depImg;  // full depth image (one byte p. pixel)
 std::mutex depImgMutex;
-int tilesArray[] = {0, 0, 0, 0, 0, 0, 0, 0, 0};  // 9 tiles | motor vals
-std::mutex tilesMutex;
-std::mutex motorTestMutex;
 royale::DepthData dataCopy;  // storage of last depthFrame from libroyal
 std::mutex dataCopyMutex;
 
@@ -90,7 +83,7 @@ void DepthDataListener::onNewData(const DepthData *data) {
   int multiLock = try_lock(dataCopyMutex, pdCondMutex);
   // when lock was successfull
   if (multiLock == -1) {
-    mainTimeLog.store("lock");
+    mainTimeLog.store(std::to_string(frameCounter));
     // simply copy data to shared memory
     dataCopy = *data;
     mainTimeLog.store("copy");
@@ -115,7 +108,7 @@ void DepthDataListener::onNewData(const DepthData *data) {
  *                                PROCESS DATA
  *                               ***************
  * Create depth Image (depImg) and calculate the 9 tiles of it from which the 9
- * vibration motors get their vibration strength value (tilesArray)
+ * vibration motors get their vibration strength value (glob::tiles)
  ******************************************************************************/
 void DepthDataListener::processData() {
   mainTimeLog.store("funct");
@@ -142,7 +135,7 @@ void DepthDataListener::processData() {
 
     // READING DEPTH IMAGE pixel by pixel
     for (int y = 0; y < height; y++) {
-      uint8_t *depImgPtr = depImg.ptr<uint8_t>(y);
+      unsigned char *depImgPtr = depImg.ptr<uchar>(y);
       for (int x = 0; x < width; x++) {
         // save currently observed pixel in curPoint
         auto curPoint = data->points.at(y * width + x);
@@ -156,35 +149,28 @@ void DepthDataListener::processData() {
           // if maxDepth is set to 0 by poti -> out of range (255)
           // if value exceeds maxDepth -> out of range (255)
           // else -> calc value between 0 to 255
-          uint8_t depth = maxDepth > 0
-                              ? (curPoint.z <= maxDepth
-                                     ? (uint8_t)(curPoint.z / maxDepth * 255.0f)
-                                     : 255)
-                              : 255;
+          unsigned char depth =
+              maxDepth > 0
+                  ? (curPoint.z <= maxDepth
+                         ? (unsigned char)(curPoint.z / maxDepth * 255.0f)
+                         : 255)
+                  : 255;
           // HERE the costly stuff begins: copiing values in histogram and
           // save this pixel's depth value in histo
           histo[tileIdx][depth]++;
           // if pixel is in range put the right grey tone
           if (depth < 255) {
             // create a Hue value from 0-180 for the visual output
-            depImgPtr[x * 3] = depth;
-            // Saturation is always the same
-            // depImgPtr[x * 3 + 1] = 0;
-            // create brightness value relative to depth value
-            // depImgPtr[x * 3 + 2] = depth;
+            depImgPtr[x] = depth;
           }
           // if pixel is out of –> make it white / invisible
           else {
-            depImgPtr[x * 3] = 255;
-            // depImgPtr[x * 3 + 1] = 0;
-            // depImgPtr[x * 3 + 2] = 255;
+            depImgPtr[x] = 255;
           }
         }
         // If pixel is not valid –> make it gray
         else {
-          depImgPtr[x * 3] = 230;
-          // depImgPtr[x * 3 + 1] = 10;
-          // depImgPtr[x * 3 + 2] = 245;
+          depImgPtr[x] = 230;
           histo[tileIdx][255]++;  // treat unvalid pixel as 255 = "out of range"
         }
       }
@@ -192,9 +178,9 @@ void DepthDataListener::processData() {
   }
   mainTimeLog.store("aft for");
 
-  // scope is needed for tilesMutex
+  // scope is needed for glob::m_tiles
   {
-    std::lock_guard<std::mutex> lock(tilesMutex);
+    std::lock_guard<std::mutex> lock(glob::m_tiles);
     // FIND CLOSEST object in each tile
     for (int tileIdx = 0; tileIdx < 9; tileIdx++) {
       int sum = 0;
@@ -225,12 +211,12 @@ void DepthDataListener::processData() {
         tileVal = 0;
         std::cout << "there was a -1\n";
       }
-      tilesArray[(tileIdx - 8) * -1] = tileVal;
+      glob::tiles[(tileIdx - 8) * -1] = tileVal;
     }
   }
   mainTimeLog.store("aft his");
   frameCounter++;  // counting every frame
-
+  glob::udpSendServer.preparePacket("frameCounter", frameCounter);
   // call sending thread
   {
     std::lock_guard<std::mutex> svCondLock(svCondMutex);
@@ -241,9 +227,6 @@ void DepthDataListener::processData() {
   // mainTimeLog.store("unlock");
   // wake other thread
   svCond.notify_one();
-
-  // queue the sending task in the udp server TODO
-  //  w->udpSendServer->postSend();
 
   // WRITE
   mainTimeLog.store("pro end");
@@ -256,28 +239,6 @@ void DepthDataListener::processData() {
 /******************************************************************************
  *                                   OTHER
  ******************************************************************************/
-
-// print Output to the Terminal Window for debugging and monitoring
-void printOutput() {
-  // print the values if the tiles as matrix
-  // this if-block is needed for mutex
-  if (true) {
-    std::lock_guard<std::mutex> lock(tilesMutex);  // lock image while reading
-    for (int y = 0; y < 3; y++) {
-      printf("\t");
-      for (int x = 0; x < 3; x++) {
-        int asciiVal = tilesArray[y * 3 + x];
-        if (asciiVal > 250) {
-          printf("\t-\t");
-        } else {
-          printf("\t%i\t", asciiVal);
-        }
-      }
-      printf("\n\n\n");
-    }
-    printf("\n\n\n");
-  }
-}
 
 cv::Mat passUdpFrame(int incSize) {
   std::lock_guard<std::mutex> lock(depImgMutex);

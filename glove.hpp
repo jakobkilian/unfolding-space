@@ -26,7 +26,7 @@
 //----------------------------------------------------------------------
 void setupGlove();
 void muteAll();
-void sendValuesToGlove(int values[],int size);
+void sendValuesToGlove(unsigned char values[],int size);
 void testMotorNo(int i, int val);
 void doCalibration();
 // drv board detachable?

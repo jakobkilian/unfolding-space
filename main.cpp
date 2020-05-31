@@ -6,7 +6,6 @@
  * Project: unfoldingspace.jakobkilian.de
  */
 
-
 //----------------------------------------------------------------------
 // INCLUDES
 //----------------------------------------------------------------------
@@ -26,9 +25,8 @@
 #include <thread>
 
 #include "camera.hpp"
+#include "globals.hpp"
 #include "glove.hpp"
-#include "init.hpp"
-#include "monitoring.hpp"
 #include "poti.hpp"
 #include "time.h"
 #include "timelog.hpp"
@@ -54,21 +52,11 @@ bool detachableDRV = 0;
 
 // Todo: global stuff
 long timeSinceLastNewData;  // time passed since last "onNewData"
-double coreTempDouble;      // Temperature of the Raspi core
-int droppedAtBridge;    // How many frames got dropped at Bridge (in libroyale)
-int droppedAtFC;        // How many frames got dropped at FC (in libroyale)
-int deliveredFrames;    // Number of frames delivered
-int tenSecsDrops;       // Number of drops in the last 10 seconds
-int fpsFromCam;         // wich royal use case is used? (how many fps?)
-int currentKey = 0;     //
-int libraryCrashNo;     // counter for the crashes of the library
-int longestTimeNoData;  // the longest timespan without new data since start
-bool connected;         // camera is currently connected
-bool capturing;         // camera is currently capturing
-bool cameraDetached;    // camera got detached
-long cameraStartTime;   // timestamp when camera started capturing
-bool testMotors;
-int motorTestMatrix[] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+int fpsFromCam;             // wich royal use case is used? (how many fps?)
+int currentKey = 0;         //
+int longestTimeNoData;      // the longest timespan without new data since start
+bool cameraDetached;        // camera got detached
+long cameraStartTime;       // timestamp when camera started capturing
 
 DepthDataListener listener;
 
@@ -94,15 +82,16 @@ void extractDrops(royale::String str) {
     ss >> temp;
     /* Checking the given word is integer or not */
     if (stringstream(temp) >> found) {
-      if (i == 0) droppedAtBridge = found;
-      if (i == 1) droppedAtFC = found;
-      if (i == 2) deliveredFrames = found;
+      if (i == 0) glob::udpSendServer.preparePacket("9", found);
+      if (i == 1) glob::udpSendServer.preparePacket("10", found);
+      if (i == 2) glob::udpSendServer.preparePacket("12", found);
       i++;
     }
     /* To save from space at the end of string */
     temp = "";
   }
-  tenSecsDrops += droppedAtBridge + droppedAtFC;
+  // glob::udpSendServer.preparePacket("11", tenSecsDrops);
+  // tenSecsDrops += droppedAtBridge + droppedAtFC;
 }
 
 //________________________________________________
@@ -143,14 +132,15 @@ void getCoreTemp() {
   std::ifstream tempFile("/sys/class/thermal/thermal_zone0/temp");
   tempFile >> coreTemp;
   coreTemp = coreTemp.insert(2, 1, '.');
-  coreTempDouble = std::stod(coreTemp);
+  float coreTempDouble = std::stod(coreTemp);
+  glob::udpSendServer.preparePacket("coreTemp", coreTempDouble);
   tempFile.close();
 }
 
 //________________________________________________
 // When an error occurs(camera gets detached): prevent freezing, but mute all
 void endMuted(int dummy) {
-  motorsMuted = true;
+  glob::isMuted = true;
   delay(1);
   muteAll();
   delay(1);
@@ -165,11 +155,6 @@ timelog mainTimeLog(20);
 
 int unfolding() {
   mainTimeLog.store("-");
-
-  Monitoring monit;
-  monit.testPrint();
-  monit.changeTestVar(2);
-  monit.testPrint();
   // This is the data listener which will receive callbacks.  It's declared
   // before the cameraDevice so that, if this function exits with a 'return'
   // statement while  camera is still capturing, it will still be in scope
@@ -299,7 +284,7 @@ searchCam:
   // Reset some things
   cameraStartTime = millis();  // set timestamp for capturing start
   cameraDetached = false;      // camera is attached and ready
-  motorsMuted = false;         // activate the vibration motors
+  glob::isMuted = false;       // activate the vibration motors
   long lastCallImshow = millis();
   long lastCall = 0;
   long lastCallTemp = 0;
@@ -308,14 +293,13 @@ searchCam:
   //_____________________ENDLESS LOOP_________________________________
   while (currentKey != 27)  //...until Esc is pressed
   {
-    if (!calibRunning) {
+    if (!glob::royalStats.isCalibRunning) {
       // only do all of this stuff when the camera is attached
       if (!cameraDetached) {
         royale::String id;
         royale::String name;
         uint16_t maxSensorWidth;
         uint16_t maxSensorHeight;
-        bool calib;
         // time passed since LastNewData
         timeSinceLastNewData = millis() - lastNewData;
         if (longestTimeNoData < timeSinceLastNewData) {
@@ -335,24 +319,27 @@ searchCam:
           status = cameraDevice->getMaxSensorWidth(maxSensorWidth);
           status = cameraDevice->getCameraName(name);
           status = cameraDevice->getId(id);
-          status = cameraDevice->isCalibrated(calib);
-          status = cameraDevice->isConnected(connected);
-          status = cameraDevice->isCapturing(capturing);
+          status = cameraDevice->isCalibrated(glob::royalStats.isCalibrated);
+          status = cameraDevice->isConnected(glob::royalStats.isConnected);
+          status = cameraDevice->isCapturing(glob::royalStats.isCapturing);
 
           // do this every 50ms (20 fps)
           if (millis() - lastCallPoti > 100) {
             lastCallPoti = millis();
-            if (testMotors) {
-              sendValuesToGlove(motorTestMatrix, 9);
+            if (glob::isTestMode) {
+              {
+                std::lock_guard<std::mutex> lock(glob::m_testTiles);
+                sendValuesToGlove(glob::testTiles, 9);
+              }
             }
 
             if (potiAv) updatePoti();
 
             // calc fps
             int secondsSinceReset = ((millis() - 0) / 1000);
-            if (secondsSinceReset > 0) {
-              fps = frameCounter / secondsSinceReset;
-            }
+            // if (secondsSinceReset > 0) {
+            //   fps = frameCounter / secondsSinceReset;
+            // }
             if (frameCounter > 999) {
               frameCounter = 0;
               // 0 = millis();
@@ -360,8 +347,8 @@ searchCam:
 
             // printf("time since last new data: %i ms \n",
             // timeSinceLastNewData); printf("No of library crashes: %i times
-            // \n", libraryCrashNo); printf("longest time with no new data was:
-            // %i \n", longestTimeNoData); printf("temp.: \t%.1f°C\n",
+            // \n", libraryCrashCounter); printf("longest time with no new data
+            // was: %i \n", longestTimeNoData); printf("temp.: \t%.1f°C\n",
             // coreTempDouble); printf("drops:\t%i | %i\t deliver:\t%i \t drops
             // in last 10sec: %i\n",
             //        droppedAtBridge, droppedAtFC, deliveredFrames,
@@ -383,7 +370,7 @@ searchCam:
           // do this every 5000ms (every 1 seconds)
           if (millis() - lastCall > 10000) {
             lastCall = millis();
-            tenSecsDrops = 0;
+            // tenSecsDrops = 0;
           }
         }
 
@@ -391,7 +378,8 @@ searchCam:
         // Ignore first 3secs
         if ((millis() - cameraStartTime) > 3000) {
           // connected but still capturing -> unplugged!
-          if (connected == 0 && capturing == 1) {
+          if (glob::royalStats.isConnected == 0 &&
+              glob::royalStats.isCapturing == 1) {
             if (cameraDetached == false) {
               cout << "________________________________________________" << endl
                    << endl;
@@ -402,7 +390,7 @@ searchCam:
                    << endl;
               cout << "Searching for 3D camera in loop" << endl;
               // stop writing new values to the LRAs
-              motorsMuted = true;
+              glob::isMuted = true;
               // mute all LRAs
               muteAll();
               cameraDetached = true;
@@ -433,9 +421,9 @@ searchCam:
                    << endl;
               cout << "________________________________________________" << endl
                    << endl;
-              libraryCrashNo++;
+              glob::royalStats.libraryCrashCounter++;
               // stop writing new values to the LRAs
-              motorsMuted = true;
+              glob::isMuted = true;
               // mute all LRAs
               muteAll();
               // go to the beginning and find camera again
@@ -452,7 +440,7 @@ searchCam:
     cerr << "Error stopping the capturing" << endl;
     return 1;
   }
-  motorsMuted = true;
+  glob::isMuted = true;
   // mute all motors
   muteAll();
   return 0;
@@ -460,16 +448,8 @@ searchCam:
 // TODO: maybe this is not the best way to handle this?
 class mainThreadWrapper {
  public:
-  udp_server *udpSendServer;
-  boost::asio::io_service udpSendService;
-  boost::asio::io_service udpBroadService;
-
   // Sending the data out at specified moments when there is nothing else to do
-  void runUdpSend() {
-    // inst server with max of 10 clients
-    udpSendServer = new udp_server(udpSendService, 3);
-    udpSendService.run();
-  }
+  void runUdpSend() { glob::udpSendService.run(); }
   std::thread runUdpSendThread() {
     return std::thread([=] { runUdpSend(); });
   }
@@ -479,8 +459,8 @@ class mainThreadWrapper {
     int unfReturn = unfolding();
     printf("Unfolding Thread has been exited with a #%i \n", unfReturn);
     printf("Stopping the UDP server now... \n");
-    udpSendService.stop();
-    udpBroadService.stop();
+    // Todo: stoppen notwendig? Was ist mein Stop-plan?
+    glob::udpSendService.stop();
   }
   std::thread runUnfoldingThread() {
     return std::thread([=] { runUnfolding(); });
@@ -504,9 +484,39 @@ class mainThreadWrapper {
     while (1) {
       std::unique_lock<std::mutex> svCondLock(svCondMutex);
       svCond.wait(svCondLock, [] { return svFlag; });
-      sendValuesToGlove(tilesArray, 9);
-      // TODO: sollte gleichzeitig zu send ausgeführt werden...
-      udpSendServer->postSend();
+      sendValuesToGlove(glob::tiles, 9);
+
+      // Send motor vals or testvals
+      if (!glob::isTestMode) {
+        std::lock_guard<std::mutex> lock(glob::m_tiles);
+        const int size = sizeof(glob::testTiles) / sizeof(glob::testTiles[0]);
+        std::vector<unsigned char> vect;
+        for (int i = 0; i < size; i++) {
+          unsigned char tmpChar = glob::tiles[i];
+          vect.push_back(tmpChar);
+        }
+        glob::udpSendServer.preparePacket("motors", vect);
+      } else {
+        std::lock_guard<std::mutex> lock(glob::m_testTiles);
+        const int size = sizeof(glob::testTiles) / sizeof(glob::testTiles[0]);
+        std::vector<unsigned char> vect;
+
+        for (int i = 0; i < size; i++) {
+          unsigned char tmpChar = glob::testTiles[i];
+          vect.push_back(tmpChar);
+        }
+        glob::udpSendServer.preparePacket("motors", vect);
+      }
+      glob::udpSendServer.prepareImage();
+
+      // TODO: sollte gleichzeitig zu send ausgeführt werden und nicht danach...
+      glob::udpSendServer.preparePacket("6", glob::royalStats.isConnected);
+      glob::udpSendServer.preparePacket("7", glob::royalStats.isCapturing);
+      glob::udpSendServer.preparePacket("8",
+                                        glob::royalStats.libraryCrashCounter);
+      glob::udpSendServer.preparePacket("15", glob::isMuted);
+      glob::udpSendServer.preparePacket("16", glob::isTestMode);
+
       svFlag = false;
     }
   }

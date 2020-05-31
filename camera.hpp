@@ -17,6 +17,7 @@
 #include <opencv2/opencv.hpp>
 #include <royale.hpp>
 #include <thread>
+#include "globals.hpp"
 
 #include "timelog.hpp"
 
@@ -30,37 +31,21 @@ void printOutput();
 
 // TODO: global variables from main.cpp
 extern long timeSinceLastNewData;  // time passed since last "onNewData"
-extern double coreTempDouble;      // Temperature of the Raspi core
-extern int
-    droppedAtBridge;     // How many frames got dropped at Bridge (in libroyale)
-extern int droppedAtFC;  // How many frames got dropped at FC (in libroyale)
-extern int deliveredFrames;  // Number of frames delivered
-extern int tenSecsDrops;     // Number of drops in the last 10 seconds
 extern int fpsFromCam;       // wich royal use case is used? (how many fps?)
 extern int currentKey;       //
-extern int libraryCrashNo;   // counter for the crashes of the library
+//extern int libraryCrashNo;   // counter for the crashes of the library
 extern int
     longestTimeNoData;  // the longest timespan without new data since start
-extern bool connected;  // camera is currently connected
-extern bool capturing;  // camera is currently capturing
 extern bool cameraDetached;   // camera got detached
 extern long cameraStartTime;  // timestamp when camera started capturing
 extern bool record;           // currently recording?
-extern bool motorsMuted;
-extern bool testMotors;
-extern int motorTestMatrix[9];
-extern bool calibRunning;
 extern long lastNewData;
 extern int frameCounter;
 extern int kCounter;
-extern float fps;
 
 // Data and their Mutexes
 extern cv::Mat depImg;  // full depth image (one byte p. pixel)
 extern std::mutex depImgMutex;
-extern int tilesArray[];  // 9 tiles | motor vals
-extern std::mutex tilesMutex;
-extern std::mutex motorTestMutex;
 extern royale::DepthData dataCopy;  // storage of last depthFrame from libroyal
 extern std::mutex dataCopyMutex;
 
@@ -99,9 +84,7 @@ extern royale::DepthData dataCopy;
 // // TODO: unsauber das hier zu machen....?
 // class mainThreadWrapper {
 //  public:
-//   udp_server *udpSendServer;
 //   boost::asio::io_service udpSendService;
-//   boost::asio::io_service udpBroadService;
 //   void runUdpSend();
 //   std::thread runUdpSendThread();
 //   void runUdpRec();
