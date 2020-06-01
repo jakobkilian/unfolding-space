@@ -37,23 +37,6 @@ using std::cout;
 using std::endl;
 using namespace std::chrono;
 
-//----------------------------------------------------------------------
-// DECLARATIONS AND VARIABLES
-//----------------------------------------------------------------------
-
-// Todo: global stuff
-long timeSinceLastNewData;  // time passed since last "onNewData"
-int fpsFromCam;             // wich royal use case is used? (how many fps?)
-int longestTimeNoData;      // the longest timespan without new data since start
-bool cameraDetached;        // camera got detached
-long cameraStartTime;       // timestamp when camera started capturing
-
-DepthDataListener listener;
-
-//----------------------------------------------------------------------
-// OTHER FUNCTIONS AND CLASSES
-//----------------------------------------------------------------------
-
 //________________________________________________
 // Read out the core temperature and save it in coreTempDouble
 void getCoreTemp() {
@@ -71,7 +54,7 @@ void getCoreTemp() {
 void exitApplicationMuted(int dummy) {
   glob::isMuted = true;
   muteAll();
-  //delay(1);
+  // delay(1);
   exit(0);
 }
 
@@ -79,10 +62,17 @@ void exitApplicationMuted(int dummy) {
 //****************************** UNFOLDING *****************************
 //********** This is the main part, now in a seperate thread ***********
 //**********************************************************************
-timelog mainTimeLog(20);
+timelog mainTimeLog;
 
 int unfolding() {
-  mainTimeLog.store("-");
+  bool threeSecondsAreOver = false;
+  DepthDataListener listener;
+  long timeSinceNewData;  // time passed since last "onNewData"
+  int fpsFromCam;             // wich royal use case is used? (how many fps?)
+  int maxTimeSinceNewData;  // the longest timespan without new data since start
+  bool cameraDetached;    // camera got detached
+
+  mainTimeLog.store("INIT");
 
   // Event Listener
   EventReporter eventReporter;
@@ -116,7 +106,7 @@ searchCam:
   // boostInit();
 
   // Setup Connection to Digispark Board for Poti-Reads
-  if (potiAvailable) initPoti();
+  if (glob::potiStats.available) initPoti();
 
   // Setup the LRAs on the Glove (I2C Connection, Settings, Calibration, etc.)
   setupGlove();
@@ -185,7 +175,7 @@ searchCam:
     return 1;
   }
 
-  // listener.setLensParameters(lensParameters);
+  // glob::listener.setLensParameters(lensParameters);
 
   // register a data listener
   if (cameraDevice->registerDataListener(&listener) !=
@@ -206,17 +196,26 @@ searchCam:
   }
   mainTimeLog.store("capt");
   // Reset some things
-  cameraStartTime = millis();  // set timestamp for capturing start
-  cameraDetached = false;      // camera is attached and ready
-  glob::isMuted = false;       // activate the vibration motors
+  timelog startTimeLog;
+  startTimeLog.store("INIT");
+  cameraDetached = false;  // camera is attached and ready
+  glob::isMuted = false;   // activate the vibration motors
   long lastCallImshow = millis();
   long lastCall = 0;
   long lastCallTemp = 0;
   long lastCallPoti = millis();
-  mainTimeLog.print("Initializing Unfolding", "ms", "ms");
+  mainTimeLog.printAll("Initializing Unfolding", "ms", "ms");
+  mainTimeLog.reset();
   //_____________________ENDLESS LOOP_________________________________
   while (true)  //...until Esc is pressed
   {
+    // Check if time since camera started capturing is bigger than 3 secs
+    if (!threeSecondsAreOver) {
+      if (startTimeLog.msSinceEntry(0) > 3000) {
+        threeSecondsAreOver = true;
+      }
+    }
+
     if (!glob::royalStats.isCalibRunning) {
       // only do all of this stuff when the camera is attached
       if (!cameraDetached) {
@@ -225,9 +224,9 @@ searchCam:
         uint16_t maxSensorWidth;
         uint16_t maxSensorHeight;
         // time passed since LastNewData
-        timeSinceLastNewData = millis() - lastNewData;
-        if (longestTimeNoData < timeSinceLastNewData) {
-          longestTimeNoData = timeSinceLastNewData;
+        timeSinceNewData = glob::newDataLog.msSinceEntry(0);
+        if (maxTimeSinceNewData < timeSinceNewData) {
+          maxTimeSinceNewData = timeSinceNewData;
         }
 
         // do this every 66ms (15 fps)
@@ -257,7 +256,7 @@ searchCam:
               }
             }
 
-            if (potiAvailable) updatePoti();
+            if (glob::potiStats.available) updatePoti();
 
             // calc fps
             int secondsSinceReset = ((millis() - 0) / 1000);
@@ -268,21 +267,6 @@ searchCam:
               frameCounter = 0;
               // 0 = millis();
             }
-
-            // printf("time since last new data: %i ms \n",
-            // timeSinceLastNewData); printf("No of library crashes: %i times
-            // \n", libraryCrashCounter); printf("longest time with no new data
-            // was: %i \n", longestTimeNoData); printf("temp.: \t%.1f°C\n",
-            // coreTempDouble); printf("drops:\t%i | %i\t deliver:\t%i \t drops
-            // in last 10sec: %i\n",
-            //        droppedAtBridge, droppedAtFC, deliveredFrames,
-            //        tenSecsDrops);
-            // printf("frame:\t %i \t time:\t %i \t fps: %.1f \n", frameCounter,
-            //        secondsSinceReset, fps);
-            // printf("cycle:\t %ims \t pause: %ims \n", globalCycleTime,
-            //        globalPauseTime);
-            // printf("Range:\t %.1f m\n\n\n", maxDepth);
-            // printOutput();
           }
 
           // do this every 5000ms (every 1 seconds)
@@ -298,9 +282,9 @@ searchCam:
           }
         }
 
-        // RESTART WHEN CAMERA IS UNPLUGGED
         // Ignore first 3secs
-        if ((millis() - cameraStartTime) > 3000) {
+        if (threeSecondsAreOver) {
+          // RESTART WHEN CAMERA IS UNPLUGGED
           // connected but still capturing -> unplugged!
           if (glob::royalStats.isConnected == 0 &&
               glob::royalStats.isCapturing == 1) {
@@ -315,7 +299,6 @@ searchCam:
               cout << "Searching for 3D camera in loop" << endl;
               // stop writing new values to the LRAs
               glob::isMuted = true;
-              // mute all LRAs
               muteAll();
               cameraDetached = true;
             }
@@ -331,17 +314,14 @@ searchCam:
               cout.flush();
             }
           }
-        }
-
-        if ((millis() - cameraStartTime) > 3000) {  // ignore the first 3 secs
           if (cameraDetached == false) {        // if camera should be there...
-            if (timeSinceLastNewData > 4000) {  // but there is no frame for 4s
+            if (timeSinceNewData > 4000) {  // but there is no frame for 4s
               cout << "________________________________________________" << endl
                    << endl;
               cout << "Library Crashed! Reinitialize Camera and Listener. last "
                       "new "
                       "frame:  "
-                   << timeSinceLastNewData << endl
+                   << timeSinceNewData << endl
                    << endl;
               cout << "________________________________________________" << endl
                    << endl;
@@ -392,11 +372,12 @@ class mainThreadWrapper {
 
   // Processing the Data, Creating Depth Image, Histogram and 9-Tiles Array
   void runCopyDepthData() {
+    DepthDataUtilities ddProcessor;
     while (1) {
-      std::unique_lock<std::mutex> pdCondLock(pdCondMutex);
-      pdCond.wait(pdCondLock, [] { return pdFlag; });
-      listener.processData();
-      pdFlag = false;
+      std::unique_lock<std::mutex> pdCondLock(glob::pdCondMutex);
+      glob::pdCond.wait(pdCondLock, [] { return glob::pdFlag; });
+      ddProcessor.processData();
+      glob::pdFlag = false;
     }
   }
   std::thread runCopyDepthDataThread() {
@@ -406,8 +387,8 @@ class mainThreadWrapper {
   // Sending the Data to the glove (Costly due to register writing via i2c)
   void runSendDepthData() {
     while (1) {
-      std::unique_lock<std::mutex> svCondLock(svCondMutex);
-      svCond.wait(svCondLock, [] { return svFlag; });
+      std::unique_lock<std::mutex> svCondLock(glob::svCondMutex);
+      glob::svCond.wait(svCondLock, [] { return glob::svFlag; });
       sendValuesToGlove(glob::tiles, 9);
 
       // Send motor vals or testvals
@@ -434,14 +415,18 @@ class mainThreadWrapper {
       glob::udpSendServer.prepareImage();
 
       // TODO: sollte gleichzeitig zu send ausgeführt werden und nicht danach...
-      glob::udpSendServer.preparePacket("isConnected", glob::royalStats.isConnected);
-      glob::udpSendServer.preparePacket("isCapturing", glob::royalStats.isCapturing);
+      glob::udpSendServer.preparePacket("isConnected",
+                                        glob::royalStats.isConnected);
+      glob::udpSendServer.preparePacket("isCapturing",
+                                        glob::royalStats.isCapturing);
       glob::udpSendServer.preparePacket("libCrashes",
                                         glob::royalStats.libraryCrashCounter);
       glob::udpSendServer.preparePacket("isMuted", glob::isMuted);
-      glob::udpSendServer.preparePacket("isTestMode", glob::isTestMode);
-
-      svFlag = false;
+      glob::udpSendServer.preparePacket("isTestMode", glob::isTestMode);/*
+      unsigned char m_Test[20] = "Hello World";
+      glob::udpSendServer.preparePacket("debug", m_Test);
+*/
+      glob::svFlag = false;
     }
   }
   std::thread runSendDepthDataThread() {

@@ -12,8 +12,8 @@
 #include "glove.hpp"
 
 #include "camera.hpp"
-#include "timelog.hpp"
 #include "globals.hpp"
+#include "timelog.hpp"
 
 //----------------------------------------------------------------------
 // DECLARATION OF FUNCTIONS
@@ -183,7 +183,7 @@ int registerWrite(unsigned char ucRegAddress, char cValue) {
 void sendValuesToGlove(unsigned char inValues[], int size) {
   // WRITE VALUES TO GLOVE
   unsigned char values[] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
-  mainTimeLog.store("send");
+  mainTimeLog.store("startSendGlove");
   {
     std::lock_guard<std::mutex> lock(glob::m_tiles);
     for (int i = 0; i < size; i++) {
@@ -211,7 +211,14 @@ void sendValuesToGlove(unsigned char inValues[], int size) {
     }
   }
   mainTimeLog.store("TCA2");
-  mainTimeLog.print("Cycle", "us", "ms");
+  mainTimeLog.store("end");
+  mainTimeLog.printAll("Cycle", "us", "ms");
+  mainTimeLog.udpTimeSpan("processing", "us", "startProcess", "endProcess");
+  mainTimeLog.udpTimeSpan("onNewData", "us", "start", "notifyProcessing");
+  mainTimeLog.udpTimeSpan("gloveSending", "us", "startSendGlove", "end");
+  mainTimeLog.udpTimeSpan("wholeCycle", "us", "start", "end");
+  mainTimeLog.reset();
+  mainTimeLog.store("startPause");
 }
 
 //________________________________________________

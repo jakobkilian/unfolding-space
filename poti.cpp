@@ -12,6 +12,7 @@
 #include "poti.hpp"
 #include "camera.hpp"
 #include "glove.hpp"
+#include "globals.hpp"
 
 //----------------------------------------------------------------------
 // DECLARATIONS AND VARIABLES
@@ -105,6 +106,6 @@ int updatePoti() {
     std::cout << "can't get new poti val" << '\n';
     return -1;
   }
-  globalPotiVal = lastVal;
+  glob::potiStats.value = lastVal;
   return lastVal;
 }

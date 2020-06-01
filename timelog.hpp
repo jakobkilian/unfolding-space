@@ -1,23 +1,23 @@
 #pragma once
 
-#include <string>
 #include <array>
 #include <chrono>
-
+#include <string>
+#include <vector>
 
 class timelog {
-  // new: save the steps in an array of time_points to print them at the end...
-  std::array<std::chrono::steady_clock::time_point, 100> t;
-  std::array<std::string, 100> n;
-  int size;
+  std::vector<std::chrono::steady_clock::time_point> timePoint;
+  std::vector<std::string> nameTag;
   int i;
   int pos = -1;
 
  public:
-  timelog(int);
   void store(std::string name);
   void reset();
-  void print(const std::string, const std::string, const std::string);
+  //void sendAll(const std::string, const std::string, const std::string);
+  void printAll(const std::string, const std::string, const std::string);
+  void udpTimeSpan(std::string ident,std::string incr,std::string from, std::string to);
+  long msSinceEntry(int id);
 };
 
 extern timelog mainTimeLog;

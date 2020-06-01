@@ -6,6 +6,7 @@
 #include <iostream>
 #include <vector>
 
+#include "camera.hpp"
 #include "timelog.hpp"
 using namespace std::chrono;
 
@@ -66,6 +67,7 @@ class udp_server {
   boost::system::error_code errorRec;
   boost::asio::deadline_timer timer1_;
   boost::asio::deadline_timer timer2_;
+  DepthDataUtilities ddUtilities;
 
  public:
   // Template Function that recieves a any type of data (T const &data) and puts
@@ -75,12 +77,13 @@ class udp_server {
     // only use some types: int, float, char array
 
     static_assert(
-        std::is_same<T, int>::value || std::is_same<T, float>::value ||
-            std::is_same<T, char>::value ||
+        std::is_same<T, int>::value || std::is_same<T, unsigned int>::value ||
+            std::is_same<T, float>::value || std::is_same<T, char>::value ||
             std::is_same<T, unsigned char>::value ||
             std::is_same<T, float>::value || std::is_same<T, bool>::value,
-        "This function can only be used with the following data types: int, "
-        "float, char, unsigned char and "
+        "MyError: This function can only be used with the following data "
+        "types: int, "
+        "unsigned int, float, char, unsigned char and "
         "std::vector<unsigned char> ");
 
     const int keyLength = key.length();

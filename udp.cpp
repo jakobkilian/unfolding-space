@@ -28,7 +28,6 @@ udp_client::udp_client(udp::endpoint e) {
   isActive = false;
   lastCalled = steady_clock::now();
 }
-
 // increment the counter and check if it is below max frames before drop
 void udp_client::checkTimer() {
   if (std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -63,9 +62,7 @@ bool udp_client::isEqual(udp::endpoint *checkEndpoint) {
  * boost asio strand which subsequently invokes the tasks
  ******************************************************************************/
 udp_server::udp_server(boost::asio::io_service &io_service, int max)
-    : udpRecLog(20),   // time log instance
-      udpSendLog(20),  // time log instance
-      strand_(io_service),
+    :       strand_(io_service),
       socket_(io_service, udp::endpoint(udp::v4(), 9009)),
       broad_socket_(io_service, udp::endpoint(udp::v4(), 9007)),
       timer1_(io_service, boost::posix_time::milliseconds(500)),
@@ -87,6 +84,7 @@ udp_server::udp_server(boost::asio::io_service &io_service, int max)
   broad_endpoint_ =
       udp::endpoint(boost::asio::ip::address_v4::broadcast(), 9008);
 }
+
 
 //_______ Broadcast Online Status _______
 void udp_server::broadcast() {
@@ -112,7 +110,7 @@ void udp_server::prepareImage() {
     if (udpClient[i].checkState()) {
       if (udpClient[i].sendImg) {
         cv::Mat dep;
-        dep = passUdpFrame(udpClient[i].imgSize);
+        dep = ddUtilities.getResizedDepthImage(udpClient[i].imgSize);
         // cv::cvtColor(dep, dep, cv::COLOR_HSV2RGB, 3);
         cv::flip(dep, dep, -1);
         std::vector<unsigned char> vect;
@@ -271,7 +269,8 @@ void udp_server::handle_receive() {
   // start listening again
   strand_.post(strand_.wrap(std::bind(&udp_server::start_receive, this)));
   udpRecLog.store("post new receive");
-  udpRecLog.print("Receiving one Frame", "us", "ms");
+  udpRecLog.printAll("Receiving one Frame", "us", "ms");
+  udpRecLog.reset();
 }
 
 // Invoked after sending message (dont delete)

@@ -1,11 +1,3 @@
-/*
- * File: camera.cpp
- * Author: Jakob Kilian
- * Date: 26.09.19
- * Info: Handles incoming frames of the pico flexx +  image processing
- * Project: unfoldingspace.jakobkilian.de
- */
-
 //----------------------------------------------------------------------
 // INCLUDES
 //----------------------------------------------------------------------
@@ -15,9 +7,9 @@
 #include <chrono>
 #include <iostream>
 #include <mutex>
+#include <royale/IEvent.hpp>
 #include <string>  // std::string, std::to_string
 #include <thread>
-#include <royale/IEvent.hpp>
 
 #include "globals.hpp"
 #include "glove.hpp"
@@ -40,33 +32,8 @@ float maxDepth = 1.5;       // The depth of viewing range.
                             // are ignored. Value can be changed by poti.
 
 int frameCounter;  // counter for single frames
-int globalPotiVal;
-// Counts when there is onNewData() while the previous wasn't finished yet.
-// We don't want this -> royal library gets unstable
-int lockFailCounter = 0;
 
-int lastPrintCurTime;
-cv::Mat depImgMod;
 long lastNewData = millis();
-
-int width;  // needed by passdepim zeug TODO
-int height;
-
-// Data and their Mutexes
-cv::Mat depImg;  // full depth image (one byte p. pixel)
-std::mutex depImgMutex;
-royale::DepthData dataCopy;  // storage of last depthFrame from libroyal
-std::mutex dataCopyMutex;
-
-// Notifying processing data (pd) thread to end waiting
-std::condition_variable pdCond;  // depthData condition varibale
-std::mutex pdCondMutex;          // depthData condition varibale
-bool pdFlag = false;
-
-// Notifying send values to motors (sv) thread to end waiting
-std::condition_variable svCond;  // send Values condition varibale
-std::mutex svCondMutex;          // send Values condition varibale
-bool svFlag = false;
 
 //
 /******************************************************************************
@@ -78,28 +45,35 @@ bool svFlag = false;
  * returns immidiately when the preceding frame is not yet copied.
  ******************************************************************************/
 void DepthDataListener::onNewData(const DepthData *data) {
+  glob::newDataLog.reset();
+  glob::newDataLog.store("onNewData");
+  mainTimeLog.store("endPause");
+  mainTimeLog.printAll("pause", "us", "ms");
+  mainTimeLog.udpTimeSpan("pause", "us", "startPause", "endPause");
+  mainTimeLog.reset();
   mainTimeLog.store("start");
-  // lock needs >1 mutexes to lock. pdCondMutex therefore has no
+  mainTimeLog.store("startOnNew");
+  // lock needs >1 mutexes to lock. glob::pdCondMutex therefore has no
   // meaning.
-  int multiLock = try_lock(dataCopyMutex, pdCondMutex);
+  int multiLock = try_lock(glob::dataCopyMutex, glob::pdCondMutex);
   // when lock was successfull
   if (multiLock == -1) {
-    mainTimeLog.store(std::to_string(frameCounter));
+    mainTimeLog.store("tryLocks");
     // simply copy data to shared memory
-    dataCopy = *data;
+    glob::dataCopy = *data;
     mainTimeLog.store("copy");
     // set variable for predicate check in other thread
-    pdFlag = true;
-    dataCopyMutex.unlock();
-    pdCondMutex.unlock();
+    glob::pdFlag = true;
+    glob::dataCopyMutex.unlock();
+    glob::pdCondMutex.unlock();
   } else {
     // if onNewData fails to unlock the mutex it returns instantly
-    lockFailCounter++;
+    glob::lockFailCounter++;
   }
   mainTimeLog.store("unlock");
   // wake other thread
-  pdCond.notify_one();
-  mainTimeLog.store("notif");
+  glob::pdCond.notify_one();
+  mainTimeLog.store("notifyProcessing");
 }
 //                                    _____
 //                                 [onNewData]
@@ -108,35 +82,37 @@ void DepthDataListener::onNewData(const DepthData *data) {
 /******************************************************************************
  *                                PROCESS DATA
  *                               ***************
- * Create depth Image (depImg) and calculate the 9 tiles of it from which the 9
- * vibration motors get their vibration strength value (glob::tiles)
+ * Create depth Image (glob::depImg) and calculate the 9 tiles of it from which
+ *the 9 vibration motors get their vibration strength value (glob::tiles)
  ******************************************************************************/
-void DepthDataListener::processData() {
-  mainTimeLog.store("funct");
+void DepthDataUtilities::processData() {
+  mainTimeLog.store("startProcessing");
+
   int histo[9][256];  // historgram, needed to find closest obj
-  // Lock Mutex for copied Data and the depImg
+  // Lock Mutex for copied Data and the glob::depImg
   {
-    std::lock_guard<std::mutex> dcDataLock(dataCopyMutex);
-    std::lock_guard<std::mutex> depDataLock(depImgMutex);
-    DepthData *data = &dataCopy;  // set a pointer to the copied data
-    lastNewData = millis();       // timestamp when new frame arrives
-    if (potiAvailable) {
-      maxDepth =
-          globalPotiVal / 100 / 3;  // calculate current maxDepth from potiVal
+    std::lock_guard<std::mutex> dcDataLock(glob::dataCopyMutex);
+    std::lock_guard<std::mutex> depDataLock(glob::depImgMutex);
+    royale::DepthData *data =
+        &glob::dataCopy;     // set a pointer to the copied data
+    lastNewData = millis();  // timestamp when new frame arrives
+    if (glob::potiStats.available) {
+      maxDepth = glob::potiStats.value / 100 /
+                 3;  // calculate current maxDepth from potiVal
     }
 
     // check dimensions of incoming data
-    width = data->width;              // get width from depth image
-    height = data->height;            // get height from depth image
+    int width = data->width;          // get width from depth image
+    int height = data->height;        // get height from depth image
     int tileWidth = width / 3 + 1;    // respectiveley width of one tile
     int tileHeight = height / 3 + 1;  // respectiveley height of one tile
-    depImg.create(cv::Size(width, height), CV_8UC1);  // gets filled later
-    bzero(histo, sizeof(int) * 9 * 256);              // clear histogram array
+    glob::depImg.create(cv::Size(width, height), CV_8UC1);  // gets filled later
+    bzero(histo, sizeof(int) * 9 * 256);  // clear histogram array
     mainTimeLog.store("bf");
 
     // READING DEPTH IMAGE pixel by pixel
     for (int y = 0; y < height; y++) {
-      unsigned char *depImgPtr = depImg.ptr<uchar>(y);
+      unsigned char *depImgPtr = glob::depImg.ptr<uchar>(y);
       for (int x = 0; x < width; x++) {
         // save currently observed pixel in curPoint
         auto curPoint = data->points.at(y * width + x);
@@ -217,21 +193,23 @@ void DepthDataListener::processData() {
   }
   mainTimeLog.store("aft his");
   frameCounter++;  // counting every frame
+
   glob::udpSendServer.preparePacket("frameCounter", frameCounter);
   // call sending thread
   {
-    std::lock_guard<std::mutex> svCondLock(svCondMutex);
+    std::lock_guard<std::mutex> svCondLock(glob::svCondMutex);
     // mainTimeLog.store("lock");
     // mainTimeLog.store("copy");
-    svFlag = true;
+    glob::svFlag = true;
   }
   // mainTimeLog.store("unlock");
   // wake other thread
-  svCond.notify_one();
+  glob::svCond.notify_one();
 
   // WRITE
-  mainTimeLog.store("pro end");
-  // mainTimeLog.print("Receiving Frame", "us", "ms");
+  mainTimeLog.store("endProcess");
+  // mainTimeLog.printAll("Receiving Frame", "us", "ms");
+  // mainTimeLog.reset();
 }
 //                                    _____
 //                                [process data]
@@ -241,31 +219,29 @@ void DepthDataListener::processData() {
  *                                   OTHER
  ******************************************************************************/
 
-
-
-  void EventReporter::onEvent(std::unique_ptr<royale::IEvent> &&event)  {
-    royale::EventSeverity severity = event->severity();
-    switch (severity) {
-      case royale::EventSeverity::ROYALE_INFO:
-        // cerr << "info: " << event->describe() << endl;
-        extractDrops(event->describe());
-        break;
-      case royale::EventSeverity::ROYALE_WARNING:
-        // cerr << "warning: " << event->describe() << endl;
-        extractDrops(event->describe());
-        break;
-      case royale::EventSeverity::ROYALE_ERROR:
-        cerr << "error: " << event->describe() << endl;
-        break;
-      case royale::EventSeverity::ROYALE_FATAL:
-        cerr << "fatal: " << event->describe() << endl;
-        break;
-      default:
-        // cerr << "waits..." << event->describe() << endl;
-        break;
-    }
+void EventReporter::onEvent(std::unique_ptr<royale::IEvent> &&event) {
+  royale::EventSeverity severity = event->severity();
+  switch (severity) {
+    case royale::EventSeverity::ROYALE_INFO:
+      // cerr << "info: " << event->describe() << endl;
+      extractDrops(event->describe());
+      break;
+    case royale::EventSeverity::ROYALE_WARNING:
+      // cerr << "warning: " << event->describe() << endl;
+      extractDrops(event->describe());
+      break;
+    case royale::EventSeverity::ROYALE_ERROR:
+      cerr << "error: " << event->describe() << endl;
+      break;
+    case royale::EventSeverity::ROYALE_FATAL:
+      cerr << "fatal: " << event->describe() << endl;
+      break;
+    default:
+      // cerr << "waits..." << event->describe() << endl;
+      break;
   }
-  //________________________________________________
+}
+//________________________________________________
 // Royale Event Listener reports dropped frames as string.
 // This functions extracts the number of frames that got lost at Bridge/FC.
 // I believe, that dropped frames cause instability – PMDtec confirmed this
@@ -295,24 +271,18 @@ void EventReporter::extractDrops(royale::String str) {
   // tenSecsDrops += droppedAtBridge + droppedAtFC;
 }
 
-
-
-
-
-
-
-
-cv::Mat passUdpFrame(int incSize) {
-  std::lock_guard<std::mutex> lock(depImgMutex);
+cv::Mat DepthDataUtilities::getResizedDepthImage(int incSize) {
+  std::lock_guard<std::mutex> lock(glob::depImgMutex);
+  cv::Mat sizedImgCopy;
   // constrain value between 1 and 9
   if (incSize <= 0 || incSize > 9) {
     incSize = 1;
   }
   int picSize = incSize * 20;
   cv::Size size(picSize, picSize);
-  depImgMod.create(size, CV_8UC1);
-  if (depImg.rows != 0) {
-    cv::resize(depImg, depImgMod, size);  // resize image
+  sizedImgCopy.create(size, CV_8UC1);
+  if (glob::depImg.rows != 0) {
+    cv::resize(glob::depImg, sizedImgCopy, size);  // resize image
   }
-  return depImgMod;
+  return sizedImgCopy;
 }
