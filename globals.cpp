@@ -16,6 +16,11 @@ std::mutex glob::m_tiles;
 unsigned char glob::tiles[] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
 int glob::imgSize=5;
 bool glob::sendImg=true;
+//does the system use a distance potentiometer?
+bool potiAvailable=false;
+
 RoyalStatus glob::royalStats; 
+
+
 
 

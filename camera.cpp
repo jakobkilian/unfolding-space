@@ -17,6 +17,7 @@
 #include <mutex>
 #include <string>  // std::string, std::to_string
 #include <thread>
+#include <royale/IEvent.hpp>
 
 #include "globals.hpp"
 #include "glove.hpp"
@@ -119,7 +120,7 @@ void DepthDataListener::processData() {
     std::lock_guard<std::mutex> depDataLock(depImgMutex);
     DepthData *data = &dataCopy;  // set a pointer to the copied data
     lastNewData = millis();       // timestamp when new frame arrives
-    if (potiAv) {
+    if (potiAvailable) {
       maxDepth =
           globalPotiVal / 100 / 3;  // calculate current maxDepth from potiVal
     }
@@ -239,6 +240,67 @@ void DepthDataListener::processData() {
 /******************************************************************************
  *                                   OTHER
  ******************************************************************************/
+
+
+
+  void EventReporter::onEvent(std::unique_ptr<royale::IEvent> &&event)  {
+    royale::EventSeverity severity = event->severity();
+    switch (severity) {
+      case royale::EventSeverity::ROYALE_INFO:
+        // cerr << "info: " << event->describe() << endl;
+        extractDrops(event->describe());
+        break;
+      case royale::EventSeverity::ROYALE_WARNING:
+        // cerr << "warning: " << event->describe() << endl;
+        extractDrops(event->describe());
+        break;
+      case royale::EventSeverity::ROYALE_ERROR:
+        cerr << "error: " << event->describe() << endl;
+        break;
+      case royale::EventSeverity::ROYALE_FATAL:
+        cerr << "fatal: " << event->describe() << endl;
+        break;
+      default:
+        // cerr << "waits..." << event->describe() << endl;
+        break;
+    }
+  }
+  //________________________________________________
+// Royale Event Listener reports dropped frames as string.
+// This functions extracts the number of frames that got lost at Bridge/FC.
+// I believe, that dropped frames cause instability – PMDtec confirmed this
+void EventReporter::extractDrops(royale::String str) {
+  using namespace std;
+  stringstream ss;
+  /* Storing the whole string into string stream */
+  ss << str;
+  /* Running loop till the end of the stream */
+  string temp;
+  int found;
+  int i = 0;
+  while (!ss.eof()) {
+    /* extracting word by word from stream */
+    ss >> temp;
+    /* Checking the given word is integer or not */
+    if (stringstream(temp) >> found) {
+      if (i == 0) glob::udpSendServer.preparePacket("drpBridge", found);
+      if (i == 1) glob::udpSendServer.preparePacket("drpFC", found);
+      if (i == 2) glob::udpSendServer.preparePacket("delivFrames", found);
+      i++;
+    }
+    /* To save from space at the end of string */
+    temp = "";
+  }
+  // glob::udpSendServer.preparePacket("11", tenSecsDrops);
+  // tenSecsDrops += droppedAtBridge + droppedAtFC;
+}
+
+
+
+
+
+
+
 
 cv::Mat passUdpFrame(int incSize) {
   std::lock_guard<std::mutex> lock(depImgMutex);

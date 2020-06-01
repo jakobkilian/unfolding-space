@@ -17,7 +17,9 @@
 #include <opencv2/opencv.hpp>
 #include <royale.hpp>
 #include <thread>
+#include <royale/IEvent.hpp>
 #include "globals.hpp"
+
 
 #include "timelog.hpp"
 
@@ -100,3 +102,18 @@ extern royale::DepthData dataCopy;
 // };
 
 // extern mainThreadWrapper *w;
+
+
+
+//________________________________________________
+// Gets called by Royale irregularily.
+// Holds the camera state, errors and info about drops
+class EventReporter : public royale::IEventListener {
+ public:
+  virtual ~EventReporter() = default;
+
+virtual void onEvent(std::unique_ptr<royale::IEvent> &&event) override;
+private:
+void extractDrops(royale::String str);
+
+  };

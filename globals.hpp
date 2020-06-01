@@ -28,5 +28,6 @@ extern unsigned char tiles[9];  // 9 tiles | motor vals
 extern RoyalStatus royalStats;
 extern int imgSize;
 extern bool sendImg;
+extern bool potiAvailable;
 }  // namespace glob
 

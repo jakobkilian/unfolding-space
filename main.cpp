@@ -19,7 +19,6 @@
 #include <chrono>
 #include <ctime>
 #include <iostream>
-#include <royale/IEvent.hpp>
 #include <sstream>
 #include <string>
 #include <thread>
@@ -39,21 +38,12 @@ using std::endl;
 using namespace std::chrono;
 
 //----------------------------------------------------------------------
-// SETTINGS
-//----------------------------------------------------------------------
-// Does the system use a poti?
-bool potiAv = 0;
-// Does the system use the old DRV-Breakoutboards or the new detachable DRV-PCB?
-bool detachableDRV = 0;
-
-//----------------------------------------------------------------------
 // DECLARATIONS AND VARIABLES
 //----------------------------------------------------------------------
 
 // Todo: global stuff
 long timeSinceLastNewData;  // time passed since last "onNewData"
 int fpsFromCam;             // wich royal use case is used? (how many fps?)
-int currentKey = 0;         //
 int longestTimeNoData;      // the longest timespan without new data since start
 bool cameraDetached;        // camera got detached
 long cameraStartTime;       // timestamp when camera started capturing
@@ -63,67 +53,6 @@ DepthDataListener listener;
 //----------------------------------------------------------------------
 // OTHER FUNCTIONS AND CLASSES
 //----------------------------------------------------------------------
-
-//________________________________________________
-// Royale Event Listener reports dropped frames as string.
-// This functions extracts the number of frames that got lost at Bridge/FC.
-// I believe, that dropped frames cause instability – PMDtec confirmed this
-void extractDrops(royale::String str) {
-  using namespace std;
-  stringstream ss;
-  /* Storing the whole string into string stream */
-  ss << str;
-  /* Running loop till the end of the stream */
-  string temp;
-  int found;
-  int i = 0;
-  while (!ss.eof()) {
-    /* extracting word by word from stream */
-    ss >> temp;
-    /* Checking the given word is integer or not */
-    if (stringstream(temp) >> found) {
-      if (i == 0) glob::udpSendServer.preparePacket("9", found);
-      if (i == 1) glob::udpSendServer.preparePacket("10", found);
-      if (i == 2) glob::udpSendServer.preparePacket("12", found);
-      i++;
-    }
-    /* To save from space at the end of string */
-    temp = "";
-  }
-  // glob::udpSendServer.preparePacket("11", tenSecsDrops);
-  // tenSecsDrops += droppedAtBridge + droppedAtFC;
-}
-
-//________________________________________________
-// Gets called by Royale irregularily.
-// Holds the camera state, errors and info about drops
-class EventReporter : public royale::IEventListener {
- public:
-  virtual ~EventReporter() = default;
-
-  virtual void onEvent(std::unique_ptr<royale::IEvent> &&event) override {
-    royale::EventSeverity severity = event->severity();
-    switch (severity) {
-      case royale::EventSeverity::ROYALE_INFO:
-        // cerr << "info: " << event->describe() << endl;
-        extractDrops(event->describe());
-        break;
-      case royale::EventSeverity::ROYALE_WARNING:
-        // cerr << "warning: " << event->describe() << endl;
-        extractDrops(event->describe());
-        break;
-      case royale::EventSeverity::ROYALE_ERROR:
-        cerr << "error: " << event->describe() << endl;
-        break;
-      case royale::EventSeverity::ROYALE_FATAL:
-        cerr << "fatal: " << event->describe() << endl;
-        break;
-      default:
-        // cerr << "waits..." << event->describe() << endl;
-        break;
-    }
-  }
-};
 
 //________________________________________________
 // Read out the core temperature and save it in coreTempDouble
@@ -138,12 +67,11 @@ void getCoreTemp() {
 }
 
 //________________________________________________
-// When an error occurs(camera gets detached): prevent freezing, but mute all
-void endMuted(int dummy) {
+// Mute motors before exiting the appllication
+void exitApplicationMuted(int dummy) {
   glob::isMuted = true;
-  delay(1);
   muteAll();
-  delay(1);
+  //delay(1);
   exit(0);
 }
 
@@ -155,10 +83,6 @@ timelog mainTimeLog(20);
 
 int unfolding() {
   mainTimeLog.store("-");
-  // This is the data listener which will receive callbacks.  It's declared
-  // before the cameraDevice so that, if this function exits with a 'return'
-  // statement while  camera is still capturing, it will still be in scope
-  // until the cameraDevice's destructor implicitly de-registers  listener.
 
   // Event Listener
   EventReporter eventReporter;
@@ -186,13 +110,13 @@ searchCam:
 
   mainTimeLog.store("search");
   // Mute the LRAs before ending the program by ctr + c (SIGINT)
-  signal(SIGINT, endMuted);
-  signal(SIGTERM, endMuted);
+  signal(SIGINT, exitApplicationMuted);
+  signal(SIGTERM, exitApplicationMuted);
   // initialize boost library
   // boostInit();
 
   // Setup Connection to Digispark Board for Poti-Reads
-  if (potiAv) initPoti();
+  if (potiAvailable) initPoti();
 
   // Setup the LRAs on the Glove (I2C Connection, Settings, Calibration, etc.)
   setupGlove();
@@ -291,7 +215,7 @@ searchCam:
   long lastCallPoti = millis();
   mainTimeLog.print("Initializing Unfolding", "ms", "ms");
   //_____________________ENDLESS LOOP_________________________________
-  while (currentKey != 27)  //...until Esc is pressed
+  while (true)  //...until Esc is pressed
   {
     if (!glob::royalStats.isCalibRunning) {
       // only do all of this stuff when the camera is attached
@@ -333,7 +257,7 @@ searchCam:
               }
             }
 
-            if (potiAv) updatePoti();
+            if (potiAvailable) updatePoti();
 
             // calc fps
             int secondsSinceReset = ((millis() - 0) / 1000);
@@ -510,12 +434,12 @@ class mainThreadWrapper {
       glob::udpSendServer.prepareImage();
 
       // TODO: sollte gleichzeitig zu send ausgeführt werden und nicht danach...
-      glob::udpSendServer.preparePacket("6", glob::royalStats.isConnected);
-      glob::udpSendServer.preparePacket("7", glob::royalStats.isCapturing);
-      glob::udpSendServer.preparePacket("8",
+      glob::udpSendServer.preparePacket("isConnected", glob::royalStats.isConnected);
+      glob::udpSendServer.preparePacket("isCapturing", glob::royalStats.isCapturing);
+      glob::udpSendServer.preparePacket("libCrashes",
                                         glob::royalStats.libraryCrashCounter);
-      glob::udpSendServer.preparePacket("15", glob::isMuted);
-      glob::udpSendServer.preparePacket("16", glob::isTestMode);
+      glob::udpSendServer.preparePacket("isMuted", glob::isMuted);
+      glob::udpSendServer.preparePacket("isTestMode", glob::isTestMode);
 
       svFlag = false;
     }
