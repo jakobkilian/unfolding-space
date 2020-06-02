@@ -5,6 +5,7 @@
 #include <chrono>
 #include <iostream>
 #include <vector>
+#include <mutex>
 
 #include "camera.hpp"
 #include "timelog.hpp"
@@ -28,6 +29,7 @@ class udp_client {
   bool isActive;
   int maxTime;
   steady_clock::time_point lastCalled;
+
 };
 
 //****************************************************************
@@ -46,6 +48,7 @@ class udp_server {
   boost::array<char, 4> recv_buffer_;
 
  private:
+    std::mutex mux;
   static const int numClients = 5;
   bool _imgSend = false;
   std::vector<udp_client> udpClient;

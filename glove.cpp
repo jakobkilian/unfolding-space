@@ -15,6 +15,8 @@
 #include "globals.hpp"
 #include "timelog.hpp"
 
+#include <iostream>
+
 //----------------------------------------------------------------------
 // DECLARATION OF FUNCTIONS
 //----------------------------------------------------------------------
@@ -183,17 +185,16 @@ int registerWrite(unsigned char ucRegAddress, char cValue) {
 void sendValuesToGlove(unsigned char inValues[], int size) {
   // WRITE VALUES TO GLOVE
   unsigned char values[] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
-  mainTimeLog.store("startSendGlove");
+  glob::logger.mainLogger.store("startSendGlove");
   {
-    std::lock_guard<std::mutex> lock(glob::m_tiles);
     for (int i = 0; i < size; i++) {
       values[i] = inValues[i];
     }
   }
-  mainTimeLog.store("copy");
+  glob::logger.mainLogger.store("copy");
   // Write Values to the registers of the motor drivers (drv..)
   // All drv have same addr. -> two i2c multiplexer (tca) are needed.
-  if (!glob::isMuted && !glob::royalStats.isCalibRunning) {
+  if (!glob::modes.a_muted && !glob::royalStats.a_isCalibRunning) {
     // For speed's sake start with drvs that are on the first tca
     for (int i = 0; i < size; ++i) {
       if (order[i] <= 4) {
@@ -201,7 +202,7 @@ void sendValuesToGlove(unsigned char inValues[], int size) {
         registerWrite(RTP_INPUT, altCurve[values[i]]);
       }
     }
-    mainTimeLog.store("TCA1");
+    glob::logger.mainLogger.store("TCA1");
     // Now all drv on the 2nd tca together
     for (int i = 0; i < size; ++i) {
       if (order[i] > 4) {
@@ -210,15 +211,15 @@ void sendValuesToGlove(unsigned char inValues[], int size) {
       }
     }
   }
-  mainTimeLog.store("TCA2");
-  mainTimeLog.store("end");
-  mainTimeLog.printAll("Cycle", "us", "ms");
-  mainTimeLog.udpTimeSpan("processing", "us", "startProcess", "endProcess");
-  mainTimeLog.udpTimeSpan("onNewData", "us", "start", "notifyProcessing");
-  mainTimeLog.udpTimeSpan("gloveSending", "us", "startSendGlove", "end");
-  mainTimeLog.udpTimeSpan("wholeCycle", "us", "start", "end");
-  mainTimeLog.reset();
-  mainTimeLog.store("startPause");
+  glob::logger.mainLogger.store("TCA2");
+  glob::logger.mainLogger.store("end");
+  //glob::logger.mainLogger.printAll("Cycle", "us", "ms");
+  glob::logger.mainLogger.udpTimeSpan("processing", "us", "startProcess", "endProcess");
+  glob::logger.mainLogger.udpTimeSpan("onNewData", "us", "start", "notifyProcessing");
+  glob::logger.mainLogger.udpTimeSpan("gloveSending", "us", "startSendGlove", "end");
+  glob::logger.mainLogger.udpTimeSpan("wholeCycle", "us", "start", "end");
+  glob::logger.mainLogger.reset();
+  glob::logger.mainLogger.store("startPause");
 }
 
 //________________________________________________

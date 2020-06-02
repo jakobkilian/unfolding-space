@@ -4,65 +4,87 @@
 #include <opencv2/opencv.hpp>
 #include <royale.hpp>
 
-#include "udp.hpp"
 #include "camera.hpp"
 #include "timelog.hpp"
+#include "udp.hpp"
+
+/*
+Globals are organized in structs, that get initialized in "globals.cpp"
+Naming convention:
+Atomic variables (that do not need locking) are beginning with: a_
+All others need to be protected when edited.
+Every Struct therefore has a .mut member (inherited from Base) to do so.
+*/
+
+struct Base {
+  std::mutex mut;
+};
 
 // camera status
 struct RoyalStatus {
-  bool isConnected = false;
-  bool isCapturing = false;
-  bool isCalibrated = false;
-  bool isCalibRunning = false;
-  int libraryCrashCounter = 0;
+  std::atomic<bool> a_isConnected{false};
+  std::atomic<bool> a_isCapturing{false};
+  std::atomic<bool> a_isCalibrated{false};
+  std::atomic<bool> a_isCalibRunning{false};
+  std::atomic<int> a_libraryCrashCounter{0};
 };
 
 // potentiometer
-struct PotiStatus {
-  int value=0;
-  bool available=false;
+struct PotiStatus : Base {
+  std::atomic<int> a_potVal{0};
+  std::atomic<bool> a_potAvail{false};
 };
 
+struct Modes  {
+  std::atomic<bool> a_muted;
+  std::atomic<bool> a_testMode;
+  std::atomic<int> a_cameraUseCase{3};
+};
+
+struct Motors : Base {
+  std::atomic<bool> a_muted;
+  std::atomic<bool> a_testMode;
+  unsigned char testTiles[9];
+  unsigned char tiles[9];  // 9 tiles | motor valsˇ
+};
+
+struct Logger : Base {
+  timelog newDataLog;
+  timelog mainLogger;
+};
+
+struct CvDepthImg : Base {
+  cv::Mat mat;  // full depth image (one byte p. pixel)
+};
+
+struct RoyalDepthData : Base {
+  royale::DepthData dat;
+};
+
+struct ThreadNotification : Base {
+  std::condition_variable cond;
+  bool flag{false};
+};
+
+// Everything goes in the namespace "glob"
 namespace glob {
-extern udp_server udpSendServer;
-extern boost::asio::io_service udpSendService;
-extern std::mutex m_universal;
-extern bool testBool;
-extern bool isMuted;
-extern bool isTestMode;
-extern std::mutex m_testTiles;
-extern unsigned char testTiles[9];
-extern std::mutex m_tiles;
-extern unsigned char tiles[9];  // 9 tiles | motor vals
-
-extern int imgSize;
-extern bool sendImg;
-
-extern timelog newDataLog;
-
-
-// Data and their Mutexes
-extern cv::Mat depImg;  // full depth image (one byte p. pixel)
-extern std::mutex depImgMutex;
-extern royale::DepthData dataCopy;  // storage of last depthFrame from libroyal
-extern std::mutex dataCopyMutex;
-
-// Notifying processing data (pd) thread to end waiting
-extern std::condition_variable pdCond;  // depthData condition varibale
-extern std::mutex pdCondMutex;          // depthData condition varibale
-extern bool pdFlag;
-
+//protection needed?
+extern boost::asio::io_service udpService;
+extern udp_server udpServer;
 // Counts when there is onNewData() while the previous wasn't finished yet.
 // We don't want this -> royal library gets unstable
-extern int lockFailCounter;
+extern std::atomic<int> a_lockFailCounter;
+extern std::atomic<bool> a_restartUnfoldingFlag;
 
-// Notifying send values to motors (sv) thread to end waiting
-extern std::condition_variable svCond;  // send Values condition varibale
-extern std::mutex svCondMutex;          // send Values condition varibale
-extern bool svFlag;
 
-// STRUCTS
+// INIT ALL STRUCTS
 extern RoyalStatus royalStats;
 extern PotiStatus potiStats;
-
+extern Modes modes;
+extern Motors motors;
+extern Logger logger;
+extern CvDepthImg cvDepthImg;
+extern RoyalDepthData royalDepthData;
+extern ThreadNotification notifyProcess;
+extern ThreadNotification notifySend;
 }  // namespace glob

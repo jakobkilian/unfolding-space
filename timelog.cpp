@@ -12,12 +12,14 @@ using namespace std::chrono;
 using std::cout;
 
 void timelog::store(const std::string name) {
+  std::lock_guard<std::mutex> lock(mut);
   timePoint.push_back(steady_clock::now());
   nameTag.push_back(name);
 }
 
 void timelog::printAll(const std::string instName, const std::string incr,
                        const std::string sum) {
+                          std::lock_guard<std::mutex> lock(mut);
   if (timePoint.size() > 1) {  // if there is sth to print
     cout << "\n";
     cout << "-------------------------------\n";
@@ -25,17 +27,17 @@ void timelog::printAll(const std::string instName, const std::string incr,
     cout << "-------------------------------\n";
     if (incr.compare("ms") == 0) {
       for (int x = 1; x < timePoint.size(); x++) {
-        cout << nameTag[x] << "\t was:\t "
-             << duration_cast<milliseconds>(timePoint[x] - timePoint[x - 1])
+        cout << duration_cast<milliseconds>(timePoint[x] - timePoint[x - 1])
                     .count()
-             << "\tms\n";
+             << "\tms"
+             << "\t from: \t " << nameTag[x] << "\n";
       }
     } else if (incr.compare("us") == 0) {
       for (int x = 1; x < timePoint.size(); x++) {
-        cout << nameTag[x] << "\t was:\t "
-             << duration_cast<microseconds>(timePoint[x] - timePoint[x - 1])
+        cout << duration_cast<microseconds>(timePoint[x] - timePoint[x - 1])
                     .count()
-             << "\tus\n";
+             << "\tus"
+             << "\t from: \t " << nameTag[x] << "\n";
       }
     }
     cout << "_________________\n";
@@ -63,12 +65,13 @@ void timelog::printAll(const std::string instName, const std::string incr,
 
 void timelog::udpTimeSpan(std::string ident, std::string incr, std::string from,
                           std::string to) {
+                             std::lock_guard<std::mutex> lock(mut);
   // find "from" keyword and "to" keyword and return iterator
-  std::vector<std::string>::iterator fromIt = 
+  std::vector<std::string>::iterator fromIt =
       std::find(nameTag.begin(), nameTag.end(), from);
-  std::vector<std::string>::iterator toIt = 
-     std::find(nameTag.begin(), nameTag.end(), to);
-  if (fromIt != nameTag.end() && toIt != nameTag.end()) {      // when in bound:
+  std::vector<std::string>::iterator toIt =
+      std::find(nameTag.begin(), nameTag.end(), to);
+  if (fromIt != nameTag.end() && toIt != nameTag.end()) {  // when in bound:
     int fromInd = std::distance(nameTag.begin(), fromIt);  // get indexes
     int toInd = std::distance(nameTag.begin(), toIt);      // get indexes
     unsigned int duration = 0;
@@ -81,16 +84,18 @@ void timelog::udpTimeSpan(std::string ident, std::string incr, std::string from,
           duration_cast<microseconds>(timePoint[toInd] - timePoint[fromInd])
               .count();
     }
-    glob::udpSendServer.preparePacket(ident, duration);
+    glob::udpServer.preparePacket(ident, duration);
   }
 }
 
 void timelog::reset() {
+   std::lock_guard<std::mutex> lock(mut);
   timePoint.clear();
   nameTag.clear();
 }
 
 long timelog::msSinceEntry(int id) {
+   std::lock_guard<std::mutex> lock(mut);
   long val = 0;
   if (timePoint.size() > id) {  // if there is a first entry
     val = duration_cast<milliseconds>(steady_clock::now() - timePoint[id])

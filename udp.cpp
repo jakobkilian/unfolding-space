@@ -62,11 +62,12 @@ bool udp_client::isEqual(udp::endpoint *checkEndpoint) {
  * boost asio strand which subsequently invokes the tasks
  ******************************************************************************/
 udp_server::udp_server(boost::asio::io_service &io_service, int max)
-    :       strand_(io_service),
+    : strand_(io_service),
       socket_(io_service, udp::endpoint(udp::v4(), 9009)),
       broad_socket_(io_service, udp::endpoint(udp::v4(), 9007)),
       timer1_(io_service, boost::posix_time::milliseconds(500)),
       timer2_(io_service, boost::posix_time::milliseconds(500)) {
+  //std::lock_guard<std::mutex> l(mux);
   // invoke first broadcast
   timer1_.async_wait(strand_.wrap(std::bind(&udp_server::broadcast, this)));
   // invoke first client timer check
@@ -74,8 +75,6 @@ udp_server::udp_server(boost::asio::io_service &io_service, int max)
       strand_.wrap(std::bind(&udp_server::checkClientTimers, this)));
   // invoke first receive
   strand_.post(strand_.wrap(std::bind(&udp_server::start_receive, this)));
-  glob::imgSize = 0;
-  glob::sendImg = false;
   maxClients = max;
   // Open second Socket for broadcasting
   broad_socket_.open(udp::v4(), errorBroad);
@@ -85,9 +84,9 @@ udp_server::udp_server(boost::asio::io_service &io_service, int max)
       udp::endpoint(boost::asio::ip::address_v4::broadcast(), 9008);
 }
 
-
 //_______ Broadcast Online Status _______
 void udp_server::broadcast() {
+  //std::lock_guard<std::mutex> l(mux);
   broad_socket_.send_to(boost::asio::buffer("Unfolding 1"), broad_endpoint_, 0,
                         errorBroad);
   timer1_.expires_at(timer1_.expires_at() + boost::posix_time::seconds(1));
@@ -96,6 +95,7 @@ void udp_server::broadcast() {
 
 //_______ Broadcast Online Status _______
 void udp_server::checkClientTimers() {
+  //std::lock_guard<std::mutex> l(mux);
   for (size_t i = 0; i < udpClient.size(); i++) {
     udpClient[i].checkTimer();
   }
@@ -105,6 +105,7 @@ void udp_server::checkClientTimers() {
 }
 
 void udp_server::prepareImage() {
+  //std::lock_guard<std::mutex> l(mux);
   // iterte through all active clients
   for (size_t i = 0; i < udpClient.size(); i++) {
     if (udpClient[i].checkState()) {
@@ -141,6 +142,7 @@ void udp_server::prepareImage() {
 // Note: void preparePacket is defined in udp.hpp as it is a Template Function
 void udp_server::preparePacket(const std::string key,
                                const std::vector<unsigned char> data) {
+  //std::lock_guard<std::mutex> l(mux);
   const int keyLength = key.length();
   const int dataSize = data.size();
   const int packetLength = keyLength + 1 + dataSize;  //+1 for the ':'
@@ -170,15 +172,15 @@ void udp_server::preparePacket(const std::string key,
 
 // send the whole vector to the clients via udp
 void udp_server::sendPacket(int id, std::vector<unsigned char> vect) {
+  //std::lock_guard<std::mutex> l(mux);
   boost::shared_ptr<std::string> message(new std::string(""));
   socket_.async_send_to(boost::asio::buffer(vect), udpClient[id].endpoint,
                         std::bind(&udp_server::handle_send, this, message));
 }
 
-
-
 //_______ Set Socket to Receiving _______
 void udp_server::start_receive() {
+  //std::lock_guard<std::mutex> l(mux);
   // Look out for calls on port 9009
   socket_.async_receive_from(boost::asio::buffer(recv_buffer_),
                              remote_endpoint_,
@@ -187,6 +189,7 @@ void udp_server::start_receive() {
 
 //_______ Handle Received Packets _______
 void udp_server::handle_receive() {
+  //std::lock_guard<std::mutex> l(mux);
   udpRecLog.store("-");
   int i = 0;
   bool inList = false;
@@ -229,30 +232,42 @@ void udp_server::handle_receive() {
     }
     incoming = std::find(recv_buffer_.begin(), recv_buffer_.end(), 'm');
     if (incoming != recv_buffer_.end()) {
-      glob::isMuted = !glob::isMuted;
-      glob::isTestMode = false;
+      glob::modes.a_muted = !glob::modes.a_muted;
+      glob::modes.a_testMode = false;
       muteAll();
     }
     incoming = std::find(recv_buffer_.begin(), recv_buffer_.end(), 't');
     if (incoming != recv_buffer_.end()) {
-      glob::isTestMode = !glob::isTestMode;
-      glob::isMuted = glob::isTestMode;
+      bool tempTest = glob::modes.a_testMode;
+      glob::modes.a_testMode = !tempTest;
+      glob::modes.a_muted = tempTest;
       muteAll();
     }
 
     incoming = std::find(recv_buffer_.begin(), recv_buffer_.end(), 'z');
     if (incoming != recv_buffer_.end()) {
       int tmp = (*std::next(incoming, 1) - 48);
-      glob::testTiles[tmp] = glob::testTiles[tmp] == 0 ? 254 : 0;
+      {
+        std::lock_guard<std::mutex> lock(glob::motors.mut);
+        glob::motors.testTiles[tmp] =
+            glob::motors.testTiles[tmp] == 0 ? 254 : 0;
+      }
+    }
+
+    incoming = std::find(recv_buffer_.begin(), recv_buffer_.end(), 'u');
+    if (incoming != recv_buffer_.end()) {
+      int tmp = (*std::next(incoming, 1) - 48);
+      glob::modes.a_cameraUseCase = tmp;
+      glob::a_restartUnfoldingFlag = true;  // jump back to the beginning
     }
 
     incoming = std::find(recv_buffer_.begin(), recv_buffer_.end(), 'c');
     if (incoming != recv_buffer_.end()) {
-      glob::royalStats.isCalibRunning = true;
+      glob::royalStats.a_isCalibRunning = true;
       muteAll();
-      glob::isMuted = true;
+      glob::modes.a_muted = true;
       doCalibration();
-      glob::royalStats.isCalibRunning = false;
+      glob::royalStats.a_isCalibRunning = false;
     }
   }
   // Set imgSend if there's a diff to the last frame

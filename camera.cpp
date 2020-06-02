@@ -45,35 +45,43 @@ long lastNewData = millis();
  * returns immidiately when the preceding frame is not yet copied.
  ******************************************************************************/
 void DepthDataListener::onNewData(const DepthData *data) {
-  glob::newDataLog.reset();
-  glob::newDataLog.store("onNewData");
-  mainTimeLog.store("endPause");
-  mainTimeLog.printAll("pause", "us", "ms");
-  mainTimeLog.udpTimeSpan("pause", "us", "startPause", "endPause");
-  mainTimeLog.reset();
-  mainTimeLog.store("start");
-  mainTimeLog.store("startOnNew");
-  // lock needs >1 mutexes to lock. glob::pdCondMutex therefore has no
-  // meaning.
-  int multiLock = try_lock(glob::dataCopyMutex, glob::pdCondMutex);
+  glob::logger.newDataLog.reset();
+  glob::logger.newDataLog.store("onNewData");
+  glob::logger.mainLogger.store("endPause");
+  // glob::logger.mainLogger.printAll("pause", "us", "ms");
+  glob::logger.mainLogger.udpTimeSpan("pause", "us", "startPause", "endPause");
+  glob::logger.mainLogger.reset();
+  glob::logger.mainLogger.store("start");
+  glob::logger.mainLogger.store("startOnNew");
+  int multiLock = try_lock(glob::royalDepthData.mut, glob::notifyProcess.mut);
   // when lock was successfull
   if (multiLock == -1) {
-    mainTimeLog.store("tryLocks");
+    glob::logger.mainLogger.store("tryLocks");
     // simply copy data to shared memory
-    glob::dataCopy = *data;
-    mainTimeLog.store("copy");
+    glob::royalDepthData.dat = *data;
+    glob::logger.mainLogger.store("copy");
     // set variable for predicate check in other thread
-    glob::pdFlag = true;
-    glob::dataCopyMutex.unlock();
-    glob::pdCondMutex.unlock();
+    glob::notifyProcess.flag = true;
+    glob::royalDepthData.mut.unlock();
+    glob::notifyProcess.mut.unlock();
+
   } else {
     // if onNewData fails to unlock the mutex it returns instantly
-    glob::lockFailCounter++;
+    glob::a_lockFailCounter++;
+    std::cout << "failed locks:" << glob::a_lockFailCounter
+              << " last is: " << multiLock << "\n";
+    if (multiLock == 0) {
+      glob::notifyProcess.mut.unlock();
+    }
+    if (multiLock == 1) {
+      glob::royalDepthData.mut.unlock();
+    }
   }
-  mainTimeLog.store("unlock");
+
+  glob::logger.mainLogger.store("unlock");
   // wake other thread
-  glob::pdCond.notify_one();
-  mainTimeLog.store("notifyProcessing");
+  glob::notifyProcess.cond.notify_one();
+  glob::logger.mainLogger.store("notifyProcessing");
 }
 //                                    _____
 //                                 [onNewData]
@@ -82,37 +90,47 @@ void DepthDataListener::onNewData(const DepthData *data) {
 /******************************************************************************
  *                                PROCESS DATA
  *                               ***************
- * Create depth Image (glob::depImg) and calculate the 9 tiles of it from which
- *the 9 vibration motors get their vibration strength value (glob::tiles)
+ * Create depth Image (glob::cvDepthImg.mat) and calculate the 9 tiles of it
+ *from which the 9 vibration motors get their vibration strength value
+ *(glob::motors.tiles)
  ******************************************************************************/
 void DepthDataUtilities::processData() {
-  mainTimeLog.store("startProcessing");
-
+  glob::logger.mainLogger.store("startProcessing");
   int histo[9][256];  // historgram, needed to find closest obj
-  // Lock Mutex for copied Data and the glob::depImg
+  // Lock Mutex for copied Data and the glob::cvDepthImg.mat
   {
-    std::lock_guard<std::mutex> dcDataLock(glob::dataCopyMutex);
-    std::lock_guard<std::mutex> depDataLock(glob::depImgMutex);
-    royale::DepthData *data =
-        &glob::dataCopy;     // set a pointer to the copied data
+    royale::DepthData *data;
+    {
+      std::lock_guard<std::mutex> depDataLock(glob::royalDepthData.mut);
+      data = &glob::royalDepthData.dat;  // set a pointer to the copied data
+    }
     lastNewData = millis();  // timestamp when new frame arrives
-    if (glob::potiStats.available) {
-      maxDepth = glob::potiStats.value / 100 /
+    if (glob::potiStats.a_potAvail) {
+      maxDepth = glob::potiStats.a_potVal / 100 /
                  3;  // calculate current maxDepth from potiVal
     }
-
     // check dimensions of incoming data
     int width = data->width;          // get width from depth image
     int height = data->height;        // get height from depth image
     int tileWidth = width / 3 + 1;    // respectiveley width of one tile
     int tileHeight = height / 3 + 1;  // respectiveley height of one tile
-    glob::depImg.create(cv::Size(width, height), CV_8UC1);  // gets filled later
+    // scope for mutex
+    {
+      std::lock_guard<std::mutex> dcDataLock(glob::cvDepthImg.mut);
+      glob::cvDepthImg.mat.create(cv::Size(width, height),
+                                  CV_8UC1);  // gets filled later
+    }
+
     bzero(histo, sizeof(int) * 9 * 256);  // clear histogram array
-    mainTimeLog.store("bf");
+    glob::logger.mainLogger.store("bf");
 
     // READING DEPTH IMAGE pixel by pixel
     for (int y = 0; y < height; y++) {
-      unsigned char *depImgPtr = glob::depImg.ptr<uchar>(y);
+      unsigned char *depImgPtr;
+      {
+        std::lock_guard<std::mutex> dcDataLock(glob::cvDepthImg.mut);
+        depImgPtr = glob::cvDepthImg.mat.ptr<uchar>(y);
+      }
       for (int x = 0; x < width; x++) {
         // save currently observed pixel in curPoint
         auto curPoint = data->points.at(y * width + x);
@@ -153,11 +171,9 @@ void DepthDataUtilities::processData() {
       }
     }
   }
-  mainTimeLog.store("aft for");
+  glob::logger.mainLogger.store("aft for");
 
-  // scope is needed for glob::m_tiles
   {
-    std::lock_guard<std::mutex> lock(glob::m_tiles);
     // FIND CLOSEST object in each tile
     for (int tileIdx = 0; tileIdx < 9; tileIdx++) {
       int sum = 0;
@@ -166,7 +182,7 @@ void DepthDataUtilities::processData() {
           17;          // exclude the first 17cm because of oversaturation
                        // issues and noisy data the Pico Flexx has in this range
       int range = 50;  // look in a tolerance range of 50cm
-      for (val = offset; val < 256; val++) {
+      for (val = offset; val < 255; val++) {
         if (histo[tileIdx][val] > 5) {
           sum += histo[tileIdx][val];
         }
@@ -188,28 +204,33 @@ void DepthDataUtilities::processData() {
         tileVal = 0;
         std::cout << "there was a -1\n";
       }
-      glob::tiles[(tileIdx - 8) * -1] = tileVal;
+      // Scope for Mutex
+      {
+        std::lock_guard<std::mutex> lock(glob::motors.mut);
+        glob::motors.tiles[(tileIdx - 8) * -1] = tileVal;
+      }
     }
   }
-  mainTimeLog.store("aft his");
+  glob::logger.mainLogger.store("aft his");
   frameCounter++;  // counting every frame
 
-  glob::udpSendServer.preparePacket("frameCounter", frameCounter);
+  glob::udpServer.preparePacket("frameCounter", frameCounter);
   // call sending thread
   {
-    std::lock_guard<std::mutex> svCondLock(glob::svCondMutex);
-    // mainTimeLog.store("lock");
-    // mainTimeLog.store("copy");
-    glob::svFlag = true;
+    std::lock_guard<std::mutex> svCondLock(glob::notifySend.mut);
+    glob::notifySend.flag = true;
   }
-  // mainTimeLog.store("unlock");
+  // glob::logger.mainLogger.store("lock");
+  // glob::logger.mainLogger.store("copy");
+
+  // glob::logger.mainLogger.store("unlock");
   // wake other thread
-  glob::svCond.notify_one();
+  glob::notifySend.cond.notify_one();
 
   // WRITE
-  mainTimeLog.store("endProcess");
-  // mainTimeLog.printAll("Receiving Frame", "us", "ms");
-  // mainTimeLog.reset();
+  glob::logger.mainLogger.store("endProcess");
+  // glob::logger.mainLogger.printAll("Receiving Frame", "us", "ms");
+  // glob::logger.mainLogger.reset();
 }
 //                                    _____
 //                                [process data]
@@ -259,20 +280,20 @@ void EventReporter::extractDrops(royale::String str) {
     ss >> temp;
     /* Checking the given word is integer or not */
     if (stringstream(temp) >> found) {
-      if (i == 0) glob::udpSendServer.preparePacket("drpBridge", found);
-      if (i == 1) glob::udpSendServer.preparePacket("drpFC", found);
-      if (i == 2) glob::udpSendServer.preparePacket("delivFrames", found);
+      if (i == 0) glob::udpServer.preparePacket("drpBridge", found);
+      if (i == 1) glob::udpServer.preparePacket("drpFC", found);
+      if (i == 2) glob::udpServer.preparePacket("delivFrames", found);
       i++;
     }
     /* To save from space at the end of string */
     temp = "";
   }
-  // glob::udpSendServer.preparePacket("11", tenSecsDrops);
+  // glob::udpServer.preparePacket("11", tenSecsDrops);
   // tenSecsDrops += droppedAtBridge + droppedAtFC;
 }
 
 cv::Mat DepthDataUtilities::getResizedDepthImage(int incSize) {
-  std::lock_guard<std::mutex> lock(glob::depImgMutex);
+  std::lock_guard<std::mutex> lock(glob::cvDepthImg.mut);
   cv::Mat sizedImgCopy;
   // constrain value between 1 and 9
   if (incSize <= 0 || incSize > 9) {
@@ -281,8 +302,8 @@ cv::Mat DepthDataUtilities::getResizedDepthImage(int incSize) {
   int picSize = incSize * 20;
   cv::Size size(picSize, picSize);
   sizedImgCopy.create(size, CV_8UC1);
-  if (glob::depImg.rows != 0) {
-    cv::resize(glob::depImg, sizedImgCopy, size);  // resize image
+  if (glob::cvDepthImg.mat.rows != 0) {
+    cv::resize(glob::cvDepthImg.mat, sizedImgCopy, size);  // resize image
   }
   return sizedImgCopy;
 }

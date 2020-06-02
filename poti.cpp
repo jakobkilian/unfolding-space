@@ -106,6 +106,6 @@ int updatePoti() {
     std::cout << "can't get new poti val" << '\n';
     return -1;
   }
-  glob::potiStats.value = lastVal;
+  glob::potiStats.a_potVal = lastVal;
   return lastVal;
 }
