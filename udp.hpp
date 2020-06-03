@@ -54,7 +54,6 @@ class udp_server {
   std::vector<udp_client> udpClient;
   boost::asio::io_service::strand strand_;
   timelog udpRecLog;
-  timelog udpSendLog;
   int maxClients;
   void sendPacket(int i, std::vector<unsigned char> vect);
   void start_receive();

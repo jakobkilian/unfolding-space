@@ -177,33 +177,31 @@ void DepthDataUtilities::processData() {
     // FIND CLOSEST object in each tile
     for (int tileIdx = 0; tileIdx < 9; tileIdx++) {
       int sum = 0;
-      int val;
+      int val=0;
       int offset =
           17;          // exclude the first 17cm because of oversaturation
                        // issues and noisy data the Pico Flexx has in this range
       int range = 50;  // look in a tolerance range of 50cm
-      for (val = offset; val < 255; val++) {
-        if (histo[tileIdx][val] > 5) {
-          sum += histo[tileIdx][val];
+      for (int i = offset; i < 256; i++) {
+        if (histo[tileIdx][i] > 5) {
+          sum += histo[tileIdx][i];
         }
-        if (val > range + offset) {
-          if (histo[tileIdx][val - range] > 5) {
-            sum -= histo[tileIdx][val - range];
+        if (i > range + offset) {
+          if (histo[tileIdx][i - range] > 5) {
+            sum -= histo[tileIdx][i - range];
           }
         }
-        if (sum >= minObjSizeThresh)  // if minObjSizeThresh is exeeded: break.
-                                      // val now holds the depth for this tile
+        if (sum >=
+            minObjSizeThresh) {  // if minObjSizeThresh is exeeded: break.
+          // i now holds the depth for this tile
+          val = i;
           break;
+        }
       }
       // WRITE the value in the Tile Matrix:
       // Here two modification have to be done to have
       // the right visual orientation (flip, turn)
       int tileVal = (val - 255) * -1;
-      // TODO: why can this happen?
-      if (tileVal < 0) {
-        tileVal = 0;
-        std::cout << "there was a -1\n";
-      }
       // Scope for Mutex
       {
         std::lock_guard<std::mutex> lock(glob::motors.mut);
@@ -214,7 +212,10 @@ void DepthDataUtilities::processData() {
   glob::logger.mainLogger.store("aft his");
   frameCounter++;  // counting every frame
 
-  glob::udpServer.preparePacket("frameCounter", frameCounter);
+  {
+    std::lock_guard<std::mutex> lock(glob::udpServMux);
+    glob::udpServer.preparePacket("frameCounter", frameCounter);
+  }
   // call sending thread
   {
     std::lock_guard<std::mutex> svCondLock(glob::notifySend.mut);
@@ -280,15 +281,19 @@ void EventReporter::extractDrops(royale::String str) {
     ss >> temp;
     /* Checking the given word is integer or not */
     if (stringstream(temp) >> found) {
-      if (i == 0) glob::udpServer.preparePacket("drpBridge", found);
-      if (i == 1) glob::udpServer.preparePacket("drpFC", found);
-      if (i == 2) glob::udpServer.preparePacket("delivFrames", found);
+      if (i == 0) {
+        std::lock_guard<std::mutex> lock(glob::udpServMux);
+        glob::udpServer.preparePacket("drpBridge", found);
+        glob::udpServer.preparePacket("drpFC", found);
+        glob::udpServer.preparePacket("delivFrames", found);
+      }
       i++;
     }
     /* To save from space at the end of string */
     temp = "";
   }
-  // glob::udpServer.preparePacket("11", tenSecsDrops);
+  // {std::lock_guard<std::mutex> lock(glob::udpServMux);
+  // glob::udpServer.preparePacket("11", tenSecsDrops);}
   // tenSecsDrops += droppedAtBridge + droppedAtFC;
 }
 

@@ -45,7 +45,10 @@ void getCoreTemp() {
   tempFile >> coreTemp;
   coreTemp = coreTemp.insert(2, 1, '.');
   float coreTempDouble = std::stod(coreTemp);
-  glob::udpServer.preparePacket("coreTemp", coreTempDouble);
+  {
+    std::lock_guard<std::mutex> lock(glob::udpServMux);
+    glob::udpServer.preparePacket("coreTemp", coreTempDouble);
+  }
   tempFile.close();
 }
 
@@ -350,6 +353,7 @@ int unfolding() {
   muteAll();
   return 0;
 }
+
 // TODO: maybe this is not the best way to handle this?
 class mainThreadWrapper {
  public:
@@ -397,7 +401,7 @@ class mainThreadWrapper {
         glob::notifySend.cond.wait(svCondLock,
                                    [] { return glob::notifySend.flag; });
       }
-      // Send motor vals or testvals
+      // IF in regular mode
       if (!glob::modes.a_testMode) {
         std::lock_guard<std::mutex> lock(glob::motors.mut);
         sendValuesToGlove(glob::motors.tiles, 9);
@@ -408,8 +412,13 @@ class mainThreadWrapper {
           unsigned char tmpChar = glob::motors.tiles[i];
           vect.push_back(tmpChar);
         }
-        glob::udpServer.preparePacket("motors", vect);
-      } else {
+        {
+          std::lock_guard<std::mutex> lock(glob::udpServMux);
+          glob::udpServer.preparePacket("motors", vect);
+          glob::udpServer.prepareImage();
+        }
+      }  // IF in test mode
+      else {
         std::lock_guard<std::mutex> lock(glob::motors.mut);
         sendValuesToGlove(glob::motors.testTiles, 9);
         const int size =
@@ -420,10 +429,20 @@ class mainThreadWrapper {
           unsigned char tmpChar = glob::motors.testTiles[i];
           vect.push_back(tmpChar);
         }
-        glob::udpServer.preparePacket("motors", vect);
+        {
+          std::lock_guard<std::mutex> lock(glob::udpServMux);
+          glob::udpServer.preparePacket("motors", vect);
+        }
       }
-      glob::udpServer.prepareImage();
-      // TODO: sollte gleichzeitig zu send ausgeführt werden und nicht danach...
+
+      // Send depth image no matter if test mode or not.
+      {
+        std::lock_guard<std::mutex> lock(glob::udpServMux);
+        glob::udpServer.prepareImage();
+      }
+
+      // TODO: sollte gleichzeitig zu send ausgeführt werden und nicht
+      // danach...
       bool tempisConnected = glob::royalStats.a_isConnected;
       bool tempisCapturing = glob::royalStats.a_isCapturing;
       int tempCounter = glob::royalStats.a_libraryCrashCounter;
@@ -431,16 +450,16 @@ class mainThreadWrapper {
       bool tempTest = glob::modes.a_testMode;
       int lockfail = glob::a_lockFailCounter;
 
-      glob::udpServer.preparePacket("isConnected", tempisConnected);
-      glob::udpServer.preparePacket("isCapturing", tempisCapturing);
-      glob::udpServer.preparePacket("libCrashes", tempCounter);
-      glob::udpServer.preparePacket("isMuted", tempMuted);
-      glob::udpServer.preparePacket("isTestMode", tempTest);
-      glob::udpServer.preparePacket("lockFails", lockfail);
-      /*
-       unsigned char m_Test[20] = "Hello World";
-       glob::udpServer.preparePacket("debug", m_Test);
- */ {
+      {
+        std::lock_guard<std::mutex> lock(glob::udpServMux);
+        glob::udpServer.preparePacket("isConnected", tempisConnected);
+        glob::udpServer.preparePacket("isCapturing", tempisCapturing);
+        glob::udpServer.preparePacket("libCrashes", tempCounter);
+        glob::udpServer.preparePacket("isMuted", tempMuted);
+        glob::udpServer.preparePacket("isTestMode", tempTest);
+        glob::udpServer.preparePacket("lockFails", lockfail);
+      }
+      {
         std::unique_lock<std::mutex> svCondLock(glob::notifySend.mut);
         glob::notifySend.flag = false;
       }

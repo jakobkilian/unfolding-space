@@ -69,6 +69,7 @@ struct ThreadNotification : Base {
 // Everything goes in the namespace "glob"
 namespace glob {
 //protection needed?
+extern std::mutex udpServMux;
 extern boost::asio::io_service udpService;
 extern udp_server udpServer;
 // Counts when there is onNewData() while the previous wasn't finished yet.

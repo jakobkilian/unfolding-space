@@ -5,6 +5,7 @@
 
 #include "timelog.hpp"
 boost::asio::io_service glob::udpService;
+std::mutex glob::udpServMux;
 udp_server glob::udpServer(udpService, 3);
 std::atomic<int> glob::a_lockFailCounter{0};
 std::atomic<bool> glob::a_restartUnfoldingFlag{false};
