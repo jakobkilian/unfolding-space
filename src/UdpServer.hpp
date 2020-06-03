@@ -7,37 +7,17 @@
 #include <vector>
 #include <mutex>
 
-#include "camera.hpp"
-#include "timelog.hpp"
+#include "Camera.hpp"
+#include "UdpClient.hpp"
+#include "TimeLogger.hpp"
 using namespace std::chrono;
-
-//****************************************************************
-//                          UDP CLIENT
-//****************************************************************
-class udp_client {
- public:
-  udp_client(boost::asio::ip::udp::endpoint e);
-  void checkTimer();
-  void resetTimer();
-  bool checkState();
-  bool isEqual(boost::asio::ip::udp::endpoint *checkEndpoint);
-  boost::asio::ip::udp::endpoint endpoint;
-  bool sendImg;
-  int imgSize;
-
- private:
-  bool isActive;
-  int maxTime;
-  steady_clock::time_point lastCalled;
-
-};
 
 //****************************************************************
 //                         UDP SERVER
 //****************************************************************
-class udp_server {
+class UdpServer {
  public:
-  udp_server(boost::asio::io_service &io_service, int max);
+  UdpServer(boost::asio::io_service &io_service, int max);
   // if it is a vector take this function
   void preparePacket(const std::string key,
                      const std::vector<unsigned char> data);
@@ -50,9 +30,9 @@ class udp_server {
     std::mutex mux;
   static const int numClients = 5;
   bool _imgSend = false;
-  std::vector<udp_client> udpClient;
+  std::vector<UdpClient> udpClient;
   boost::asio::io_service::strand strand_;
-  timelog udpRecLog;
+  TimeLogger udpRecLog;
   const unsigned int maxClients;
   void sendPacket(int i, std::vector<unsigned char> vect);
   void start_receive();
@@ -103,7 +83,7 @@ class udp_server {
     for (size_t i = 0; i < udpClient.size(); i++) {
       if (udpClient[i].checkState()) {
         strand_.post(strand_.wrap(
-            std::bind(&udp_server::sendPacket, this, i, dataVect)));
+            std::bind(&UdpServer::sendPacket, this, i, dataVect)));
       }
       // throw out inactive ones
       else {

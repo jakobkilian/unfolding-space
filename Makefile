@@ -1,6 +1,6 @@
 CC = g++
 CCFLAGS = -o3 -O -g -pthread -Wno-psabi -Wall -Wextra -Wshadow -Wnon-virtual-dtor -pedantic
-SOURCES = glove.cpp camera.cpp timelog.cpp udp.cpp globals.cpp main.cpp 
+SOURCES = src/MotorBoard.cpp src/Camera.cpp src/TimeLogger.cpp src/UdpServer.cpp src/UdpClient.cpp src/Globals.cpp src/main.cpp 
 NAME = unfolding-app
 INCFLAGS = -I/usr/local/include/opencv4 -I/home/dietpi/libroyale/include
 LDFLAGS =  -L/home/dietpi/libroyale/bin -lroyale -lopencv_core  -lopencv_imgproc -lboost_system -lwiringPi

@@ -1,141 +1,31 @@
-/*
- * File: glove.cpp
- * Author: Jakob Kilian
- * Date: 26.09.19
- * Info: I2C communication with TCA9548A and DRV2605, controlling the motors
- * Project: unfoldingspace.jakobkilian.de
- */
-
 //----------------------------------------------------------------------
 // INCLUDES
 //----------------------------------------------------------------------
-#include "glove.hpp"
-
-#include "camera.hpp"
-#include "globals.hpp"
-#include "timelog.hpp"
+#include "MotorBoard.hpp"
 
 #include <iostream>
 
-//----------------------------------------------------------------------
-// DECLARATION OF FUNCTIONS
-//----------------------------------------------------------------------
-int registerWrite(unsigned char, char);
-uint8_t registerRead(unsigned char);
-int drvSelect(uint8_t);
-int setupLRA(bool);
-void myi2cSetup();
-void calibAll();
-void resetAll();
-void printStatusToSerial(uint8_t);
-void printSummary();
+#include "MotorBoardDefs.hpp"
+#include "Camera.hpp"
+#include "Globals.hpp"
+#include "TimeLogger.hpp"
 
 //----------------------------------------------------------------------
-// DEFINE ADRESSSES
-//----------------------------------------------------------------------
-// Adresses on the DRV2605 Register
-#define STATUS 0x00
-#define MODE 0x01
-#define RTP_INPUT 0x02
-#define LIB_SEL 0x03
-#define WAV_SEQ1 0x04
-#define WAV_SEQ2 0x05
-#define WAV_SEQ3 0x06
-#define WAV_SEQ4 0x07
-#define WAV_SEQ5 0x08
-#define WAV_SEQ6 0x09
-#define WAV_SEQ7 0x0A
-#define WAV_SEQ8 0x0B
-#define GO 0x0C
-#define ODT_OFFSET 0x0D
-#define SPT 0x0E
-#define SNT 0x0F
-#define BRT 0x10
-#define ATV_CON 0x11
-#define ATV_MIN_IN 0x12
-#define ATV_MAX_IN 0x13
-#define ATV_MIN_OUT 0x14
-#define ATV_MAX_OUT 0x15
-#define RATED_VOLTAGE 0x16
-#define OD_CLAMP 0x17
-#define A_CAL_COMP 0x18
-#define A_CAL_BEMF 0x19
-#define FB_CON 0x1A
-#define CONTRL1 0x1B
-#define CONTRL2 0x1C
-#define CONTRL3 0x1D
-#define CONTRL4 0x1E
-#define VBAT_MON 0x21
-#define LRA_RESON 0x22
-// I2C Adresses of TCA9548A and DRV2605
-#define DRV2605_ADDRESS 0x5A
-#define TCA9548A_0_ADDRESS 0x70
-#define TCA9548A_1_ADDRESS 0x72
-
-//----------------------------------------------------------------------
-// DEFINE ACTUATORS STRENGTH CURVE
-//----------------------------------------------------------------------
-// Vibraiton actuator doesn't have a linear course
-uint8_t altCurve[] = {
-    0,   20,  20,  20,  21,  21,  21,  21,  21,  21,  21,  22,  22,  22,  22,
-    22,  22,  23,  23,  23,  23,  24,  24,  24,  24,  25,  25,  25,  25,  26,
-    26,  26,  27,  27,  28,  28,  28,  29,  29,  30,  30,  31,  31,  32,  32,
-    33,  33,  34,  34,  35,  36,  36,  37,  37,  38,  39,  39,  40,  40,  41,
-    42,  42,  43,  44,  44,  45,  45,  46,  47,  47,  48,  49,  49,  50,  51,
-    51,  52,  53,  54,  54,  55,  56,  56,  57,  58,  59,  59,  60,  61,  61,
-    62,  63,  64,  64,  65,  66,  67,  67,  68,  69,  70,  70,  71,  72,  73,
-    74,  74,  75,  76,  77,  78,  78,  79,  80,  81,  82,  82,  83,  84,  85,
-    86,  87,  87,  88,  89,  90,  91,  92,  93,  93,  94,  95,  96,  97,  98,
-    99,  100, 101, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112,
-    113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127,
-    128, 129, 130, 131, 132, 133, 134, 135, 136, 138, 139, 140, 141, 142, 143,
-    144, 145, 146, 148, 149, 150, 151, 152, 153, 154, 155, 157, 158, 159, 160,
-    161, 162, 164, 165, 166, 167, 168, 169, 171, 172, 173, 174, 175, 177, 178,
-    179, 180, 181, 183, 184, 185, 186, 187, 189, 190, 191, 192, 194, 195, 196,
-    197, 198, 200, 201, 202, 203, 205, 206, 207, 208, 210, 211, 212, 213, 215,
-    216, 217, 218, 220, 221, 222, 224, 225, 227, 229, 232, 235, 239, 245, 254};
-
-//----------------------------------------------------------------------
-// VARIABLES
-//----------------------------------------------------------------------
-uint8_t asciiArt[] = {'.', '-', '+', 'x', 'o', 'O'};
-uint8_t vibVal[9];           // current vibration strength of the motors
-uint8_t lastVibVal[9];       // last vibration strength
-uint8_t maxCalibPasses = 2;  // max trys for calib before skipping
-uint8_t availableLRAs = 0;   // number of LRAs
-bool calibSuccess[9];        // was calibration successfull?
-int retVal;
-int lastTCA;
-uint8_t order[9] = {5, 8, 2, 6, 0, 3, 7, 1, 4};
-
-// Should there be a calibration in the beginning? Else: Take standard Values
-bool startupCalib = false;
-
-// respective I2C Address
-int drv;
-int tca0;
-int tca1;
-
-//----------------------------------------------------------------------
-// FUNCTIONS
+// METHODS
 //----------------------------------------------------------------------
 
 //________________________________________________
-// In WiringPi Lib every I2C Device has to be init to get a respective address:
-uint8_t initI2CDevice(uint8_t addr) {
+// In WiringPi every I2C Device has to be initiated to get respective address:
+uint8_t MotorBoard::initI2CDevice(uint8_t addr) {
   int respectiveAddr = wiringPiI2CSetup(addr);
   if (respectiveAddr < 0) {
     printf("I2CSetup Failed, %i\n", respectiveAddr);
   }
-  // else {
-  // printf("I2CSetup successfull: %i \n", respectiveAddr);
-  //}
   return respectiveAddr;
 }
 
-//________________________________________________
 // initially set up all TCA9548A, DRV2605 and the actuators
-void setupGlove() {
+void MotorBoard::setupGlove() {
   wiringPiSetup();
   drv = initI2CDevice(DRV2605_ADDRESS);
   tca0 = initI2CDevice(TCA9548A_0_ADDRESS);
@@ -152,13 +42,13 @@ void setupGlove() {
   // the following calibration process can be skipped (startupCalib=false).
   // The standard values do their job well enough
   if (startupCalib) {
-    doCalibration();
+    runCalib();
   }
 }
 
 //________________________________________________
 // Read data from a register
-uint8_t registerRead(unsigned char ucRegAddress) {
+uint8_t MotorBoard::registerRead(unsigned char ucRegAddress) {
   int data;
   if ((data = wiringPiI2CReadReg8(drv, ucRegAddress)) < 0) {
     printf("failed reading register:   ");
@@ -169,10 +59,9 @@ uint8_t registerRead(unsigned char ucRegAddress) {
   return data;
 }
 
-
 //________________________________________________
 // Write data to a register
-int registerWrite(unsigned char ucRegAddress, char cValue) {
+int MotorBoard::registerWrite(unsigned char ucRegAddress, char cValue) {
   int data;
   if ((data = wiringPiI2CWriteReg8(drv, ucRegAddress, cValue)) != 0) {
     printf("failed writing to register:   addr=%u, res=%i\n", ucRegAddress,
@@ -183,19 +72,19 @@ int registerWrite(unsigned char ucRegAddress, char cValue) {
   return 0;
 }
 
-void sendValuesToGlove(unsigned char inValues[], int size) {
+void MotorBoard::sendValuesToGlove(unsigned char inValues[], int size) {
   // WRITE VALUES TO GLOVE
   unsigned char values[] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
-  glob::logger.mainLogger.store("startSendGlove");
+  Glob::logger.mainLogger.store("startSendGlove");
   {
     for (int i = 0; i < size; i++) {
       values[i] = inValues[i];
     }
   }
-  glob::logger.mainLogger.store("copy");
+  Glob::logger.mainLogger.store("copy");
   // Write Values to the registers of the motor drivers (drv..)
   // All drv have same addr. -> two i2c multiplexer (tca) are needed.
-  if (!glob::modes.a_muted && !glob::royalStats.a_isCalibRunning) {
+  if (!Glob::modes.a_muted && !Glob::royalStats.a_isCalibRunning) {
     // For speed's sake start with drvs that are on the first tca
     for (int i = 0; i < size; ++i) {
       if (order[i] <= 4) {
@@ -203,7 +92,7 @@ void sendValuesToGlove(unsigned char inValues[], int size) {
         registerWrite(RTP_INPUT, altCurve[values[i]]);
       }
     }
-    glob::logger.mainLogger.store("TCA1");
+    Glob::logger.mainLogger.store("TCA1");
     // Now all drv on the 2nd tca together
     for (int i = 0; i < size; ++i) {
       if (order[i] > 4) {
@@ -212,20 +101,23 @@ void sendValuesToGlove(unsigned char inValues[], int size) {
       }
     }
   }
-  glob::logger.mainLogger.store("TCA2");
-  glob::logger.mainLogger.store("end");
-  //glob::logger.mainLogger.printAll("Cycle", "us", "ms");
-  glob::logger.mainLogger.udpTimeSpan("processing", "us", "startProcess", "endProcess");
-  glob::logger.mainLogger.udpTimeSpan("onNewData", "us", "start", "notifyProcessing");
-  glob::logger.mainLogger.udpTimeSpan("gloveSending", "us", "startSendGlove", "end");
-  glob::logger.mainLogger.udpTimeSpan("wholeCycle", "us", "start", "end");
-  glob::logger.mainLogger.reset();
-  glob::logger.mainLogger.store("startPause");
+  Glob::logger.mainLogger.store("TCA2");
+  Glob::logger.mainLogger.store("end");
+  // Glob::logger.mainLogger.printAll("Cycle", "us", "ms");
+  Glob::logger.mainLogger.udpTimeSpan("processing", "us", "startProcess",
+                                      "endProcess");
+  Glob::logger.mainLogger.udpTimeSpan("onNewData", "us", "start",
+                                      "notifyProcessing");
+  Glob::logger.mainLogger.udpTimeSpan("gloveSending", "us", "startSendGlove",
+                                      "end");
+  Glob::logger.mainLogger.udpTimeSpan("wholeCycle", "us", "start", "end");
+  Glob::logger.mainLogger.reset();
+  Glob::logger.mainLogger.store("startPause");
 }
 
 //________________________________________________
 // Route DRV 0-4 to first TCA multiplexer and 5-8 to the second TCA
-int drvSelect(uint8_t i) {
+int MotorBoard::drvSelect(uint8_t i) {
   if (i <= 4) {
     uint8_t regVal = 1 << i;
     retVal = wiringPiI2CWrite(tca0, regVal);
@@ -263,7 +155,7 @@ int drvSelect(uint8_t i) {
 
 //________________________________________________
 // Set the settings of the DRVs by writing to their registers
-int setupLRA(bool calib) {
+int MotorBoard::setupLRA(bool calib) {
   if (registerWrite(MODE, 0x07) != 0)
     return -1;  // Device ready (no standby) | Auto calibration mode
   if (registerWrite(FB_CON, 0xA6) != 0)
@@ -300,11 +192,11 @@ int setupLRA(bool calib) {
 
 //________________________________________________
 // When an error occurs or the program is exited: mute the DRVs first.
-void muteAll() {
+void MotorBoard::muteAll() {
   for (int i = 0; i < 9; ++i) {
     drvSelect(i);
     registerWrite(RTP_INPUT, 0);
-    delay(1);
+    delay(5);
   }
   delay(10);
   // printf("Muted all LRAs \n");
@@ -312,7 +204,7 @@ void muteAll() {
 
 //________________________________________________
 // Reset all DRV shields
-void resetAll() {
+void MotorBoard::resetAll() {
   for (int u = 0; u < 9; u++) {
     drvSelect(u);
     delay(1);
@@ -351,7 +243,7 @@ void resetAll() {
 
 //________________________________________________
 // print result of calibration pass
-void printStatusToSerial(uint8_t status) {
+void MotorBoard::printStatusToSerial(uint8_t status) {
   printf("return:\t\t%x\ncommunication:\t", status);
   if ((status & 0xE0) == 0x00)  // check if the board gives the right ID back
   {
@@ -383,7 +275,7 @@ void printStatusToSerial(uint8_t status) {
 
 //________________________________________________
 // print calibration summary
-void printSummary() {
+void MotorBoard::printSummary() {
   printf("\n\n\n here are the results of the calib test-run: \n");
   printf("______________________________\n");
   for (int u = 0; u < 9; u++) {
@@ -406,7 +298,7 @@ void printSummary() {
 }
 
 // Do the Calibration Process
-void doCalibration() {
+void MotorBoard::runCalib() {
   resetAll();
   for (int u = 0; u < 9; u++) {
     drvSelect(u);  // select the driver to write to

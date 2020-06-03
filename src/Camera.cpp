@@ -1,7 +1,7 @@
 //----------------------------------------------------------------------
 // INCLUDES
 //----------------------------------------------------------------------
-#include "camera.hpp"
+#include "Camera.hpp"
 
 #include <array>
 #include <chrono>
@@ -11,9 +11,9 @@
 #include <string>  // std::string, std::to_string
 
 
-#include "globals.hpp"
-#include "glove.hpp"
-#include "timelog.hpp"
+#include "Globals.hpp"
+#include "MotorBoard.hpp"
+#include "TimeLogger.hpp"
 
 using std::cerr;
 using std::cout;
@@ -40,43 +40,43 @@ float maxDepth = 1.5;       // The depth of viewing range.
  * returns immidiately when the preceding frame is not yet copied.
  ******************************************************************************/
 void DepthDataListener::onNewData(const DepthData *data) {
-  glob::logger.newDataLog.reset();
-  glob::logger.newDataLog.store("onNewData");
-  glob::logger.mainLogger.store("endPause");
-  // glob::logger.mainLogger.printAll("pause", "us", "ms");
-  glob::logger.mainLogger.udpTimeSpan("pause", "us", "startPause", "endPause");
-  glob::logger.mainLogger.reset();
-  glob::logger.mainLogger.store("start");
-  glob::logger.mainLogger.store("startOnNew");
-  int multiLock = try_lock(glob::royalDepthData.mut, glob::notifyProcess.mut);
+  Glob::logger.newDataLog.reset();
+  Glob::logger.newDataLog.store("onNewData");
+  Glob::logger.mainLogger.store("endPause");
+  // Glob::logger.mainLogger.printAll("pause", "us", "ms");
+  Glob::logger.mainLogger.udpTimeSpan("pause", "us", "startPause", "endPause");
+  Glob::logger.mainLogger.reset();
+  Glob::logger.mainLogger.store("start");
+  Glob::logger.mainLogger.store("startOnNew");
+  int multiLock = try_lock(Glob::royalDepthData.mut, Glob::notifyProcess.mut);
   // when lock was successfull
   if (multiLock == -1) {
-    glob::logger.mainLogger.store("tryLocks");
+    Glob::logger.mainLogger.store("tryLocks");
     // simply copy data to shared memory
-    glob::royalDepthData.dat = *data;
-    glob::logger.mainLogger.store("copy");
+    Glob::royalDepthData.dat = *data;
+    Glob::logger.mainLogger.store("copy");
     // set variable for predicate check in other thread
-    glob::notifyProcess.flag = true;
-    glob::royalDepthData.mut.unlock();
-    glob::notifyProcess.mut.unlock();
+    Glob::notifyProcess.flag = true;
+    Glob::royalDepthData.mut.unlock();
+    Glob::notifyProcess.mut.unlock();
 
   } else {
     // if onNewData fails to unlock the mutex it returns instantly
-    glob::a_lockFailCounter++;
-    cout << "failed locks:" << glob::a_lockFailCounter
+    Glob::a_lockFailCounter++;
+    cout << "failed locks:" << Glob::a_lockFailCounter
               << " last is: " << multiLock << "\n";
     if (multiLock == 0) {
-      glob::notifyProcess.mut.unlock();
+      Glob::notifyProcess.mut.unlock();
     }
     if (multiLock == 1) {
-      glob::royalDepthData.mut.unlock();
+      Glob::royalDepthData.mut.unlock();
     }
   }
 
-  glob::logger.mainLogger.store("unlock");
+  Glob::logger.mainLogger.store("unlock");
   // wake other thread
-  glob::notifyProcess.cond.notify_one();
-  glob::logger.mainLogger.store("notifyProcessing");
+  Glob::notifyProcess.cond.notify_one();
+  Glob::logger.mainLogger.store("notifyProcessing");
 }
 //                                    _____
 //                                 [onNewData]
@@ -85,19 +85,19 @@ void DepthDataListener::onNewData(const DepthData *data) {
 /******************************************************************************
  *                                PROCESS DATA
  *                               ***************
- * Create depth Image (glob::cvDepthImg.mat) and calculate the 9 tiles of it
+ * Create depth Image (Glob::cvDepthImg.mat) and calculate the 9 tiles of it
  *from which the 9 vibration motors get their vibration strength value
- *(glob::motors.tiles)
+ *(Glob::motors.tiles)
  ******************************************************************************/
 void DepthDataUtilities::processData() {
-  glob::logger.mainLogger.store("startProcessing");
+  Glob::logger.mainLogger.store("startProcessing");
   int histo[9][256];  // historgram, needed to find closest obj
-  // Lock Mutex for copied Data and the glob::cvDepthImg.mat
+  // Lock Mutex for copied Data and the Glob::cvDepthImg.mat
   {
     royale::DepthData *data;
     {
-      std::lock_guard<std::mutex> depDataLock(glob::royalDepthData.mut);
-      data = &glob::royalDepthData.dat;  // set a pointer to the copied data
+      std::lock_guard<std::mutex> depDataLock(Glob::royalDepthData.mut);
+      data = &Glob::royalDepthData.dat;  // set a pointer to the copied data
     }
     // check dimensions of incoming data
     int width = data->width;          // get width from depth image
@@ -106,20 +106,20 @@ void DepthDataUtilities::processData() {
     int tileHeight = height / 3 + 1;  // respectiveley height of one tile
     // scope for mutex
     {
-      std::lock_guard<std::mutex> dcDataLock(glob::cvDepthImg.mut);
-      glob::cvDepthImg.mat.create(cv::Size(width, height),
+      std::lock_guard<std::mutex> dcDataLock(Glob::cvDepthImg.mut);
+      Glob::cvDepthImg.mat.create(cv::Size(width, height),
                                   CV_8UC1);  // gets filled later
     }
 
     bzero(histo, sizeof(int) * 9 * 256);  // clear histogram array
-    glob::logger.mainLogger.store("bf");
+    Glob::logger.mainLogger.store("bf");
 
     // READING DEPTH IMAGE pixel by pixel
     for (int y = 0; y < height; y++) {
       unsigned char *depImgPtr;
       {
-        std::lock_guard<std::mutex> dcDataLock(glob::cvDepthImg.mut);
-        depImgPtr = glob::cvDepthImg.mat.ptr<uchar>(y);
+        std::lock_guard<std::mutex> dcDataLock(Glob::cvDepthImg.mut);
+        depImgPtr = Glob::cvDepthImg.mat.ptr<uchar>(y);
       }
       for (int x = 0; x < width; x++) {
         // save currently observed pixel in curPoint
@@ -159,7 +159,7 @@ void DepthDataUtilities::processData() {
       }
     }
   }
-  glob::logger.mainLogger.store("aft for");
+  Glob::logger.mainLogger.store("aft for");
 
   {
     // FIND CLOSEST object in each tile
@@ -192,35 +192,35 @@ void DepthDataUtilities::processData() {
       int tileVal = (val - 255) * -1;
       // Scope for Mutex
       {
-        std::lock_guard<std::mutex> lock(glob::motors.mut);
-        glob::motors.tiles[(tileIdx - 8) * -1] = tileVal;
+        std::lock_guard<std::mutex> lock(Glob::motors.mut);
+        Glob::motors.tiles[(tileIdx - 8) * -1] = tileVal;
       }
     }
   }
-  glob::logger.mainLogger.store("aft his");
-  glob::counters.frameCounter++;  // counting every frame
+  Glob::logger.mainLogger.store("aft his");
+  Glob::counters.frameCounter++;  // counting every frame
 
   {
-    std::lock_guard<std::mutex> lock(glob::udpServMux);
-    int tempFrameCounter = glob::counters.frameCounter;
-    glob::udpServer.preparePacket("frameCounter", tempFrameCounter);
+    std::lock_guard<std::mutex> lock(Glob::udpServMux);
+    int tempFrameCounter = Glob::counters.frameCounter;
+    Glob::udpServer.preparePacket("frameCounter", tempFrameCounter);
   }
   // call sending thread
   {
-    std::lock_guard<std::mutex> svCondLock(glob::notifySend.mut);
-    glob::notifySend.flag = true;
+    std::lock_guard<std::mutex> svCondLock(Glob::notifySend.mut);
+    Glob::notifySend.flag = true;
   }
-  // glob::logger.mainLogger.store("lock");
-  // glob::logger.mainLogger.store("copy");
+  // Glob::logger.mainLogger.store("lock");
+  // Glob::logger.mainLogger.store("copy");
 
-  // glob::logger.mainLogger.store("unlock");
+  // Glob::logger.mainLogger.store("unlock");
   // wake other thread
-  glob::notifySend.cond.notify_one();
+  Glob::notifySend.cond.notify_one();
 
   // WRITE
-  glob::logger.mainLogger.store("endProcess");
-  // glob::logger.mainLogger.printAll("Receiving Frame", "us", "ms");
-  // glob::logger.mainLogger.reset();
+  Glob::logger.mainLogger.store("endProcess");
+  // Glob::logger.mainLogger.printAll("Receiving Frame", "us", "ms");
+  // Glob::logger.mainLogger.reset();
 }
 //                                    _____
 //                                [process data]
@@ -271,23 +271,23 @@ void EventReporter::extractDrops(royale::String str) {
     /* Checking the given word is integer or not */
     if (stringstream(temp) >> found) {
       if (i == 0) {
-        std::lock_guard<std::mutex> lock(glob::udpServMux);
-        glob::udpServer.preparePacket("drpBridge", found);
-        glob::udpServer.preparePacket("drpFC", found);
-        glob::udpServer.preparePacket("delivFrames", found);
+        std::lock_guard<std::mutex> lock(Glob::udpServMux);
+        Glob::udpServer.preparePacket("drpBridge", found);
+        Glob::udpServer.preparePacket("drpFC", found);
+        Glob::udpServer.preparePacket("delivFrames", found);
       }
       i++;
     }
     /* To save from space at the end of string */
     temp = "";
   }
-  // {std::lock_guard<std::mutex> lock(glob::udpServMux);
-  // glob::udpServer.preparePacket("11", tenSecsDrops);}
+  // {std::lock_guard<std::mutex> lock(Glob::udpServMux);
+  // Glob::udpServer.preparePacket("11", tenSecsDrops);}
   // tenSecsDrops += droppedAtBridge + droppedAtFC;
 }
 
 cv::Mat DepthDataUtilities::getResizedDepthImage(int incSize) {
-  std::lock_guard<std::mutex> lock(glob::cvDepthImg.mut);
+  std::lock_guard<std::mutex> lock(Glob::cvDepthImg.mut);
   cv::Mat sizedImgCopy;
   // constrain value between 1 and 9
   if (incSize <= 0 || incSize > 9) {
@@ -296,8 +296,8 @@ cv::Mat DepthDataUtilities::getResizedDepthImage(int incSize) {
   int picSize = incSize * 20;
   cv::Size size(picSize, picSize);
   sizedImgCopy.create(size, CV_8UC1);
-  if (glob::cvDepthImg.mat.rows != 0) {
-    cv::resize(glob::cvDepthImg.mat, sizedImgCopy, size);  // resize image
+  if (Glob::cvDepthImg.mat.rows != 0) {
+    cv::resize(Glob::cvDepthImg.mat, sizedImgCopy, size);  // resize image
   }
   return sizedImgCopy;
 }

@@ -23,12 +23,12 @@
 #include <string>
 #include <thread>
 
-#include "camera.hpp"
-#include "globals.hpp"
-#include "glove.hpp"
+#include "Camera.hpp"
+#include "Globals.hpp"
+#include "MotorBoard.hpp"
 #include "time.h"
-#include "timelog.hpp"
-#include "udp.hpp"
+#include "TimeLogger.hpp"
+#include "UdpServer.hpp"
 
 using boost::asio::ip::udp;
 using std::cerr;
@@ -45,8 +45,8 @@ void getCoreTemp() {
   coreTemp = coreTemp.insert(2, 1, '.');
   float coreTempDouble = std::stod(coreTemp);
   {
-    std::lock_guard<std::mutex> lockCoreTemp(glob::udpServMux);
-    glob::udpServer.preparePacket("coreTemp", coreTempDouble);
+    std::lock_guard<std::mutex> lockCoreTemp(Glob::udpServMux);
+    Glob::udpServer.preparePacket("coreTemp", coreTempDouble);
   }
   tempFile.close();
 }
@@ -54,8 +54,8 @@ void getCoreTemp() {
 //________________________________________________
 // Mute motors before exiting the appllication
 void exitApplicationMuted(__attribute__((unused)) int dummy) {
-  glob::modes.a_muted = true;
-  muteAll();
+  Glob::modes.a_muted = true;
+  Glob::motorBoard.muteAll();
   // delay(1);
   exit(0);
 }
@@ -66,14 +66,14 @@ void exitApplicationMuted(__attribute__((unused)) int dummy) {
 //**********************************************************************
 
 int unfolding() {
-  glob::a_restartUnfoldingFlag = false;
+  Glob::a_restartUnfoldingFlag = false;
   bool threeSecondsAreOver = false;
   DepthDataListener listener;
   long timeSinceNewData;    // time passed since last "onNewData"
   int maxTimeSinceNewData;  // the longest timespan without new data since start
   bool cameraDetached;      // camera got detached
 
-  glob::logger.mainLogger.store("INIT");
+  Glob::logger.mainLogger.store("INIT");
 
   // Event Listener
   EventReporter eventReporter;
@@ -83,7 +83,7 @@ int unfolding() {
   // this represents the main camera device object
   std::unique_ptr<royale::ICameraDevice> cameraDevice;
 
-  // glob::modes.a_cameraUseCase = std::move (arg);
+  // Glob::modes.a_cameraUseCase = std::move (arg);
 
   //_____________________INIT CAMERA____________________________________
   // check if the cam is connected before init anything
@@ -99,14 +99,14 @@ int unfolding() {
   // if camlist is not NULL
   camlist.clear();
 
-  glob::logger.mainLogger.store("search");
+  Glob::logger.mainLogger.store("search");
   // Mute the LRAs before ending the program by ctr + c (SIGINT)
   signal(SIGINT, exitApplicationMuted);
   signal(SIGTERM, exitApplicationMuted);
 
   // Setup the LRAs on the Glove (I2C Connection, Settings, Calibration, etc.)
-  setupGlove();
-  glob::logger.mainLogger.store("glove");
+  Glob::motorBoard.setupGlove();
+  Glob::logger.mainLogger.store("glove");
 
   //  camera device is now available, CameraManager can be deallocated here
   if (cameraDevice == nullptr) {
@@ -117,7 +117,7 @@ int unfolding() {
   // IMPORTANT: call the initialize method before working with camera device
   // #costly: rpi4 1000ms
   auto status = cameraDevice->initialize();
-  glob::logger.mainLogger.store("cam");
+  Glob::logger.mainLogger.store("cam");
 
   if (status != royale::CameraStatus::SUCCESS) {
     cerr << "Cannot initialize the camera device, error string : "
@@ -135,11 +135,11 @@ int unfolding() {
   cerr << useCases << endl;
   // choose a use case
   uint selectedUseCaseIdx = 0u;
-  if (glob::modes.a_cameraUseCase) {
-    cerr << "got the argument:" << glob::modes.a_cameraUseCase << endl;
+  if (Glob::modes.a_cameraUseCase) {
+    cerr << "got the argument:" << Glob::modes.a_cameraUseCase << endl;
     auto useCaseFound = false;
-    if (glob::modes.a_cameraUseCase < useCases.size()) {
-      selectedUseCaseIdx = glob::modes.a_cameraUseCase;
+    if (Glob::modes.a_cameraUseCase < useCases.size()) {
+      selectedUseCaseIdx = Glob::modes.a_cameraUseCase;
       useCaseFound = true;
     }
 
@@ -169,7 +169,7 @@ int unfolding() {
     return 1;
   }
 
-  // glob::listener.setLensParameters(lensParameters);
+  // Glob::listener.setLensParameters(lensParameters);
 
   // register a data listener
   if (cameraDevice->registerDataListener(&listener) !=
@@ -177,7 +177,7 @@ int unfolding() {
     cerr << "Error registering data listener" << endl;
     return 1;
   }
-  glob::logger.mainLogger.store("regist");
+  Glob::logger.mainLogger.store("regist");
   // register a EVENT listener
   cameraDevice->registerEventListener(&eventReporter);
 
@@ -188,19 +188,19 @@ int unfolding() {
     cerr << "Error starting the capturing" << endl;
     return 1;
   }
-  glob::logger.mainLogger.store("capt");
+  Glob::logger.mainLogger.store("capt");
   // Reset some things
-  timelog startTimeLog;
+  TimeLogger startTimeLog;
   startTimeLog.store("INIT");
   cameraDetached = false;       // camera is attached and ready
-  glob::modes.a_muted = false;  // activate the vibration motors
+  Glob::modes.a_muted = false;  // activate the vibration motors
   long lastCallImshow = millis();
   long lastCall = 0;
   long lastCallTemp = 0;
-  glob::logger.mainLogger.printAll("Initializing Unfolding", "ms", "ms");
-  glob::logger.mainLogger.reset();
+  Glob::logger.mainLogger.printAll("Initializing Unfolding", "ms", "ms");
+  Glob::logger.mainLogger.reset();
   //_____________________ENDLESS LOOP_________________________________
-  while (!glob::a_restartUnfoldingFlag) {
+  while (!Glob::a_restartUnfoldingFlag) {
     // Check if time since camera started capturing is bigger than 3 secs
     if (!threeSecondsAreOver) {
       if (startTimeLog.msSinceEntry(0) > 3000) {
@@ -208,7 +208,7 @@ int unfolding() {
       }
     }
 
-    if (!glob::royalStats.a_isCalibRunning) {
+    if (!Glob::royalStats.a_isCalibRunning) {
       // only do all of this stuff when the camera is attached
       if (!cameraDetached) {
         royale::String id;
@@ -219,7 +219,7 @@ int unfolding() {
         uint16_t maxSensorWidth;
         uint16_t maxSensorHeight;
         // time passed since last OnNewData
-        timeSinceNewData = glob::logger.newDataLog.msSinceEntry(0);
+        timeSinceNewData = Glob::logger.newDataLog.msSinceEntry(0);
         if (maxTimeSinceNewData < timeSinceNewData) {
           maxTimeSinceNewData = timeSinceNewData;
         }
@@ -241,9 +241,9 @@ int unfolding() {
           status = cameraDevice->isConnected(tempisConnected);
           status = cameraDevice->isCapturing(tempisCapturing);
 
-          glob::royalStats.a_isCalibrated = tempisCalibrated;
-          glob::royalStats.a_isConnected = tempisConnected;
-          glob::royalStats.a_isCapturing = tempisCapturing;
+          Glob::royalStats.a_isCalibrated = tempisCalibrated;
+          Glob::royalStats.a_isConnected = tempisConnected;
+          Glob::royalStats.a_isCapturing = tempisCapturing;
         }
         // do this every 5000ms (every 1 seconds)
         if (millis() - lastCallTemp > 1000) {
@@ -261,8 +261,8 @@ int unfolding() {
         if (threeSecondsAreOver) {
           // RESTART WHEN CAMERA IS UNPLUGGED
           // connected but still capturing -> unplugged!
-          if (glob::royalStats.a_isConnected == 0 &&
-              glob::royalStats.a_isCapturing == 1) {
+          if (Glob::royalStats.a_isConnected == 0 &&
+              Glob::royalStats.a_isCapturing == 1) {
             if (cameraDetached == false) {
               cout << "________________________________________________" << endl
                    << endl;
@@ -273,10 +273,10 @@ int unfolding() {
                    << endl;
               cout << "Searching for 3D camera in loop" << endl;
               // stop writing new values to the LRAs
-              glob::modes.a_muted = true;
-              muteAll();
+              Glob::modes.a_muted = true;
+              Glob::motorBoard.muteAll();
               cameraDetached = true;
-              glob::a_restartUnfoldingFlag = true;
+              Glob::a_restartUnfoldingFlag = true;
             }
           }
           if (cameraDetached == false) {    // if camera should be there...
@@ -290,13 +290,13 @@ int unfolding() {
                    << endl;
               cout << "________________________________________________" << endl
                    << endl;
-              glob::royalStats.a_libraryCrashCounter++;
+              Glob::royalStats.a_libraryCrashCounter++;
               // stop writing new values to the LRAs
-              glob::modes.a_muted = true;
+              Glob::modes.a_muted = true;
               // mute all LRAs
-              muteAll();
+              Glob::motorBoard.muteAll();
               // go to the beginning and find camera again
-              glob::a_restartUnfoldingFlag = true;
+              Glob::a_restartUnfoldingFlag = true;
             }
           }
         }
@@ -309,9 +309,9 @@ int unfolding() {
     cerr << "Error stopping the capturing" << endl;
     return 1;
   }
-  glob::modes.a_muted = true;
+  Glob::modes.a_muted = true;
   // mute all motors
-  muteAll();
+  Glob::motorBoard.muteAll();
   return 0;
 }
 
@@ -319,7 +319,7 @@ int unfolding() {
 class mainThreadWrapper {
  public:
   // Sending the data out at specified moments when there is nothing else to do
-  void runUdpSend() { glob::udpService.run(); }
+  void runUdpSend() { Glob::udpService.run(); }
   std::thread runUdpSendThread() {
     return std::thread([=] { runUdpSend(); });
   }
@@ -333,7 +333,7 @@ class mainThreadWrapper {
     printf("Unfolding Thread has been exited with a #%i \n", unfReturn);
     printf("Stopping the UDP server now... \n");
     // Todo: stoppen notwendig? Was ist mein Stop-plan?
-    glob::udpService.stop();
+    Glob::udpService.stop();
   }
   std::thread runUnfoldingThread() {
     return std::thread([=] { runUnfolding(); });
@@ -343,11 +343,11 @@ class mainThreadWrapper {
   void runCopyDepthData() {
     DepthDataUtilities ddProcessor;
     while (1) {
-      std::unique_lock<std::mutex> pdCondLock(glob::notifyProcess.mut);
-      glob::notifyProcess.cond.wait(pdCondLock,
-                                    [] { return glob::notifyProcess.flag; });
+      std::unique_lock<std::mutex> pdCondLock(Glob::notifyProcess.mut);
+      Glob::notifyProcess.cond.wait(pdCondLock,
+                                    [] { return Glob::notifyProcess.flag; });
       ddProcessor.processData();
-      glob::notifyProcess.flag = false;
+      Glob::notifyProcess.flag = false;
     }
   }
   std::thread runCopyDepthDataThread() {
@@ -358,71 +358,71 @@ class mainThreadWrapper {
   void runSendDepthData() {
     while (1) {
       {
-        std::unique_lock<std::mutex> svCondLock(glob::notifySend.mut);
-        glob::notifySend.cond.wait(svCondLock,
-                                   [] { return glob::notifySend.flag; });
+        std::unique_lock<std::mutex> svCondLock(Glob::notifySend.mut);
+        Glob::notifySend.cond.wait(svCondLock,
+                                   [] { return Glob::notifySend.flag; });
       }
       // IF in regular mode
-      if (!glob::modes.a_testMode) {
-        std::lock_guard<std::mutex> lockMotorTiles(glob::motors.mut);
-        sendValuesToGlove(glob::motors.tiles, 9);
+      if (!Glob::modes.a_testMode) {
+        std::lock_guard<std::mutex> lockMotorTiles(Glob::motors.mut);
+        Glob::motorBoard.sendValuesToGlove(Glob::motors.tiles, 9);
         const int size =
-            sizeof(glob::motors.testTiles) / sizeof(glob::motors.testTiles[0]);
+            sizeof(Glob::motors.testTiles) / sizeof(Glob::motors.testTiles[0]);
         std::vector<unsigned char> vect;
         for (int i = 0; i < size; i++) {
-          unsigned char tmpChar = glob::motors.tiles[i];
+          unsigned char tmpChar = Glob::motors.tiles[i];
           vect.push_back(tmpChar);
         }
         {
-          std::lock_guard<std::mutex> lockSendMotors(glob::udpServMux);
-          glob::udpServer.preparePacket("motors", vect);
-          glob::udpServer.prepareImage();
+          std::lock_guard<std::mutex> lockSendMotors(Glob::udpServMux);
+          Glob::udpServer.preparePacket("motors", vect);
+          Glob::udpServer.prepareImage();
         }
       }  // IF in test mode
       else {
-        std::lock_guard<std::mutex> lockMotorTiles2(glob::motors.mut);
-        sendValuesToGlove(glob::motors.testTiles, 9);
+        std::lock_guard<std::mutex> lockMotorTiles2(Glob::motors.mut);
+        Glob::motorBoard.sendValuesToGlove(Glob::motors.testTiles, 9);
         const int size =
-            sizeof(glob::motors.testTiles) / sizeof(glob::motors.testTiles[0]);
+            sizeof(Glob::motors.testTiles) / sizeof(Glob::motors.testTiles[0]);
         std::vector<unsigned char> vect;
 
         for (int i = 0; i < size; i++) {
-          unsigned char tmpChar = glob::motors.testTiles[i];
+          unsigned char tmpChar = Glob::motors.testTiles[i];
           vect.push_back(tmpChar);
         }
         {
-          std::lock_guard<std::mutex> lockSendMotors2(glob::udpServMux);
-          glob::udpServer.preparePacket("motors", vect);
+          std::lock_guard<std::mutex> lockSendMotors2(Glob::udpServMux);
+          Glob::udpServer.preparePacket("motors", vect);
         }
       }
 
       // Send depth image no matter if test mode or not.
       {
-        std::lock_guard<std::mutex> lockPrepareImage(glob::udpServMux);
-        glob::udpServer.prepareImage();
+        std::lock_guard<std::mutex> lockPrepareImage(Glob::udpServMux);
+        Glob::udpServer.prepareImage();
       }
 
       // TODO: sollte gleichzeitig zu send ausgeführt werden und nicht
       // danach...
-      bool tempisConnected = glob::royalStats.a_isConnected;
-      bool tempisCapturing = glob::royalStats.a_isCapturing;
-      int tempCounter = glob::royalStats.a_libraryCrashCounter;
-      bool tempMuted = glob::modes.a_muted;
-      bool tempTest = glob::modes.a_testMode;
-      int lockfail = glob::a_lockFailCounter;
+      bool tempisConnected = Glob::royalStats.a_isConnected;
+      bool tempisCapturing = Glob::royalStats.a_isCapturing;
+      int tempCounter = Glob::royalStats.a_libraryCrashCounter;
+      bool tempMuted = Glob::modes.a_muted;
+      bool tempTest = Glob::modes.a_testMode;
+      int lockfail = Glob::a_lockFailCounter;
 
       {
-        std::lock_guard<std::mutex> lockSendValues(glob::udpServMux);
-        glob::udpServer.preparePacket("isConnected", tempisConnected);
-        glob::udpServer.preparePacket("isCapturing", tempisCapturing);
-        glob::udpServer.preparePacket("libCrashes", tempCounter);
-        glob::udpServer.preparePacket("isMuted", tempMuted);
-        glob::udpServer.preparePacket("isTestMode", tempTest);
-        glob::udpServer.preparePacket("lockFails", lockfail);
+        std::lock_guard<std::mutex> lockSendValues(Glob::udpServMux);
+        Glob::udpServer.preparePacket("isConnected", tempisConnected);
+        Glob::udpServer.preparePacket("isCapturing", tempisCapturing);
+        Glob::udpServer.preparePacket("libCrashes", tempCounter);
+        Glob::udpServer.preparePacket("isMuted", tempMuted);
+        Glob::udpServer.preparePacket("isTestMode", tempTest);
+        Glob::udpServer.preparePacket("lockFails", lockfail);
       }
       {
-        std::unique_lock<std::mutex> svCondLock(glob::notifySend.mut);
-        glob::notifySend.flag = false;
+        std::unique_lock<std::mutex> svCondLock(Glob::notifySend.mut);
+        Glob::notifySend.flag = false;
       }
     }
   }

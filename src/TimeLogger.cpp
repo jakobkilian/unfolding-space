@@ -1,23 +1,23 @@
-#include "timelog.hpp"
+#include "TimeLogger.hpp"
 
 #include <array>
 #include <chrono>
 #include <iostream>
 #include <string>
 
-#include "camera.hpp"
-#include "globals.hpp"
+#include "Camera.hpp"
+#include "Globals.hpp"
 
 using namespace std::chrono;
 using std::cout;
 
-void timelog::store(const std::string name) {
+void TimeLogger::store(const std::string name) {
   std::lock_guard<std::mutex> lockStore(mut);
   timePoint.push_back(steady_clock::now());
   nameTag.push_back(name);
 }
 
-void timelog::printAll(const std::string instName, const std::string incr,
+void TimeLogger::printAll(const std::string instName, const std::string incr,
                        const std::string sum) {
   std::lock_guard<std::mutex> lockPrintAll(mut);
   if (timePoint.size() > 1) {  // if there is sth to print
@@ -54,7 +54,7 @@ void timelog::printAll(const std::string instName, const std::string incr,
   }
 }
 
-void timelog::udpTimeSpan(std::string ident, std::string incr, std::string from,
+void TimeLogger::udpTimeSpan(std::string ident, std::string incr, std::string from,
                           std::string to) {
   std::lock_guard<std::mutex> lockTimeSpan(mut);
   // find "from" keyword and "to" keyword and return iterator
@@ -76,20 +76,20 @@ void timelog::udpTimeSpan(std::string ident, std::string incr, std::string from,
               .count();
     }
     {
-      std::lock_guard<std::mutex> lockSendDur(glob::udpServMux);
-      glob::udpServer.preparePacket(ident, duration);
+      std::lock_guard<std::mutex> lockSendDur(Glob::udpServMux);
+      Glob::udpServer.preparePacket(ident, duration);
     }
   }
 }
 
 
-void timelog::reset() {
+void TimeLogger::reset() {
   std::lock_guard<std::mutex> lockClear(mut);
   timePoint.clear();
   nameTag.clear();
 }
 
-long timelog::msSinceEntry(unsigned int id) {
+long TimeLogger::msSinceEntry(unsigned int id) {
   std::lock_guard<std::mutex> lockGetDur(mut);
   long val = 0;
   if (timePoint.size() > id) {  // if there is a first entry

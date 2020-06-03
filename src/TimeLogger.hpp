@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-class timelog {
+class TimeLogger {
   std::vector<std::chrono::steady_clock::time_point> timePoint;
   std::vector<std::string> nameTag;
   int i;

@@ -12,7 +12,7 @@
 #include <royale/IEvent.hpp>
 #include <thread>
 
-#include "timelog.hpp"
+#include "TimeLogger.hpp"
 
 using namespace std::chrono;
 

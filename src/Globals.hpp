@@ -4,12 +4,13 @@
 #include <opencv2/opencv.hpp>
 #include <royale.hpp>
 
-#include "camera.hpp"
-#include "timelog.hpp"
-#include "udp.hpp"
+#include "Camera.hpp"
+#include "MotorBoard.hpp"
+#include "TimeLogger.hpp"
+#include "UdpServer.hpp"
 
 /*
-Globals are organized in structs, that get initialized in "globals.cpp"
+Globals are organized in structs, that get initialized in "Globals.cpp"
 Naming convention:
 Atomic variables (that do not need locking) are beginning with: a_
 All others need to be protected when edited.
@@ -43,8 +44,8 @@ struct Motors : Base {
 };
 
 struct Logger : Base {
-  timelog newDataLog;
-  timelog mainLogger;
+  TimeLogger newDataLog;
+  TimeLogger mainLogger;
 };
 
 struct CvDepthImg : Base {
@@ -64,12 +65,16 @@ struct Counters {
  std::atomic<long> frameCounter;
 };
 
-// Everything goes in the namespace "glob"
-namespace glob {
+// Everything goes in the namespace "Glob"
+namespace Glob {
 //protection needed?
 extern std::mutex udpServMux;
 extern boost::asio::io_service udpService;
-extern udp_server udpServer;
+extern UdpServer udpServer;
+
+extern std::mutex motorBoardMux;
+extern MotorBoard motorBoard;
+
 // Counts when there is onNewData() while the previous wasn't finished yet.
 // We don't want this -> royal library gets unstable
 extern std::atomic<int> a_lockFailCounter;
@@ -86,4 +91,4 @@ extern RoyalDepthData royalDepthData;
 extern ThreadNotification notifyProcess;
 extern ThreadNotification notifySend;
 extern Counters counters;
-}  // namespace glob
+}  // namespace Glob
