@@ -11,7 +11,6 @@ std::atomic<int> glob::a_lockFailCounter{0};
 std::atomic<bool> glob::a_restartUnfoldingFlag{false};
 // Init structs
 RoyalStatus glob::royalStats;
-PotiStatus glob::potiStats;
 Modes glob::modes;
 Motors glob::motors;
 Logger glob::logger;
@@ -19,3 +18,4 @@ RoyalDepthData glob::royalDepthData;
 CvDepthImg glob::cvDepthImg;
 ThreadNotification glob::notifyProcess;
 ThreadNotification glob::notifySend;
+Counters glob::counters;

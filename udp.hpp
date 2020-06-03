@@ -42,7 +42,6 @@ class udp_server {
   void preparePacket(const std::string key,
                      const std::vector<unsigned char> data);
   void prepareImage();
-
   boost::asio::ip::udp::socket socket_;
   boost::asio::ip::udp::endpoint remote_endpoint_;
   boost::array<char, 4> recv_buffer_;
@@ -54,7 +53,7 @@ class udp_server {
   std::vector<udp_client> udpClient;
   boost::asio::io_service::strand strand_;
   timelog udpRecLog;
-  int maxClients;
+  const unsigned int maxClients;
   void sendPacket(int i, std::vector<unsigned char> vect);
   void start_receive();
   void handle_receive();
@@ -77,7 +76,6 @@ class udp_server {
   template <typename T>
   constexpr void preparePacket(const std::string key, T const &data) {
     // only use some types: int, float, char array
-
     static_assert(
         std::is_same<T, int>::value || std::is_same<T, unsigned int>::value ||
             std::is_same<T, float>::value || std::is_same<T, char>::value ||
@@ -90,7 +88,6 @@ class udp_server {
 
     const int keyLength = key.length();
     const int dataSize = sizeof(data);
-    const int packetLength = keyLength + 1 + dataSize;  //+1 for the ':'
     unsigned char *ptr = (unsigned char *)&data;
     std::vector<unsigned char> dataVect;
     for (int i = 0; i < keyLength; i++) {

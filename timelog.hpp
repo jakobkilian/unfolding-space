@@ -20,5 +20,5 @@ class timelog {
   void printAll(const std::string, const std::string, const std::string);
   void udpTimeSpan(std::string ident, std::string incr, std::string from,
                    std::string to);
-  long msSinceEntry(int id);
+  long msSinceEntry(unsigned int id);
 };

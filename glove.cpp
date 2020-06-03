@@ -169,11 +169,12 @@ uint8_t registerRead(unsigned char ucRegAddress) {
   return data;
 }
 
+
 //________________________________________________
 // Write data to a register
 int registerWrite(unsigned char ucRegAddress, char cValue) {
   int data;
-  if (data = wiringPiI2CWriteReg8(drv, ucRegAddress, cValue) != 0) {
+  if ((data = wiringPiI2CWriteReg8(drv, ucRegAddress, cValue)) != 0) {
     printf("failed writing to register:   addr=%u, res=%i\n", ucRegAddress,
            data);
     return -1;

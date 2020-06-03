@@ -9,15 +9,12 @@
 #include <mutex>
 #include <opencv2/opencv.hpp>
 #include <royale.hpp>
-#include <thread>
 #include <royale/IEvent.hpp>
-
+#include <thread>
 
 #include "timelog.hpp"
 
 using namespace std::chrono;
-extern long lastNewData;
-extern int frameCounter;
 
 //----------------------------------------------------------------------
 // CLASSES
@@ -33,10 +30,6 @@ class DepthDataListener : public royale::IDepthDataListener {
   float adjustDepthValueForImage(float zValue, float max);
 };
 
-
-
-
-
 //________________________________________________
 // Gets called by Royale irregularily.
 // Holds the camera state, errors and info about drops
@@ -44,16 +37,14 @@ class EventReporter : public royale::IEventListener {
  public:
   virtual ~EventReporter() = default;
 
-virtual void onEvent(std::unique_ptr<royale::IEvent> &&event) override;
-private:
-void extractDrops(royale::String str);
+  virtual void onEvent(std::unique_ptr<royale::IEvent> &&event) override;
 
-  };
+ private:
+  void extractDrops(royale::String str);
+};
 
-
-
-  class DepthDataUtilities {
-    public:
-    void processData();
-    cv::Mat getResizedDepthImage(int);
-  };
+class DepthDataUtilities {
+ public:
+  void processData();
+  cv::Mat getResizedDepthImage(int);
+};

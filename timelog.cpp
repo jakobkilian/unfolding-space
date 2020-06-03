@@ -12,21 +12,21 @@ using namespace std::chrono;
 using std::cout;
 
 void timelog::store(const std::string name) {
-  std::lock_guard<std::mutex> lock(mut);
+  std::lock_guard<std::mutex> lockStore(mut);
   timePoint.push_back(steady_clock::now());
   nameTag.push_back(name);
 }
 
 void timelog::printAll(const std::string instName, const std::string incr,
                        const std::string sum) {
-  std::lock_guard<std::mutex> lock(mut);
+  std::lock_guard<std::mutex> lockPrintAll(mut);
   if (timePoint.size() > 1) {  // if there is sth to print
     cout << "\n";
     cout << "-------------------------------\n";
     cout << "TIMER: " << instName << ":\n";
     cout << "-------------------------------\n";
 
-    for (int x = 1; x < timePoint.size(); x++) {
+    for (unsigned int x = 1; x < timePoint.size(); x++) {
       auto timeSpan = timePoint[x] - timePoint[x - 1];
       if (incr.compare("ms") == 0) {
         cout << duration_cast<milliseconds>(timeSpan).count();
@@ -56,7 +56,7 @@ void timelog::printAll(const std::string instName, const std::string incr,
 
 void timelog::udpTimeSpan(std::string ident, std::string incr, std::string from,
                           std::string to) {
-  std::lock_guard<std::mutex> lock(mut);
+  std::lock_guard<std::mutex> lockTimeSpan(mut);
   // find "from" keyword and "to" keyword and return iterator
   std::vector<std::string>::iterator fromIt =
       std::find(nameTag.begin(), nameTag.end(), from);
@@ -76,20 +76,21 @@ void timelog::udpTimeSpan(std::string ident, std::string incr, std::string from,
               .count();
     }
     {
-      std::lock_guard<std::mutex> lock(glob::udpServMux);
+      std::lock_guard<std::mutex> lockSendDur(glob::udpServMux);
       glob::udpServer.preparePacket(ident, duration);
     }
   }
 }
 
+
 void timelog::reset() {
-  std::lock_guard<std::mutex> lock(mut);
+  std::lock_guard<std::mutex> lockClear(mut);
   timePoint.clear();
   nameTag.clear();
 }
 
-long timelog::msSinceEntry(int id) {
-  std::lock_guard<std::mutex> lock(mut);
+long timelog::msSinceEntry(unsigned int id) {
+  std::lock_guard<std::mutex> lockGetDur(mut);
   long val = 0;
   if (timePoint.size() > id) {  // if there is a first entry
     val = duration_cast<milliseconds>(steady_clock::now() - timePoint[id])

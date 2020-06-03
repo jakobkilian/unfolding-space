@@ -26,7 +26,6 @@
 #include "camera.hpp"
 #include "globals.hpp"
 #include "glove.hpp"
-#include "poti.hpp"
 #include "time.h"
 #include "timelog.hpp"
 #include "udp.hpp"
@@ -46,7 +45,7 @@ void getCoreTemp() {
   coreTemp = coreTemp.insert(2, 1, '.');
   float coreTempDouble = std::stod(coreTemp);
   {
-    std::lock_guard<std::mutex> lock(glob::udpServMux);
+    std::lock_guard<std::mutex> lockCoreTemp(glob::udpServMux);
     glob::udpServer.preparePacket("coreTemp", coreTempDouble);
   }
   tempFile.close();
@@ -54,7 +53,7 @@ void getCoreTemp() {
 
 //________________________________________________
 // Mute motors before exiting the appllication
-void exitApplicationMuted(int dummy) {
+void exitApplicationMuted(__attribute__((unused)) int dummy) {
   glob::modes.a_muted = true;
   muteAll();
   // delay(1);
@@ -71,7 +70,6 @@ int unfolding() {
   bool threeSecondsAreOver = false;
   DepthDataListener listener;
   long timeSinceNewData;    // time passed since last "onNewData"
-  int fpsFromCam;           // wich royal use case is used? (how many fps?)
   int maxTimeSinceNewData;  // the longest timespan without new data since start
   bool cameraDetached;      // camera got detached
 
@@ -95,7 +93,7 @@ int unfolding() {
       cameraDevice = manager.createCamera(camlist[0]);
       break;
     }
-    cout << ".";
+    cout << ":";
     cout.flush();
   }
   // if camlist is not NULL
@@ -105,11 +103,6 @@ int unfolding() {
   // Mute the LRAs before ending the program by ctr + c (SIGINT)
   signal(SIGINT, exitApplicationMuted);
   signal(SIGTERM, exitApplicationMuted);
-  // initialize boost library
-  // boostInit();
-
-  // Setup Connection to Digispark Board for Poti-Reads
-  if (glob::potiStats.a_potAvail) initPoti();
 
   // Setup the LRAs on the Glove (I2C Connection, Settings, Calibration, etc.)
   setupGlove();
@@ -145,11 +138,8 @@ int unfolding() {
   if (glob::modes.a_cameraUseCase) {
     cerr << "got the argument:" << glob::modes.a_cameraUseCase << endl;
     auto useCaseFound = false;
-    if (glob::modes.a_cameraUseCase >= 0 &&
-        glob::modes.a_cameraUseCase < useCases.size()) {
-      uint8_t fpsUseCases[6] = {0, 10, 15, 25, 35, 45};  // pico flexx specs
+    if (glob::modes.a_cameraUseCase < useCases.size()) {
       selectedUseCaseIdx = glob::modes.a_cameraUseCase;
-      fpsFromCam = fpsUseCases[glob::modes.a_cameraUseCase];
       useCaseFound = true;
     }
 
@@ -207,7 +197,6 @@ int unfolding() {
   long lastCallImshow = millis();
   long lastCall = 0;
   long lastCallTemp = 0;
-  long lastCallPoti = millis();
   glob::logger.mainLogger.printAll("Initializing Unfolding", "ms", "ms");
   glob::logger.mainLogger.reset();
   //_____________________ENDLESS LOOP_________________________________
@@ -229,7 +218,7 @@ int unfolding() {
         bool tempisCapturing;
         uint16_t maxSensorWidth;
         uint16_t maxSensorHeight;
-        // time passed since LastNewData
+        // time passed since last OnNewData
         timeSinceNewData = glob::logger.newDataLog.msSinceEntry(0);
         if (maxTimeSinceNewData < timeSinceNewData) {
           maxTimeSinceNewData = timeSinceNewData;
@@ -243,7 +232,7 @@ int unfolding() {
           // Get all the data of the royal lib to see if camera is working
           royale::Vector<royale::Pair<royale::String, royale::String>>
               cameraInfo;
-          auto status = cameraDevice->getCameraInfo(cameraInfo);
+          status = cameraDevice->getCameraInfo(cameraInfo);
           status = cameraDevice->getMaxSensorHeight(maxSensorHeight);
           status = cameraDevice->getMaxSensorWidth(maxSensorWidth);
           status = cameraDevice->getCameraName(name);
@@ -256,24 +245,6 @@ int unfolding() {
           glob::royalStats.a_isConnected = tempisConnected;
           glob::royalStats.a_isCapturing = tempisCapturing;
         }
-
-        // do this every 50ms (20 fps)
-        if (millis() - lastCallPoti > 100) {
-          lastCallPoti = millis();
-
-          if (glob::potiStats.a_potAvail) updatePoti();
-
-          // calc fps
-          int secondsSinceReset = ((millis() - 0) / 1000);
-          // if (secondsSinceReset > 0) {
-          //   fps = frameCounter / secondsSinceReset;
-          // }
-          if (frameCounter > 999) {
-            frameCounter = 0;
-            // 0 = millis();
-          }
-        }
-
         // do this every 5000ms (every 1 seconds)
         if (millis() - lastCallTemp > 1000) {
           lastCallTemp = millis();
@@ -305,17 +276,7 @@ int unfolding() {
               glob::modes.a_muted = true;
               muteAll();
               cameraDetached = true;
-            }
-            royale::CameraManager manager;
-            royale::Vector<royale::String> camlist;
-            while (camlist.empty()) {
-              camlist = manager.getConnectedCameraList();
-              if (!camlist.empty()) {
-                camlist.clear();
-                glob::a_restartUnfoldingFlag = true;
-              }
-              cout << ".";
-              cout.flush();
+              glob::a_restartUnfoldingFlag = true;
             }
           }
           if (cameraDetached == false) {    // if camera should be there...
@@ -403,7 +364,7 @@ class mainThreadWrapper {
       }
       // IF in regular mode
       if (!glob::modes.a_testMode) {
-        std::lock_guard<std::mutex> lock(glob::motors.mut);
+        std::lock_guard<std::mutex> lockMotorTiles(glob::motors.mut);
         sendValuesToGlove(glob::motors.tiles, 9);
         const int size =
             sizeof(glob::motors.testTiles) / sizeof(glob::motors.testTiles[0]);
@@ -413,13 +374,13 @@ class mainThreadWrapper {
           vect.push_back(tmpChar);
         }
         {
-          std::lock_guard<std::mutex> lock(glob::udpServMux);
+          std::lock_guard<std::mutex> lockSendMotors(glob::udpServMux);
           glob::udpServer.preparePacket("motors", vect);
           glob::udpServer.prepareImage();
         }
       }  // IF in test mode
       else {
-        std::lock_guard<std::mutex> lock(glob::motors.mut);
+        std::lock_guard<std::mutex> lockMotorTiles2(glob::motors.mut);
         sendValuesToGlove(glob::motors.testTiles, 9);
         const int size =
             sizeof(glob::motors.testTiles) / sizeof(glob::motors.testTiles[0]);
@@ -430,14 +391,14 @@ class mainThreadWrapper {
           vect.push_back(tmpChar);
         }
         {
-          std::lock_guard<std::mutex> lock(glob::udpServMux);
+          std::lock_guard<std::mutex> lockSendMotors2(glob::udpServMux);
           glob::udpServer.preparePacket("motors", vect);
         }
       }
 
       // Send depth image no matter if test mode or not.
       {
-        std::lock_guard<std::mutex> lock(glob::udpServMux);
+        std::lock_guard<std::mutex> lockPrepareImage(glob::udpServMux);
         glob::udpServer.prepareImage();
       }
 
@@ -451,7 +412,7 @@ class mainThreadWrapper {
       int lockfail = glob::a_lockFailCounter;
 
       {
-        std::lock_guard<std::mutex> lock(glob::udpServMux);
+        std::lock_guard<std::mutex> lockSendValues(glob::udpServMux);
         glob::udpServer.preparePacket("isConnected", tempisConnected);
         glob::udpServer.preparePacket("isCapturing", tempisCapturing);
         glob::udpServer.preparePacket("libCrashes", tempCounter);
@@ -473,7 +434,7 @@ class mainThreadWrapper {
 //----------------------------------------------------------------------
 // MAIN LOOP
 //----------------------------------------------------------------------
-int main(int argc, char *argv[]) {
+int main() {
   // create thread wrapper instance and the threads
   mainThreadWrapper *w = new mainThreadWrapper();
   std::thread udpSendTh = w->runUdpSendThread();

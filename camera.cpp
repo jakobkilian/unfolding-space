@@ -9,11 +9,10 @@
 #include <mutex>
 #include <royale/IEvent.hpp>
 #include <string>  // std::string, std::to_string
-#include <thread>
+
 
 #include "globals.hpp"
 #include "glove.hpp"
-#include "poti.hpp"
 #include "timelog.hpp"
 
 using std::cerr;
@@ -25,15 +24,11 @@ using namespace std::chrono;
 //----------------------------------------------------------------------
 // DECLARATIONS AND VARIABLES
 //----------------------------------------------------------------------
-int minObjSizeThresh = 90;  // the min number of pixels, an object must have
+const int minObjSizeThresh = 90;  // the min number of pixels, an object must have
                             // (smaller objects might be noise)
 float maxDepth = 1.5;       // The depth of viewing range.
                             // Objects with bigger distance to camera
-                            // are ignored. Value can be changed by poti.
-
-int frameCounter;  // counter for single frames
-
-long lastNewData = millis();
+                            // are ignored. 
 
 //
 /******************************************************************************
@@ -68,7 +63,7 @@ void DepthDataListener::onNewData(const DepthData *data) {
   } else {
     // if onNewData fails to unlock the mutex it returns instantly
     glob::a_lockFailCounter++;
-    std::cout << "failed locks:" << glob::a_lockFailCounter
+    cout << "failed locks:" << glob::a_lockFailCounter
               << " last is: " << multiLock << "\n";
     if (multiLock == 0) {
       glob::notifyProcess.mut.unlock();
@@ -104,11 +99,6 @@ void DepthDataUtilities::processData() {
       std::lock_guard<std::mutex> depDataLock(glob::royalDepthData.mut);
       data = &glob::royalDepthData.dat;  // set a pointer to the copied data
     }
-    lastNewData = millis();  // timestamp when new frame arrives
-    if (glob::potiStats.a_potAvail) {
-      maxDepth = glob::potiStats.a_potVal / 100 /
-                 3;  // calculate current maxDepth from potiVal
-    }
     // check dimensions of incoming data
     int width = data->width;          // get width from depth image
     int height = data->height;        // get height from depth image
@@ -139,11 +129,9 @@ void DepthDataUtilities::processData() {
         // select the respective tile
         int tileIdx = (x / tileWidth) + 3 * (y / tileHeight);
 
+
         // WRITE VALID PIXELS in DepImg and histogram
         if (valid) {
-          // if maxDepth is set to 0 by poti -> out of range (255)
-          // if value exceeds maxDepth -> out of range (255)
-          // else -> calc value between 0 to 255
           unsigned char depth =
               maxDepth > 0
                   ? (curPoint.z <= maxDepth
@@ -210,11 +198,12 @@ void DepthDataUtilities::processData() {
     }
   }
   glob::logger.mainLogger.store("aft his");
-  frameCounter++;  // counting every frame
+  glob::counters.frameCounter++;  // counting every frame
 
   {
     std::lock_guard<std::mutex> lock(glob::udpServMux);
-    glob::udpServer.preparePacket("frameCounter", frameCounter);
+    int tempFrameCounter = glob::counters.frameCounter;
+    glob::udpServer.preparePacket("frameCounter", tempFrameCounter);
   }
   // call sending thread
   {

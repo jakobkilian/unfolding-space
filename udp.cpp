@@ -9,7 +9,6 @@
 #include "camera.hpp"
 #include "globals.hpp"
 #include "glove.hpp"
-#include "poti.hpp"
 #include "timelog.hpp"
 
 using boost::asio::ip::udp;
@@ -62,12 +61,13 @@ bool udp_client::isEqual(udp::endpoint *checkEndpoint) {
  * boost asio strand which subsequently invokes the tasks
  ******************************************************************************/
 udp_server::udp_server(boost::asio::io_service &io_service, int max)
-    : strand_(io_service),
-      socket_(io_service, udp::endpoint(udp::v4(), 9009)),
+    : socket_(io_service, udp::endpoint(udp::v4(), 9009)),
+      strand_(io_service),
+      maxClients(max),
       broad_socket_(io_service, udp::endpoint(udp::v4(), 9007)),
       timer1_(io_service, boost::posix_time::milliseconds(500)),
       timer2_(io_service, boost::posix_time::milliseconds(500)) {
-  //std::lock_guard<std::mutex> l(mux);
+  // std::lock_guard<std::mutex> l(mux);
   // invoke first broadcast
   timer1_.async_wait(strand_.wrap(std::bind(&udp_server::broadcast, this)));
   // invoke first client timer check
@@ -75,7 +75,6 @@ udp_server::udp_server(boost::asio::io_service &io_service, int max)
       strand_.wrap(std::bind(&udp_server::checkClientTimers, this)));
   // invoke first receive
   strand_.post(strand_.wrap(std::bind(&udp_server::start_receive, this)));
-  maxClients = max;
   // Open second Socket for broadcasting
   broad_socket_.open(udp::v4(), errorBroad);
   broad_socket_.set_option(udp::socket::reuse_address(true));
@@ -86,7 +85,7 @@ udp_server::udp_server(boost::asio::io_service &io_service, int max)
 
 //_______ Broadcast Online Status _______
 void udp_server::broadcast() {
-  //std::lock_guard<std::mutex> l(mux);
+  // std::lock_guard<std::mutex> l(mux);
   broad_socket_.send_to(boost::asio::buffer("Unfolding 1"), broad_endpoint_, 0,
                         errorBroad);
   timer1_.expires_at(timer1_.expires_at() + boost::posix_time::seconds(1));
@@ -95,7 +94,7 @@ void udp_server::broadcast() {
 
 //_______ Broadcast Online Status _______
 void udp_server::checkClientTimers() {
-  //std::lock_guard<std::mutex> l(mux);
+  // std::lock_guard<std::mutex> l(mux);
   for (size_t i = 0; i < udpClient.size(); i++) {
     udpClient[i].checkTimer();
   }
@@ -105,7 +104,7 @@ void udp_server::checkClientTimers() {
 }
 
 void udp_server::prepareImage() {
-  //std::lock_guard<std::mutex> l(mux);
+  // std::lock_guard<std::mutex> l(mux);
   // iterte through all active clients
   for (size_t i = 0; i < udpClient.size(); i++) {
     if (udpClient[i].checkState()) {
@@ -115,13 +114,10 @@ void udp_server::prepareImage() {
         // cv::cvtColor(dep, dep, cv::COLOR_HSV2RGB, 3);
         cv::flip(dep, dep, -1);
         std::vector<unsigned char> vect;
-
         vect.push_back('i');
         vect.push_back('m');
         vect.push_back('g');
         vect.push_back(':');
-
-        int k = 0;
         for (int h = 0; h < dep.rows; h++) {
           for (int j = 0; j < dep.cols; j++) {
             vect.push_back(*(unsigned char *)(dep.data + h * dep.step + j));
@@ -142,10 +138,9 @@ void udp_server::prepareImage() {
 // Note: void preparePacket is defined in udp.hpp as it is a Template Function
 void udp_server::preparePacket(const std::string key,
                                const std::vector<unsigned char> data) {
-  //std::lock_guard<std::mutex> l(mux);
+  // std::lock_guard<std::mutex> l(mux);
   const int keyLength = key.length();
   const int dataSize = data.size();
-  const int packetLength = keyLength + 1 + dataSize;  //+1 for the ':'
   std::vector<unsigned char> dataVect;
   for (int i = 0; i < keyLength; i++) {
     dataVect.push_back(key[i]);
@@ -172,7 +167,7 @@ void udp_server::preparePacket(const std::string key,
 
 // send the whole vector to the clients via udp
 void udp_server::sendPacket(int id, std::vector<unsigned char> vect) {
-  //std::lock_guard<std::mutex> l(mux);
+  // std::lock_guard<std::mutex> l(mux);
   boost::shared_ptr<std::string> message(new std::string(""));
   socket_.async_send_to(boost::asio::buffer(vect), udpClient[id].endpoint,
                         std::bind(&udp_server::handle_send, this, message));
@@ -180,7 +175,7 @@ void udp_server::sendPacket(int id, std::vector<unsigned char> vect) {
 
 //_______ Set Socket to Receiving _______
 void udp_server::start_receive() {
-  //std::lock_guard<std::mutex> l(mux);
+  // std::lock_guard<std::mutex> l(mux);
   // Look out for calls on port 9009
   socket_.async_receive_from(boost::asio::buffer(recv_buffer_),
                              remote_endpoint_,
@@ -189,9 +184,8 @@ void udp_server::start_receive() {
 
 //_______ Handle Received Packets _______
 void udp_server::handle_receive() {
-  //std::lock_guard<std::mutex> l(mux);
+  // std::lock_guard<std::mutex> l(mux);
   udpRecLog.store("-");
-  int i = 0;
   bool inList = false;
   int curClient = 0;
   udpRecLog.store("old client number: " + std::to_string(udpClient.size()));
@@ -284,12 +278,13 @@ void udp_server::handle_receive() {
   // start listening again
   strand_.post(strand_.wrap(std::bind(&udp_server::start_receive, this)));
   udpRecLog.store("post new receive");
-  //udpRecLog.printAll("Receiving one Frame", "us", "ms");
+  // udpRecLog.printAll("Receiving one Frame", "us", "ms");
   udpRecLog.reset();
 }
 
 // Invoked after sending message (dont delete)
-void udp_server::handle_send(boost::shared_ptr<std::string> message) {}
+void udp_server::handle_send(__attribute__ ((unused)) boost::shared_ptr<std::string> message) {
+}
 //                                    _____
 //                                 [udp server]
 //____________________________________________________________________________

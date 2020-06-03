@@ -29,16 +29,10 @@ struct RoyalStatus {
   std::atomic<int> a_libraryCrashCounter{0};
 };
 
-// potentiometer
-struct PotiStatus : Base {
-  std::atomic<int> a_potVal{0};
-  std::atomic<bool> a_potAvail{false};
-};
-
 struct Modes  {
   std::atomic<bool> a_muted;
   std::atomic<bool> a_testMode;
-  std::atomic<int> a_cameraUseCase{3};
+  std::atomic<unsigned int> a_cameraUseCase{3};
 };
 
 struct Motors : Base {
@@ -66,6 +60,10 @@ struct ThreadNotification : Base {
   bool flag{false};
 };
 
+struct Counters {
+ std::atomic<long> frameCounter;
+};
+
 // Everything goes in the namespace "glob"
 namespace glob {
 //protection needed?
@@ -80,7 +78,6 @@ extern std::atomic<bool> a_restartUnfoldingFlag;
 
 // INIT ALL STRUCTS
 extern RoyalStatus royalStats;
-extern PotiStatus potiStats;
 extern Modes modes;
 extern Motors motors;
 extern Logger logger;
@@ -88,4 +85,5 @@ extern CvDepthImg cvDepthImg;
 extern RoyalDepthData royalDepthData;
 extern ThreadNotification notifyProcess;
 extern ThreadNotification notifySend;
+extern Counters counters;
 }  // namespace glob
