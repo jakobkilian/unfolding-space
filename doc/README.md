@@ -32,7 +32,6 @@ I tried to document everything as good as I can, but as the development is still
 
 This readme focuses on the software including:
 - **Main Code:** C++ Scripts to compile and run on a Raspberry 3b+
-- **Processing.org Sketch** for an Android app monitoring the Raspi's activities
 - **Arduino Sketch** to run on a Digispark to read out analog potentiometer values on a Raspi
 
 Not included (due to license restrictions) is the libroyale library for the Tof camera pico flexx, which you can download, when you own a device:
@@ -58,16 +57,12 @@ containts the startup and initialization processes and runs the endless loop
 - `glove.cpp` contains functions for setting up the motors and sending the runtime data to the motor board.
 - `poti.cpp` reads the position of a potentiometer connected to a Digispark Arduino
 
-## Processing.org Sketch
-
-To run the enclosed Processing Sketch on your phone you have to go to [Processing.org](https://processing.org/download/), download the Processing IDE and install it on your computer. Next you connect your phone via USB cable to the computer and then you can run the sketch directly on your phone. The newly created app will remain on your phone afterwards.
-
 ## Arduino code
 As a Raspberry doesn't have a D/A conerter on board, you need a small Arduino or microcomputer attached to it. I used a Digispark equipped with a potentiometer, as they are exremely small and affordable. You only have to upload the attached Arduino Code and maybe adjust the Serial Port. The Digispark will then send the current position to the Raspi whenever there is a change.
 
 
 ## Support and Contributing
 
-**I am urgently looking for contributors!**
+**I am looking for contributors!**
 
-So far this project is developed only by me myself. I did not seet up chat rooms, issue tracker or anything else, as I'm not familiar with it and as I do not have and contributors. If you want to join the project, just contact me (here on Github, on [Hackaday.io](https://hackaday.io/project) or via my [homepage](https://unfoldingspace.jakobkilian.de/)), and we will see how we can solve this.
+ If you want to join the project, just contact me (here on Github, on [Hackaday.io](https://hackaday.io/project) or via my [homepage](https://unfoldingspace.jakobkilian.de/)), and we will see how we can solve this.
