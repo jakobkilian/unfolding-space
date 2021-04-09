@@ -47,7 +47,7 @@ CXXFLAGS += -I$(OPENCV_INC_DIR)/opencv4 -I$(ROYALEDIR)/include
 # it *does* for `-l` (which indicates which libs to link) and `-L` which indicates
 # where to look for libs ... 
 LDFLAGS =  -L$(ROYALEDIR)/bin -L$(OPENCVDIR)/lib 
-LDLIBS =   -pthread -lroyale -lopencv_core -lopencv_imgproc -lboost_system -lwiringPi
+LDLIBS =   -pthread -lroyale -lopencv_core -lopencv_imgproc -lboost_system -lboost_program_options -lwiringPi
 
 # wiringPi is included in the system path on diet, so for now we'll only fiddle
 # with it if it's set externally.

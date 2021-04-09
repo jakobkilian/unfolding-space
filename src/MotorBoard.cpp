@@ -75,13 +75,14 @@ int MotorBoard::registerWrite(unsigned char ucRegAddress, char cValue) {
 void MotorBoard::sendValuesToGlove(unsigned char inValues[], int size) {
   // WRITE VALUES TO GLOVE
   unsigned char values[] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
-  Glob::logger.mainLogger.store("startSendGlove");
+  Glob::logger.motorSendLog.reset();
+  Glob::logger.motorSendLog.store("startSendGlove");
   {
     for (int i = 0; i < size; i++) {
       values[i] = inValues[i];
     }
   }
-  Glob::logger.mainLogger.store("copy");
+  Glob::logger.motorSendLog.store("copy");
   // Write Values to the registers of the motor drivers (drv..)
   // All drv have same addr. -> two i2c multiplexer (tca) are needed.
   if (!Glob::modes.a_muted && !Glob::royalStats.a_isCalibRunning) {
@@ -92,7 +93,7 @@ void MotorBoard::sendValuesToGlove(unsigned char inValues[], int size) {
         registerWrite(RTP_INPUT, altCurve[values[i]]);
       }
     }
-    Glob::logger.mainLogger.store("TCA1");
+    Glob::logger.motorSendLog.store("TCA1");
     // Now all drv on the 2nd tca together
     for (int i = 0; i < size; ++i) {
       if (order[i] > 4) {
@@ -101,18 +102,19 @@ void MotorBoard::sendValuesToGlove(unsigned char inValues[], int size) {
       }
     }
   }
-  Glob::logger.mainLogger.store("TCA2");
-  Glob::logger.mainLogger.store("end");
-  Glob::logger.mainLogger.printAll("Cycle", "us", "ms");
-  Glob::logger.mainLogger.udpTimeSpan("processing", "us", "startProcess",
+  Glob::logger.motorSendLog.store("TCA2");
+  Glob::logger.motorSendLog.store("end");
+  Glob::logger.motorSendLog.printAll("SEND VALUES TO MOTORS", "us", "ms");
+  Glob::logger.motorSendLog.udpTimeSpan("processing", "us", "startProcess",
                                       "endProcess");
-  Glob::logger.mainLogger.udpTimeSpan("onNewData", "us", "start",
+  Glob::logger.motorSendLog.udpTimeSpan("onNewData", "us", "start",
                                       "notifyProcessing");
-  Glob::logger.mainLogger.udpTimeSpan("gloveSending", "us", "startSendGlove",
+  Glob::logger.motorSendLog.udpTimeSpan("gloveSending", "us", "startSendGlove",
                                       "end");
-  Glob::logger.mainLogger.udpTimeSpan("wholeCycle", "us", "start", "end");
-  Glob::logger.mainLogger.reset();
-  Glob::logger.mainLogger.store("startPause");
+  Glob::logger.motorSendLog.udpTimeSpan("wholeCycle", "us", "start", "end");
+  Glob::logger.motorSendLog.reset();
+  Glob::logger.pauseLog.reset();
+  Glob::logger.pauseLog.store("startPause");
 }
 
 //________________________________________________

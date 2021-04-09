@@ -457,23 +457,24 @@ int main(int ac, char* av[]) {
     //activate general logging
     if (vm.count("log")) {
       // don't use this at the moment – dependecies with msSinceEntry()
-      // Glob::modes.a_doLog == true;
-      return 0;
+      // Glob::modes.a_doLog = true;
+      cout << "\n\nlog time and errors – currently this option has no effect\n";
     }
 
     //prints logs to console if enabled
     if (vm.count("printLogs")) {
-      Glob::modes.a_doLogPrint == true;
-      return 0;
+      Glob::modes.a_doLogPrint = true;
+      cout << "\n\nPrinting of logs in command line\n";
     }
+
     //set camera mode of pico flexx
     if (vm.count("mode")) {
           Glob::modes.a_cameraUseCase = vm["mode"].as<unsigned int>();
-      cout << "Pico flexx mode was set to " << vm["mode"].as<unsigned int>() << ".\n";
+      cout << "\n\nPico flexx mode was set to " << vm["mode"].as<unsigned int>() << ".\n";
     } else {
-      cout << "Pico Flexx mode was not set manually and therefore is 3.\n";
+      cout << "\n\nPico Flexx mode was not set manually and therefore is 3.\n";
     }
-  } catch (exception& e) {
+  } catch (std::exception& e) {
     cerr << "error: " << e.what() << "\n";
     return 1;
   } catch (...) {
@@ -492,3 +493,5 @@ int main(int ac, char* av[]) {
   ddSendTh.join();
   return 0;
 }
+
+

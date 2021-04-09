@@ -50,6 +50,8 @@ struct Motors : Base {
 struct Logger : Base {
   TimeLogger newDataLog;
   TimeLogger mainLogger;
+  TimeLogger motorSendLog;
+  TimeLogger pauseLog;
 };
 
 struct CvDepthImg : Base {

@@ -42,9 +42,10 @@ float maxDepth = 1.5;       // The depth of viewing range.
 void DepthDataListener::onNewData(const DepthData *data) {
   Glob::logger.newDataLog.reset();
   Glob::logger.newDataLog.store("onNewData");
-  Glob::logger.mainLogger.store("endPause");
-  Glob::logger.mainLogger.printAll("pause", "us", "ms");
-  Glob::logger.mainLogger.udpTimeSpan("pause", "us", "startPause", "endPause");
+  Glob::logger.pauseLog.store("endPause");
+  Glob::logger.pauseLog.printAll("PAUSE BETWEEN FRAMES", "us", "ms");
+  Glob::logger.pauseLog.udpTimeSpan("pause", "us", "startPause", "endPause");
+  Glob::logger.pauseLog.reset();
   Glob::logger.mainLogger.reset();
   Glob::logger.mainLogger.store("start");
   Glob::logger.mainLogger.store("startOnNew");
@@ -219,7 +220,7 @@ void DepthDataUtilities::processData() {
 
   // WRITE
   Glob::logger.mainLogger.store("endProcess");
-  Glob::logger.mainLogger.printAll("Receiving Frame", "us", "ms");
+  Glob::logger.mainLogger.printAll("RECEIVING AND PROCESSING FRAME", "us", "ms");
   Glob::logger.mainLogger.reset();
 }
 //                                    _____
