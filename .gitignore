@@ -36,3 +36,4 @@
 git-strategy
 .vscode*
 unfolding-app
+src/._*
