@@ -1,0 +1,35 @@
+
+
+Holy Shit "There's only one fucking way to do things" Python assholes.
+
+
+Ubuntu 20.04 does not support Python 3.6 which libroyale requires.
+
+Follow the following pattern from LazyOverflow, and adding the totally
+legit sounding ppa 'deadsnakes' which surely must also be shrivelled
+penis fetish porn:
+
+Install python 3.6:
+
+	sudo add-apt-repository ppa:deadsnakes/ppa
+	sudo apt-get update
+	sudo apt-get install python3.6
+	
+	#If the virtualenv package is not installed, run:
+
+	apt-get update
+	apt-get install python3-virtualenv
+	
+	#Create a virtual environment:
+
+	virtualenv -p /usr/bin/python3.6 venv
+
+
+https://askubuntu.com/questions/1231543/problem-with-creating-python-3-6-virtual-environment-on-ubuntu-20-04
+
+
+Them you need to install a random bag-of-shit including:
+
+    - libpython3.5 (Did I mention you need 3.5 not 3.6 like the
+      libroyale docs state?) (with apt)
+    - numpy and opencv (with pip)
