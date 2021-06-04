@@ -70,7 +70,7 @@ class DepthDataTransform():
         values     = values[~confident] = 255
 
         # astype(np.ubyte)
-
+        # np.histogram(test2[0:3,0:3], bins=range(100,150))
         for x_tile in range(0,self.numTiles):
             for y_tile in range(0,self.numTiles):
                 print("here")
