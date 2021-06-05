@@ -4,7 +4,7 @@
 import cv2
 import numpy as np
 import roypy
-
+import time
 
 RYL_DEPTH_X_IDX = 0
 RYL_DEPTH_Y_IDX = 1
@@ -20,17 +20,20 @@ class DataListener(roypy.IDepthDataListener):
     addQueue to make sure the data gets consumed."""
     
     def __init__(self):
-        super(MyListener, self).__init__()
+        super(DataListener, self).__init__()
         self.queueList = []
+        self.sumtime = 0
     
     def addQueue(self, q):
         self.queueList.append(q)
 
     def onNewData(self, data):
         numpyPoints = data.npoints()
+        start = time.time()
         np_z_conf_points = numpyPoints[:,:,(RYL_DEPTH_Z_IDX,RYL_DEPTH_CONFIDENCE_IDX)]
         for q in self.queueList:
             q.put(np_z_conf_points)
+        self.sumtime += time.time() - start
 
 
 class DepthDataTransform():
@@ -50,8 +53,8 @@ class DepthDataTransform():
     def transform(self, np_z_confidence):
         
         # shape of the input array is y,x,(z,confidence)
-        height = np_z_confidence[0]
-        width = np_z_confidence.shape[1]
+        height = np_z_confidence.shape[0]
+        width  = np_z_confidence.shape[1]
         tileWidth = (width / self.numTiles) + 1
         tileHeight = (height / self.numTiles) + 1
 
@@ -67,13 +70,11 @@ class DepthDataTransform():
 
         values     = (np_z_confidence[:,:,0] / self.maxDepth) * 255
         confident  = np_z_confidence[:,:,1] > self.minConfidence # True / False Array
-        values     = values[~confident] = 255
+        values[~confident] = 255 # set all the value we are not confident about to 255
 
+        return values
         # astype(np.ubyte)
         # np.histogram(test2[0:3,0:3], bins=range(100,150))
-        for x_tile in range(0,self.numTiles):
-            for y_tile in range(0,self.numTiles):
-                print("here")
-
-
-        
+#        for x_tile in range(0,self.numTiles):
+#            for y_tile in range(0,self.numTiles):
+#                #print("here")

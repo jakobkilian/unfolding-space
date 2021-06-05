@@ -9,11 +9,11 @@ Follow the following pattern from LazyOverflow, and adding the totally
 legit sounding ppa 'deadsnakes' which surely must also be shrivelled
 penis fetish porn:
 
-Install python 3.6:
+Install python 3.5:
 
 	sudo add-apt-repository ppa:deadsnakes/ppa
 	sudo apt-get update
-	sudo apt-get install python3.6
+	sudo apt-get install python3.5
 	
 	#If the virtualenv package is not installed, run:
 
@@ -22,7 +22,7 @@ Install python 3.6:
 	
 	#Create a virtual environment:
 
-	virtualenv -p /usr/bin/python3.6 venv
+	virtualenv -p /usr/bin/python3.5 venv
 
 
 https://askubuntu.com/questions/1231543/problem-with-creating-python-3-6-virtual-environment-on-ubuntu-20-04
@@ -32,4 +32,14 @@ Them you need to install a random bag-of-shit including:
 
     - libpython3.5 (Did I mention you need 3.5 not 3.6 like the
       libroyale docs state?) (with apt)
+    - apt install python3.5-tk
     - numpy and opencv (with pip)
+
+
+# udev rules
+
+Make usb device "legal" by copying udev rule for camera to /etc/udev/rules.d
+
+	$ sudo cp $ROYALEDIR/driver/udev/10-royale-ubuntu.rules /etc/udev/rules.d/
+
+
