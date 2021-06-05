@@ -2,18 +2,19 @@
 
 
 import argparse
-import cv2
 import queue
 import roypy
 import sys
 import time
+import numpy as np
+
 from image_functions import DataListener, DepthDataTransform
 
 from roypy_sample_utils import CameraOpener, add_camera_opener_options
 
-def paint(data):
-    # data at this point is [x X y X 0..255]
-    cv2.imshow("Data", data)
+import glove
+import video
+
 
 
 def process_evt_q(q, transform):
@@ -33,21 +34,27 @@ def process_evt_q(q, transform):
             #print(type(item))
             #print(item)
             start = time.time()
-            values = transform.transform(item)
-            sumtime += time.time() - start
-            count += 1
 
-            if count % 50 == 0:
-                print(values)
+#            if count % 50 == 0:
+#                print(item.shape)
+#                print(item)
+            transform.transform(item)
+            sumtime += time.time() - start
+
+#            if count % 50 == 0:
+#                print(values.shape)
+#                print(values)
 
             if count == 100:
                 print(sumtime)
                 break
 
-            paint(values)
-            ESC = 27
-            if  ESC == cv2.waitKey(1):
-                break
+            count += 1
+
+            #paint(values)
+            #ESC = 27
+            #if  ESC == cv2.waitKey(1):
+            #    break
             
 
 
@@ -73,7 +80,10 @@ def main():
     except SystemError:
         print ("Using a live camera")
 
+    
     dataListener = DataListener()
+    gloveThread = glove.GloveThread()
+    videoThread = video.VideoThread()
 
     q = queue.Queue()
     dataListener.addQueue(q)
@@ -82,10 +92,18 @@ def main():
     cam.startCapture()
 
     transform = DepthDataTransform()
+    transform.addGreyscaleFrameListener(videoThread)
+    transform.add3by3Listener(gloveThread)
+    
+    videoThread.start()
+    gloveThread.start()
 
     process_evt_q(q, transform)
-    print("DL sumtime")
+    print("onNewData sumtime")
     print(dataListener.sumtime)
+
+    print("frame: ", transform.sum_time_frame)
+    print("histo: ", transform.sum_time_histo)
 
     
 
