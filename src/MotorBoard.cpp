@@ -103,7 +103,7 @@ void MotorBoard::sendValuesToGlove(unsigned char inValues[], int size) {
   }
   Glob::logger.mainLogger.store("TCA2");
   Glob::logger.mainLogger.store("end");
-  // Glob::logger.mainLogger.printAll("Cycle", "us", "ms");
+  Glob::logger.mainLogger.printAll("Cycle", "us", "ms");
   Glob::logger.mainLogger.udpTimeSpan("processing", "us", "startProcess",
                                       "endProcess");
   Glob::logger.mainLogger.udpTimeSpan("onNewData", "us", "start",

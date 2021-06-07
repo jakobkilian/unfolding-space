@@ -15,20 +15,23 @@
 #include <boost/array.hpp>
 #include <boost/asio.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/program_options.hpp>
 #include <boost/shared_ptr.hpp>
 #include <chrono>
 #include <ctime>
 #include <iostream>
+#include <iterator>
 #include <sstream>
 #include <string>
 #include <thread>
+namespace po = boost::program_options;
 
 #include "Camera.hpp"
 #include "Globals.hpp"
 #include "MotorBoard.hpp"
-#include "time.h"
 #include "TimeLogger.hpp"
 #include "UdpServer.hpp"
+#include "time.h"
 
 using boost::asio::ip::udp;
 using std::cerr;
@@ -82,8 +85,6 @@ int unfolding() {
   royale::Vector<royale::String> camlist;
   // this represents the main camera device object
   std::unique_ptr<royale::ICameraDevice> cameraDevice;
-
-  // Glob::modes.a_cameraUseCase = std::move (arg);
 
   //_____________________INIT CAMERA____________________________________
   // check if the cam is connected before init anything
@@ -434,9 +435,53 @@ class mainThreadWrapper {
 //----------------------------------------------------------------------
 // MAIN LOOP
 //----------------------------------------------------------------------
-int main() {
+int main(int ac, char* av[]) {
+  //catch cmd line options
+  try {
+    po::options_description desc("Allowed options");
+        desc.add_options()
+            ("help", "produce help message")
+            ("log", "enable general log functions – currently no effect")
+            ("printLogs", "print log messages in console")
+            ("mode", po::value<unsigned int>(), "set pico flexx camera mode (int from 0:5)");
+    po::variables_map vm;
+    po::store(po::parse_command_line(ac, av, desc), vm);
+    po::notify(vm);
+
+    //print help msg
+    if (vm.count("help")) {
+      cout << desc << "\n";
+      return 0;
+    }
+
+    //activate general logging
+    if (vm.count("log")) {
+      // don't use this at the moment – dependecies with msSinceEntry()
+      // Glob::modes.a_doLog == true;
+      return 0;
+    }
+
+    //prints logs to console if enabled
+    if (vm.count("printLogs")) {
+      Glob::modes.a_doLogPrint == true;
+      return 0;
+    }
+    //set camera mode of pico flexx
+    if (vm.count("mode")) {
+          Glob::modes.a_cameraUseCase = vm["mode"].as<unsigned int>();
+      cout << "Pico flexx mode was set to " << vm["mode"].as<unsigned int>() << ".\n";
+    } else {
+      cout << "Pico Flexx mode was not set manually and therefore is 3.\n";
+    }
+  } catch (exception& e) {
+    cerr << "error: " << e.what() << "\n";
+    return 1;
+  } catch (...) {
+    cerr << "Exception of unknown type!\n";
+  }
+
   // create thread wrapper instance and the threads
-  mainThreadWrapper *w = new mainThreadWrapper();
+  mainThreadWrapper* w = new mainThreadWrapper();
   std::thread udpSendTh = w->runUdpSendThread();
   std::thread unfTh = w->runUnfoldingThread();
   std::thread ddCopyTh = w->runCopyDepthDataThread();

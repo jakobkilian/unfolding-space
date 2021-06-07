@@ -242,7 +242,7 @@ void UdpServer::handle_receive() {
   // start listening again
   strand_.post(strand_.wrap(std::bind(&UdpServer::start_receive, this)));
   udpRecLog.store("post new receive");
-  // udpRecLog.printAll("Receiving one Frame", "us", "ms");
+  udpRecLog.printAll("Receiving one Frame", "us", "ms");
   udpRecLog.reset();
 }
 

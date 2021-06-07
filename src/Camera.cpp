@@ -43,7 +43,7 @@ void DepthDataListener::onNewData(const DepthData *data) {
   Glob::logger.newDataLog.reset();
   Glob::logger.newDataLog.store("onNewData");
   Glob::logger.mainLogger.store("endPause");
-  // Glob::logger.mainLogger.printAll("pause", "us", "ms");
+  Glob::logger.mainLogger.printAll("pause", "us", "ms");
   Glob::logger.mainLogger.udpTimeSpan("pause", "us", "startPause", "endPause");
   Glob::logger.mainLogger.reset();
   Glob::logger.mainLogger.store("start");
@@ -219,8 +219,8 @@ void DepthDataUtilities::processData() {
 
   // WRITE
   Glob::logger.mainLogger.store("endProcess");
-  // Glob::logger.mainLogger.printAll("Receiving Frame", "us", "ms");
-  // Glob::logger.mainLogger.reset();
+  Glob::logger.mainLogger.printAll("Receiving Frame", "us", "ms");
+  Glob::logger.mainLogger.reset();
 }
 //                                    _____
 //                                [process data]

@@ -30,9 +30,13 @@ struct RoyalStatus {
   std::atomic<int> a_libraryCrashCounter{0};
 };
 
-struct Modes  {
+struct Modes {
   std::atomic<bool> a_muted;
   std::atomic<bool> a_testMode;
+  std::atomic<bool> a_doLog{
+      true};  // gobal flag that activates TimeLogger.cpp functions – currently
+              // always on because of dependencies of msSinceEntry
+  std::atomic<bool> a_doLogPrint{false};  // printf all TimeLogger values –
   std::atomic<unsigned int> a_cameraUseCase{3};
 };
 
@@ -62,12 +66,12 @@ struct ThreadNotification : Base {
 };
 
 struct Counters {
- std::atomic<long> frameCounter;
+  std::atomic<long> frameCounter;
 };
 
 // Everything goes in the namespace "Glob"
 namespace Glob {
-//protection needed?
+// protection needed?
 extern std::mutex udpServMux;
 extern boost::asio::io_service udpService;
 extern UdpServer udpServer;
@@ -79,7 +83,6 @@ extern MotorBoard motorBoard;
 // We don't want this -> royal library gets unstable
 extern std::atomic<int> a_lockFailCounter;
 extern std::atomic<bool> a_restartUnfoldingFlag;
-
 
 // INIT ALL STRUCTS
 extern RoyalStatus royalStats;
