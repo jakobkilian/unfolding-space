@@ -1,3 +1,30 @@
+## Make
+
+...
+
+## Run
+
+run with 
+
+````bash
+sudo LD_LIBRARY_PATH=/home/dietpi/libroyale/bin ./unfolding-app`
+````
+
+
+
+add options:
+
+```bash
+--help      | show help
+--log       | enable general log functions – currently no effect
+--printLogs | print log messages in console
+--mode arg  | set pico flexx camera mode (int from 0:5)
+```
+
+
+
+## Old
+
 Kurze Übersicht:
 
 Es existieren 3 Repos: 
