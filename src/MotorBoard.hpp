@@ -39,7 +39,7 @@ class MotorBoard {
   bool calibSuccess[9];        // was calibration successfull?
   int retVal;
   int lastTCA;
-  uint8_t order[9] = {5, 8, 2, 6, 0, 3, 7, 1, 4};
+  uint8_t order[9] = {0, 2, 1, 3, 4, 5, 8, 7, 6};
 
   // Should there be a calibration in the beginning? Else: Take standard Values
   bool startupCalib = false;
