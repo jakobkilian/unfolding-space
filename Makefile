@@ -16,6 +16,16 @@ CXXFLAGS += -pthread
 # CXXFLAGS += -o3 -O 
 CXXFLAGS += -O3
 
+# This is to autogenerate %.d header dependency files during compile.
+# The motivation for this is to enable recompiles of %.o object files not
+# only when the correspong %cpp files change, but also in situation where
+# an included header changes. Header dependencies can change and are a
+# pain to track manually, so this track changes automatically.
+#
+# The mechanism is loosely based on: https://spin.atomicobject.com/2016/08/26/makefile-c-projects/
+# search this file for DEPS for more parts to the dependency mechanism 
+CXXFLAGS += -MMD
+
 # pick a standard ...
 # CXXFLAGS += -std=c++11
 # c++11 happens to break boost, and I'm not in the mood to figure out why or why std works. TODO
@@ -61,35 +71,21 @@ endif
 
 SOURCES = $(wildcard src/*.cpp)
 OBJS    = $(patsubst %.cpp, %.o, $(SOURCES))
+DEPS    = $(patsubst %.o, %.d, $(OBJS)) 
 
 NAME = unfolding-app
 
 $(NAME) : $(OBJS)
 	$(CXX) $(LDFLAGS) $(LDLIBS) -o $@ $^
 
+
+# This include the %.d dep mini makefiles we're autogenerating.
+# "-include" (vs just plain include) is for bootstrapping, i.e
+# don't include unless we've generated the %.d files
+-include $(DEPS)
+
 .PHONY : clean
 
 clean:
-	$(RM) $(OBJS)
+	$(RM) $(OBJS) $(DEPS)
 
-
-# Requirements:
-
-# OPENCV
-# -I/usr/local/include/opencv4: OpenCV general
-# -lopencv_core: OpenCV general
-# -lopencv_imgproc: OpenCV, for example cv::resize 
-
-# LIB ROYAL (Pmd Pico Flexx Depth Camera)
-# -L/home/dietpi/libroyale/bin 
-# -lroyale
-# -I/home/dietpi/libroyale/include
-
-# BOOST
-# -lboost_system: boost library for sending udp packets
-
-# LWIRING PI
-# -lwiringPi: Send Values to glove via i2c
-
-
- 
