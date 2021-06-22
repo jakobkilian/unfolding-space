@@ -1,1 +1,0 @@
-g++ -I libroyale-4.6.0/include/ -o unfolding src/*.cpp -Llibroyale-4.6.0/bin -lroyale

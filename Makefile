@@ -40,31 +40,26 @@ CXXFLAGS += -MMD
 # currently in the xcompile environment call make via:
 # CXX=aarch64-linux-gnu-g++ OPENCVDIR=/opencv/arm64 ROYALEDIR=/opt/libroyale WIRINGDIR=/opt/wiringPi make
 
-OPENCVDIR ?= /usr/local
-OPENCV_INC_DIR=$(OPENCVDIR)/include
+#OPENCVDIR ?= /usr/local
+#OPENCV_INC_DIR=$(OPENCVDIR)/include
 
-# ditto for libroyale
-ROYALEDIR ?= /home/dietpi/libroyale
+# create a symlink pointing to the unpacked libroyale directory
+ROYALEDIR ?= ./libroyale
 
 
 
 # Require outside (of project) headers for: opencv, royale and wiring ...
 # include flags don't have their own variable used in implicit rules.
-CXXFLAGS += -I$(OPENCV_INC_DIR)/opencv4 -I$(ROYALEDIR)/include
+CXXFLAGS += -I$(ROYALEDIR)/include
 
 
 # while `make` doesn't differentiate between -I and other compile flags,
 # it *does* for `-l` (which indicates which libs to link) and `-L` which indicates
 # where to look for libs ... 
 LDFLAGS =  -L$(ROYALEDIR)/bin -L$(OPENCVDIR)/lib 
-LDLIBS =   -pthread -lroyale -lopencv_core -lopencv_imgproc -lboost_system -lboost_program_options -lwiringPi
+#LDLIBS =   -pthread -lroyale -lopencv_core -lopencv_imgproc -lboost_system -lboost_program_options -lwiringPi
+LDLIBS =   -pthread -lroyale 
 
-# wiringPi is included in the system path on diet, so for now we'll only fiddle
-# with it if it's set externally.
-ifdef WIRINGDIR
-CXXFLAGS += -I$(WIRINGDIR)/include
-LDFLAGS += -L$(WIRINGDIR)/lib
-endif
 
 # don't need to do this manually, we'll just forget if we ever add a file
 # SOURCES = src/MotorBoard.cpp src/Camera.cpp src/TimeLogger.cpp src/UdpServer.cpp src/UdpClient.cpp src/Globals.cpp src/main.cpp 
@@ -76,7 +71,7 @@ DEPS    = $(patsubst %.o, %.d, $(OBJS))
 NAME = unfolding-app
 
 $(NAME) : $(OBJS)
-	$(CXX) $(LDFLAGS) $(LDLIBS) -o $@ $^
+	$(CXX) $(LDFLAGS)  -o $@ $^ $(LDLIBS)
 
 
 # This include the %.d dep mini makefiles we're autogenerating.
