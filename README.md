@@ -10,7 +10,7 @@
 
 # Running
 
-	$ LD_LIBRARY_PATH=./libroyale ./unfolding-app
+	$ LD_LIBRARY_PATH=./libroyale/bin ./unfolding-app
 
 # DEPENDENCIES
 

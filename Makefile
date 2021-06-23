@@ -65,6 +65,8 @@ LDLIBS =   -pthread -lroyale
 # SOURCES = src/MotorBoard.cpp src/Camera.cpp src/TimeLogger.cpp src/UdpServer.cpp src/UdpClient.cpp src/Globals.cpp src/main.cpp 
 
 SOURCES = $(wildcard src/*.cpp)
+# only necessary for format/pretty-printing, header deps are managed via *.d files
+HEADER  = $(wildcard src/*.h)   
 OBJS    = $(patsubst %.cpp, %.o, $(SOURCES))
 DEPS    = $(patsubst %.o, %.d, $(OBJS)) 
 
@@ -77,7 +79,17 @@ $(NAME) : $(OBJS)
 # This include the %.d dep mini makefiles we're autogenerating.
 # "-include" (vs just plain include) is for bootstrapping, i.e
 # don't include unless we've generated the %.d files
+
 -include $(DEPS)
+
+
+# requires clang-format
+
+.PHONY : format
+
+format:
+	clang-format -i $(SOURCES) $(HEADER) 
+
 
 .PHONY : clean
 
