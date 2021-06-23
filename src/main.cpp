@@ -5,8 +5,11 @@
 #include <cstdlib>
 #include <unistd.h>
 
+#include <thread>
+
 #include <boost/program_options.hpp>
 
+#include "depthDataConsumer.h"
 #include "listener.hpp"
 
 using namespace boost;
@@ -35,6 +38,13 @@ void list_cameras() {
     // trust std!
     printf("%ld : %s\n", i, cameraList[i].c_str());
   }
+}
+
+void consume(Q<royale::DepthData *> *q) {
+  //DepthDataConsumer consumer(q);
+  Glove g;
+  DepthDataGloveConsumer consumer(q, &g);
+  consumer.consume();
 }
 
 int main(int argc, char *argv[]) {
@@ -82,7 +92,9 @@ int main(int argc, char *argv[]) {
   }
 
   // TODO use case options
-  Listener listener;
+  Q<royale::DepthData *> q;
+  Listener listener(&q);
+  std::thread thr(consume, &q);
 
   if (camera->registerDataListener(&listener) !=
       royale::CameraStatus::SUCCESS) {
@@ -101,5 +113,9 @@ int main(int argc, char *argv[]) {
     printf("couldn't stop capture\n");
     exit(1);
   }
+  printf("joining thread\n");
+  thr.join();
+  printf("bye\n");
+
   return 0;
 }
