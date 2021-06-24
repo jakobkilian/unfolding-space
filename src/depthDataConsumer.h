@@ -2,6 +2,7 @@
 
 #include "glove.h"
 #include "q.h"
+#include "converter.h"
 
 #include <royale.hpp>
 
@@ -10,7 +11,7 @@ typedef Q<royale::DepthData *> *DepthQ;
 class DepthDataConsumer {
 public:
   DepthDataConsumer(DepthQ _q) : q(_q){};
-  virtual ~DepthDataConsumer() {};
+  virtual ~DepthDataConsumer(){};
   virtual void consume() {
 
     royale::DepthData *dd;
@@ -36,8 +37,10 @@ public:
   DepthDataGloveConsumer(DepthQ _q, Glove *_g) : DepthDataConsumer(_q), g(_g) {}
   void consume() override {
     royale::DepthData *dd;
-    unsigned char values[9];
+    unsigned char * values;
     while (NULL != (dd = q->retrieve(500))) {
+	    Converter c(dd);
+	    values = c.motorMap();
       values[0] = 0;
       values[1] = 1;
       values[2] = dd->width & 0xff;

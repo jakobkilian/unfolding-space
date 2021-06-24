@@ -41,7 +41,7 @@ void list_cameras() {
 }
 
 void consume(Q<royale::DepthData *> *q) {
-  //DepthDataConsumer consumer(q);
+  // DepthDataConsumer consumer(q);
   Glove g;
   DepthDataGloveConsumer consumer(q, &g);
   consumer.consume();
