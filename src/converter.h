@@ -3,17 +3,20 @@
 
 class Converter {
 public:
-  //Converter(royale::DepthData *_dd) : dd(_dd) {}
+  // Converter(royale::DepthData *_dd) : dd(_dd) {}
   Converter(royale::DepthData *_dd, int _minConfidence = 11,
-            float _maxDepth = 1.5, int _minObjSizeThreshold=90)
-      : dd(_dd), minConfidence(_minConfidence), maxDepth(_maxDepth), minObjSizeThreshold(_minObjSizeThreshold) {};
-  ~Converter() {};
+            float _maxDepth = 1.5, int _minObjSizeThreshold = 90)
+      : dd(_dd), minConfidence(_minConfidence), maxDepth(_maxDepth),
+        minObjSizeThreshold(_minObjSizeThreshold){};
+  ~Converter(){};
 
-  // it is the responsibility of the caller to dispose of the returned data using free()
-  uint8_t * depthImage();
-  
-  // it is the responsibility of the caller to dispose of the returned data using free()
-  uint8_t * motorMap();
+  // it is the responsibility of the caller to dispose of the returned data
+  // using free()
+  uint8_t *depthImage();
+
+  // it is the responsibility of the caller to dispose of the returned data
+  // using free()
+  uint8_t *motorMap();
 
 private:
   // input depth data to process
@@ -23,6 +26,7 @@ private:
   int minConfidence;
   // the maximum depth value we aill consider for incoming data
   float maxDepth;
-  // "the min number of pixels, an object must have, (smaller objects might be noise)
+  // "the min number of pixels, an object must have, (smaller objects might be
+  // noise)
   int minObjSizeThreshold;
 };

@@ -1,8 +1,8 @@
 #pragma once
 
+#include "converter.h"
 #include "glove.h"
 #include "q.h"
-#include "converter.h"
 
 #include <royale.hpp>
 
@@ -37,21 +37,13 @@ public:
   DepthDataGloveConsumer(DepthQ _q, Glove *_g) : DepthDataConsumer(_q), g(_g) {}
   void consume() override {
     royale::DepthData *dd;
-    unsigned char * values;
+    unsigned char *values;
     while (NULL != (dd = q->retrieve(500))) {
-	    Converter c(dd);
-	    values = c.motorMap();
-      values[0] = 0;
-      values[1] = 1;
-      values[2] = dd->width & 0xff;
-      values[3] = dd->height & 0xff;
-      values[4] = 4;
-      values[5] = 5;
-      values[6] = 6;
-      values[7] = 7;
-      values[8] = 8;
+      Converter c(dd);
+      values = c.motorMap();
       g->sendValues(values);
       delete (dd);
+      delete (values);
     }
   }
 
