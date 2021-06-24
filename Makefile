@@ -31,6 +31,12 @@ CXXFLAGS += -MMD
 # c++11 happens to break boost, and I'm not in the mood to figure out why or why std works. TODO
 
 
+# Version
+
+VERSION:=$(shell git describe --tags --always --dirty)
+CXXFLAGS += -DVERSION=\"${VERSION}\"
+
+
 # depending on how and where we compile, we may want to
 # provide the location of opencv during the call to
 # make, i.e `$ OPENCVDIR=/some/other/location make`

@@ -37,6 +37,7 @@ git-strategy
 .vscode*
 unfolding-app
 src/._*
+libroyale
 
 libroyale
 
