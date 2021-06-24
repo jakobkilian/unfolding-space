@@ -47,12 +47,23 @@ void consume(Q<royale::DepthData *> *q) {
   consumer.consume();
 }
 
+#ifndef VERSION
+#define VERSION "unknown"
+// VERSION is defined in the makefile to correspond to the
+// git commit ...
+#endif
+
+void print_version() { printf("version: %s\n", VERSION); }
+
 int main(int argc, char *argv[]) {
 
   int c;
   char *rrf_filename = NULL;
-  while (-1 != (c = getopt(argc, argv, "lr:"))) {
+  while (-1 != (c = getopt(argc, argv, "vlr:"))) {
     switch (c) {
+    case 'v':
+      print_version();
+      break;
     case 'l':
       list_cameras();
       break;
@@ -91,7 +102,7 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
-  // TODO use case options
+  // TODO use case options !?
   Q<royale::DepthData *> q;
   Listener listener(&q);
   std::thread thr(consume, &q);

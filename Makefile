@@ -52,6 +52,10 @@ ROYALEDIR ?= ./libroyale
 # include flags don't have their own variable used in implicit rules.
 CXXFLAGS += -I$(ROYALEDIR)/include
 
+# Version
+
+VERSION:=$(shell git describe --tags --always --dirty)
+CXXFLAGS += -DVERSION=\"${VERSION}\"
 
 # while `make` doesn't differentiate between -I and other compile flags,
 # it *does* for `-l` (which indicates which libs to link) and `-L` which indicates
