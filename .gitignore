@@ -37,3 +37,7 @@ git-strategy
 .vscode*
 unfolding-app
 src/._*
+
+#local sh script for docker by Jakob
+makecp-ip.sh
+makecp.sh
