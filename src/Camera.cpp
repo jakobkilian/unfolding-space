@@ -10,7 +10,6 @@
 #include <royale/IEvent.hpp>
 #include <string>  // std::string, std::to_string
 
-
 #include "Globals.hpp"
 #include "MotorBoard.hpp"
 #include "TimeLogger.hpp"
@@ -24,11 +23,11 @@ using namespace std::chrono;
 //----------------------------------------------------------------------
 // DECLARATIONS AND VARIABLES
 //----------------------------------------------------------------------
-const int minObjSizeThresh = 90;  // the min number of pixels, an object must have
-                            // (smaller objects might be noise)
-float maxDepth = 1.5;       // The depth of viewing range.
-                            // Objects with bigger distance to camera
-                            // are ignored. 
+const int minObjSizeThresh = 90;  // the min number of pixels, an object must
+                                  // have (smaller objects might be noise)
+float maxDepth = 1.5;             // The depth of viewing range.
+                                  // Objects with bigger distance to camera
+                                  // are ignored.
 
 //
 /******************************************************************************
@@ -65,7 +64,7 @@ void DepthDataListener::onNewData(const DepthData *data) {
     // if onNewData fails to unlock the mutex it returns instantly
     Glob::a_lockFailCounter++;
     cout << "failed locks:" << Glob::a_lockFailCounter
-              << " last is: " << multiLock << "\n";
+         << " last is: " << multiLock << "\n";
     if (multiLock == 0) {
       Glob::notifyProcess.mut.unlock();
     }
@@ -130,7 +129,6 @@ void DepthDataUtilities::processData() {
         // select the respective tile
         int tileIdx = (x / tileWidth) + 3 * (y / tileHeight);
 
-
         // WRITE VALID PIXELS in DepImg and histogram
         if (valid) {
           unsigned char depth =
@@ -166,20 +164,32 @@ void DepthDataUtilities::processData() {
     // FIND CLOSEST object in each tile
     for (int tileIdx = 0; tileIdx < 9; tileIdx++) {
       int sum = 0;
-      int val=0;
+      int val = 0;
       int offset =
           17;          // exclude the first 17cm because of oversaturation
                        // issues and noisy data the Pico Flexx has in this range
       int range = 50;  // look in a tolerance range of 50cm
+      int pixelThresh = 5;  // part of the smoothing process. There are better
+                            // ways to do that!
+      // These lines may sound a bit weird. Should be written in a more
+      // understandable way, but are technically ok. Generally a "sliding
+      // window"
+      // go through all bins of the histo
       for (int i = offset; i < 256; i++) {
-        if (histo[tileIdx][i] > 5) {
+        // ignore if there are just a few (< pixelThresh) pixels
+        if (histo[tileIdx][i] > pixelThresh) {
+          // add them to sum
           sum += histo[tileIdx][i];
         }
+        // when exceeding this value always substract first value from window
+        // (if it has been added in the first place)
         if (i > range + offset) {
-          if (histo[tileIdx][i - range] > 5) {
+          if (histo[tileIdx][i - range] > pixelThresh) {
             sum -= histo[tileIdx][i - range];
           }
         }
+        // if the sum exceeds the minObjSizeThresh, we guess that there is an
+        // object. Take the value of the beginning of the sliding window
         if (sum >=
             minObjSizeThresh) {  // if minObjSizeThresh is exeeded: break.
           // i now holds the depth for this tile
@@ -220,7 +230,8 @@ void DepthDataUtilities::processData() {
 
   // WRITE
   Glob::logger.mainLogger.store("endProcess");
-  Glob::logger.mainLogger.printAll("RECEIVING AND PROCESSING FRAME", "us", "ms");
+  Glob::logger.mainLogger.printAll("RECEIVING AND PROCESSING FRAME", "us",
+                                   "ms");
   Glob::logger.mainLogger.reset();
 }
 //                                    _____
