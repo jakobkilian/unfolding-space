@@ -38,6 +38,8 @@ git-strategy
 unfolding-app
 src/._*
 
+libroyale
+
 #local sh script for docker by Jakob
 makecp-ip.sh
 makecp.sh
