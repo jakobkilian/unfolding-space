@@ -448,7 +448,7 @@ int main(int ac, char* av[]) {
             ("help", "produce help message")
             ("log", "enable general log functions – currently no effect")
             ("printLogs", "print log messages in console")
-	    ("version", "print verson info and exit")
+	          ("version", "print verson info and exit")
             ("mode", po::value<unsigned int>(), "set pico flexx camera mode (int from 0:5)");
     po::variables_map vm;
     po::store(po::parse_command_line(ac, av, desc), vm);
@@ -483,12 +483,14 @@ int main(int ac, char* av[]) {
 
     if (vm.count("version")) {
 	    cout << VERSION << std::endl;
+      return 0;
     }
   } catch (std::exception& e) {
     cerr << "error: " << e.what() << "\n";
     return 1;
   } catch (...) {
     cerr << "Exception of unknown type!\n";
+    return 1;
   }
 
   // create thread wrapper instance and the threads
