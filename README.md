@@ -23,6 +23,9 @@ achieve feature parity in this branch or just keep it as a playground to sketch 
 # TODO
 
 - Motorcontrol (most likely based on PIGIO)
+      - DRV2605L (one driver for each motor)
+      - TCA9548A (i2c multiplexer, TCA1: motor 1..5; TCA2: motor 6..9 & BMX160)
+
 - Unit Testing
   - tools to "draw" frames in bitmap, import them and run the algorithms against the frames
 - plugable mechanism to switch out mapping mechanism from frame to motor values
