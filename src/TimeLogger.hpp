@@ -13,7 +13,7 @@ class TimeLogger {
   int pos = -1;
   std::mutex mut;
 
- public:
+public:
   void store(std::string name);
   void reset();
   // void sendAll(const std::string, const std::string, const std::string);

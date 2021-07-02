@@ -8,7 +8,7 @@
 #include <iostream>
 #include <mutex>
 #include <royale/IEvent.hpp>
-#include <string>  // std::string, std::to_string
+#include <string> // std::string, std::to_string
 
 #include "Globals.hpp"
 #include "MotorBoard.hpp"
@@ -23,11 +23,11 @@ using namespace std::chrono;
 //----------------------------------------------------------------------
 // DECLARATIONS AND VARIABLES
 //----------------------------------------------------------------------
-const int minObjSizeThresh = 90;  // the min number of pixels, an object must
-                                  // have (smaller objects might be noise)
-float maxDepth = 1.5;             // The depth of viewing range.
-                                  // Objects with bigger distance to camera
-                                  // are ignored.
+const int minObjSizeThresh = 90; // the min number of pixels, an object must
+                                 // have (smaller objects might be noise)
+float maxDepth = 1.5;            // The depth of viewing range.
+                                 // Objects with bigger distance to camera
+                                 // are ignored.
 
 //
 /******************************************************************************
@@ -91,27 +91,27 @@ void DepthDataListener::onNewData(const DepthData *data) {
  ******************************************************************************/
 void DepthDataUtilities::processData() {
   Glob::logger.mainLogger.store("startProcessing");
-  int histo[9][256];  // historgram, needed to find closest obj
+  int histo[9][256]; // historgram, needed to find closest obj
   // Lock Mutex for copied Data and the Glob::cvDepthImg.mat
   {
     royale::DepthData *data;
     {
       std::lock_guard<std::mutex> depDataLock(Glob::royalDepthData.mut);
-      data = &Glob::royalDepthData.dat;  // set a pointer to the copied data
+      data = &Glob::royalDepthData.dat; // set a pointer to the copied data
     }
     // check dimensions of incoming data
-    int width = data->width;          // get width from depth image
-    int height = data->height;        // get height from depth image
-    int tileWidth = width / 3 + 1;    // respectiveley width of one tile
-    int tileHeight = height / 3 + 1;  // respectiveley height of one tile
+    int width = data->width;         // get width from depth image
+    int height = data->height;       // get height from depth image
+    int tileWidth = width / 3 + 1;   // respectiveley width of one tile
+    int tileHeight = height / 3 + 1; // respectiveley height of one tile
     // scope for mutex
     {
       std::lock_guard<std::mutex> dcDataLock(Glob::cvDepthImg.mut);
       Glob::cvDepthImg.mat.create(cv::Size(width, height),
-                                  CV_8UC1);  // gets filled later
+                                  CV_8UC1); // gets filled later
     }
 
-    bzero(histo, sizeof(int) * 9 * 256);  // clear histogram array
+    bzero(histo, sizeof(int) * 9 * 256); // clear histogram array
     Glob::logger.mainLogger.store("bf");
 
     // READING DEPTH IMAGE pixel by pixel
@@ -153,7 +153,7 @@ void DepthDataUtilities::processData() {
         // If pixel is not valid –> make it gray
         else {
           depImgPtr[x] = 230;
-          histo[tileIdx][255]++;  // treat unvalid pixel as 255 = "out of range"
+          histo[tileIdx][255]++; // treat unvalid pixel as 255 = "out of range"
         }
       }
     }
@@ -165,12 +165,11 @@ void DepthDataUtilities::processData() {
     for (int tileIdx = 0; tileIdx < 9; tileIdx++) {
       int sum = 0;
       int val = 0;
-      int offset =
-          17;          // exclude the first 17cm because of oversaturation
+      int offset = 17; // exclude the first 17cm because of oversaturation
                        // issues and noisy data the Pico Flexx has in this range
       int range = 50;  // look in a tolerance range of 50cm
-      int pixelThresh = 5;  // part of the smoothing process. There are better
-                            // ways to do that!
+      int pixelThresh = 5; // part of the smoothing process. There are better
+                           // ways to do that!
       // These lines may sound a bit weird. Should be written in a more
       // understandable way, but are technically ok. Generally a "sliding
       // window"
@@ -190,8 +189,7 @@ void DepthDataUtilities::processData() {
         }
         // if the sum exceeds the minObjSizeThresh, we guess that there is an
         // object. Take the value of the beginning of the sliding window
-        if (sum >=
-            minObjSizeThresh) {  // if minObjSizeThresh is exeeded: break.
+        if (sum >= minObjSizeThresh) { // if minObjSizeThresh is exeeded: break.
           // i now holds the depth for this tile
           val = i;
           break;
@@ -209,7 +207,7 @@ void DepthDataUtilities::processData() {
     }
   }
   Glob::logger.mainLogger.store("aft his");
-  Glob::counters.frameCounter++;  // counting every frame
+  Glob::counters.frameCounter++; // counting every frame
 
   {
     std::lock_guard<std::mutex> lock(Glob::udpServMux);
@@ -245,23 +243,23 @@ void DepthDataUtilities::processData() {
 void EventReporter::onEvent(std::unique_ptr<royale::IEvent> &&event) {
   royale::EventSeverity severity = event->severity();
   switch (severity) {
-    case royale::EventSeverity::ROYALE_INFO:
-      // cerr << "info: " << event->describe() << endl;
-      extractDrops(event->describe());
-      break;
-    case royale::EventSeverity::ROYALE_WARNING:
-      // cerr << "warning: " << event->describe() << endl;
-      extractDrops(event->describe());
-      break;
-    case royale::EventSeverity::ROYALE_ERROR:
-      cerr << "error: " << event->describe() << endl;
-      break;
-    case royale::EventSeverity::ROYALE_FATAL:
-      cerr << "fatal: " << event->describe() << endl;
-      break;
-    default:
-      // cerr << "waits..." << event->describe() << endl;
-      break;
+  case royale::EventSeverity::ROYALE_INFO:
+    // cerr << "info: " << event->describe() << endl;
+    extractDrops(event->describe());
+    break;
+  case royale::EventSeverity::ROYALE_WARNING:
+    // cerr << "warning: " << event->describe() << endl;
+    extractDrops(event->describe());
+    break;
+  case royale::EventSeverity::ROYALE_ERROR:
+    cerr << "error: " << event->describe() << endl;
+    break;
+  case royale::EventSeverity::ROYALE_FATAL:
+    cerr << "fatal: " << event->describe() << endl;
+    break;
+  default:
+    // cerr << "waits..." << event->describe() << endl;
+    break;
   }
 }
 //________________________________________________
@@ -309,7 +307,7 @@ cv::Mat DepthDataUtilities::getResizedDepthImage(int incSize) {
   cv::Size size(picSize, picSize);
   sizedImgCopy.create(size, CV_8UC1);
   if (Glob::cvDepthImg.mat.rows != 0) {
-    cv::resize(Glob::cvDepthImg.mat, sizedImgCopy, size);  // resize image
+    cv::resize(Glob::cvDepthImg.mat, sizedImgCopy, size); // resize image
   }
   return sizedImgCopy;
 }

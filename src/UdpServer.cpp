@@ -9,8 +9,8 @@
 #include "Camera.hpp"
 #include "Globals.hpp"
 #include "MotorBoard.hpp"
-#include "UdpClient.hpp"
 #include "TimeLogger.hpp"
+#include "UdpClient.hpp"
 
 using boost::asio::ip::udp;
 using namespace std::chrono;
@@ -25,8 +25,7 @@ using namespace std::chrono;
  * boost asio strand which subsequently invokes the tasks
  ******************************************************************************/
 UdpServer::UdpServer(boost::asio::io_service &io_service, int max)
-    : socket_(io_service, udp::endpoint(udp::v4(), 9009)),
-      strand_(io_service),
+    : socket_(io_service, udp::endpoint(udp::v4(), 9009)), strand_(io_service),
       maxClients(max),
       broad_socket_(io_service, udp::endpoint(udp::v4(), 9007)),
       timer1_(io_service, boost::posix_time::milliseconds(500)),
@@ -99,9 +98,10 @@ void UdpServer::prepareImage() {
   }
 }
 
-// Note: void preparePacket is defined in UdpServer.hpp as it is a Template Function
+// Note: void preparePacket is defined in UdpServer.hpp as it is a Template
+// Function
 void UdpServer::preparePacket(const std::string key,
-                               const std::vector<unsigned char> data) {
+                              const std::vector<unsigned char> data) {
   // std::lock_guard<std::mutex> l(mux);
   const int keyLength = key.length();
   const int dataSize = data.size();
@@ -216,7 +216,7 @@ void UdpServer::handle_receive() {
     if (incoming != recv_buffer_.end()) {
       int tmp = (*std::next(incoming, 1) - 48);
       Glob::modes.a_cameraUseCase = tmp;
-      Glob::a_restartUnfoldingFlag = true;  // jump back to the beginning
+      Glob::a_restartUnfoldingFlag = true; // jump back to the beginning
     }
 
     incoming = std::find(recv_buffer_.begin(), recv_buffer_.end(), 'c');
@@ -247,8 +247,8 @@ void UdpServer::handle_receive() {
 }
 
 // Invoked after sending message (dont delete)
-void UdpServer::handle_send(__attribute__ ((unused)) boost::shared_ptr<std::string> message) {
-}
+void UdpServer::handle_send(
+    __attribute__((unused)) boost::shared_ptr<std::string> message) {}
 //                                    _____
 //                                 [udp server]
 //____________________________________________________________________________

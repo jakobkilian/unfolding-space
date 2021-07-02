@@ -23,7 +23,7 @@ void TimeLogger::printAll(const std::string instName, const std::string incr,
                           const std::string sum) {
   if (Glob::modes.a_doLogPrint == true && Glob::modes.a_doLog == true) {
     std::lock_guard<std::mutex> lockPrintAll(mut);
-    if (timePoint.size() > 1) {  // if there is sth to print
+    if (timePoint.size() > 1) { // if there is sth to print
       cout << "\n";
       cout << "-------------------------------\n";
       cout << "TIMER: " << instName << ":\n";
@@ -66,9 +66,9 @@ void TimeLogger::udpTimeSpan(std::string ident, std::string incr,
         std::find(nameTag.begin(), nameTag.end(), from);
     std::vector<std::string>::iterator toIt =
         std::find(nameTag.begin(), nameTag.end(), to);
-    if (fromIt != nameTag.end() && toIt != nameTag.end()) {  // when in bound:
-      int fromInd = std::distance(nameTag.begin(), fromIt);  // get indexes
-      int toInd = std::distance(nameTag.begin(), toIt);      // get indexes
+    if (fromIt != nameTag.end() && toIt != nameTag.end()) { // when in bound:
+      int fromInd = std::distance(nameTag.begin(), fromIt); // get indexes
+      int toInd = std::distance(nameTag.begin(), toIt);     // get indexes
       unsigned int duration = 0;
       if (incr.compare("ms") == 0) {
         duration =
@@ -98,7 +98,7 @@ void TimeLogger::reset() {
 long TimeLogger::msSinceEntry(unsigned int id) {
   std::lock_guard<std::mutex> lockGetDur(mut);
   long val = 0;
-  if (timePoint.size() > id) {  // if there is a first entry
+  if (timePoint.size() > id) { // if there is a first entry
     val = duration_cast<milliseconds>(steady_clock::now() - timePoint[id])
               .count();
   } else {

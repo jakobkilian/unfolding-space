@@ -14,7 +14,7 @@ using namespace std::chrono;
 //                          UDP CLIENT
 //****************************************************************
 class UdpClient {
- public:
+public:
   UdpClient(boost::asio::ip::udp::endpoint e);
   void checkTimer();
   void resetTimer();
@@ -24,7 +24,7 @@ class UdpClient {
   bool sendImg;
   int imgSize;
 
- private:
+private:
   bool isActive;
   int maxTime;
   steady_clock::time_point lastCalled;

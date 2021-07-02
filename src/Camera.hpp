@@ -20,12 +20,12 @@ using namespace std::chrono;
 // CLASSES
 //----------------------------------------------------------------------
 class DepthDataListener : public royale::IDepthDataListener {
- public:
+public:
   void onNewData(const royale::DepthData *data);
   void processData();
   void setLensParameters(const royale::LensParameters &lensParameters);
 
- private:
+private:
   uint8_t adjustDepthValue(float zValue, float max);
   float adjustDepthValueForImage(float zValue, float max);
 };
@@ -34,17 +34,17 @@ class DepthDataListener : public royale::IDepthDataListener {
 // Gets called by Royale irregularily.
 // Holds the camera state, errors and info about drops
 class EventReporter : public royale::IEventListener {
- public:
+public:
   virtual ~EventReporter() = default;
 
   virtual void onEvent(std::unique_ptr<royale::IEvent> &&event) override;
 
- private:
+private:
   void extractDrops(royale::String str);
 };
 
 class DepthDataUtilities {
- public:
+public:
   void processData();
   cv::Mat getResizedDepthImage(int);
 };

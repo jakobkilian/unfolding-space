@@ -77,9 +77,9 @@ int unfolding() {
   Glob::a_restartUnfoldingFlag = false;
   bool threeSecondsAreOver = false;
   DepthDataListener listener;
-  long timeSinceNewData;    // time passed since last "onNewData"
-  int maxTimeSinceNewData;  // the longest timespan without new data since start
-  bool cameraDetached;      // camera got detached
+  long timeSinceNewData;   // time passed since last "onNewData"
+  int maxTimeSinceNewData; // the longest timespan without new data since start
+  bool cameraDetached;     // camera got detached
 
   Glob::logger.mainLogger.store("INIT");
 
@@ -198,8 +198,8 @@ int unfolding() {
   // Reset some things
   TimeLogger startTimeLog;
   startTimeLog.store("INIT");
-  cameraDetached = false;       // camera is attached and ready
-  Glob::modes.a_muted = false;  // activate the vibration motors
+  cameraDetached = false;      // camera is attached and ready
+  Glob::modes.a_muted = false; // activate the vibration motors
   long lastCallImshow = millis();
   long lastCall = 0;
   long lastCallTemp = 0;
@@ -254,7 +254,7 @@ int unfolding() {
         // do this every 5000ms (every 1 seconds)
         if (millis() - lastCallTemp > 1000) {
           lastCallTemp = millis();
-          getCoreTemp();  // read raspi's core temperature
+          getCoreTemp(); // read raspi's core temperature
         }
 
         // do this every 5000ms (every 1 seconds)
@@ -285,8 +285,8 @@ int unfolding() {
               Glob::a_restartUnfoldingFlag = true;
             }
           }
-          if (cameraDetached == false) {    // if camera should be there...
-            if (timeSinceNewData > 4000) {  // but there is no frame for 4s
+          if (cameraDetached == false) {   // if camera should be there...
+            if (timeSinceNewData > 4000) { // but there is no frame for 4s
               cout << "________________________________________________" << endl
                    << endl;
               cout << "Library Crashed! Reinitialize Camera and Listener. last "
@@ -323,7 +323,7 @@ int unfolding() {
 
 // TODO: maybe this is not the best way to handle this?
 class mainThreadWrapper {
- public:
+public:
   // Sending the data out at specified moments when there is nothing else to do
   void runUdpSend() { Glob::udpService.run(); }
   std::thread runUdpSendThread() {
@@ -384,7 +384,7 @@ class mainThreadWrapper {
           Glob::udpServer.preparePacket("motors", vect);
           Glob::udpServer.prepareImage();
         }
-      }  // IF in test mode
+      } // IF in test mode
       else {
         std::lock_guard<std::mutex> lockMotorTiles2(Glob::motors.mut);
         Glob::motorBoard.sendValuesToGlove(Glob::motors.testTiles, 9);
@@ -440,52 +440,63 @@ class mainThreadWrapper {
 //----------------------------------------------------------------------
 // MAIN LOOP
 //----------------------------------------------------------------------
-int main(int ac, char* av[]) {
-  //catch cmd line options
+int main(int ac, char *av[]) {
+  // catch cmd line options
   try {
     po::options_description desc("Allowed options");
-        desc.add_options()
-            ("help", "produce help message")
-            ("log", "enable general log functions – currently no effect")
-            ("printLogs", "print log messages in console")
-	          ("version", "print verson info and exit")
-            ("mode", po::value<unsigned int>(), "set pico flexx camera mode (int from 0:5)");
+    desc.add_options()("help", "produce help message")(
+        "log",
+        "enable general log functions – currently "
+        "no effect")("printLogs",
+                     "print log messages in "
+                     "console")("version",
+                                "print verson info "
+                                "and exit")("mode", po::value<unsigned int>(),
+                                            "set "
+                                            "pico "
+                                            "flexx "
+                                            "camera"
+                                            " mode "
+                                            "(int "
+                                            "from "
+                                            "0:5)");
     po::variables_map vm;
     po::store(po::parse_command_line(ac, av, desc), vm);
     po::notify(vm);
 
-    //print help msg
+    // print help msg
     if (vm.count("help")) {
       cout << desc << "\n";
       return 0;
     }
 
-    //activate general logging
+    // activate general logging
     if (vm.count("log")) {
       // don't use this at the moment – dependecies with msSinceEntry()
       // Glob::modes.a_doLog = true;
       cout << "\n\nlog time and errors – currently this option has no effect\n";
     }
 
-    //prints logs to console if enabled
+    // prints logs to console if enabled
     if (vm.count("printLogs")) {
       Glob::modes.a_doLogPrint = true;
       cout << "\n\nPrinting of logs in command line\n";
     }
 
-    //set camera mode of pico flexx
+    // set camera mode of pico flexx
     if (vm.count("mode")) {
-          Glob::modes.a_cameraUseCase = vm["mode"].as<unsigned int>();
-      cout << "\n\nPico flexx mode was set to " << vm["mode"].as<unsigned int>() << ".\n";
+      Glob::modes.a_cameraUseCase = vm["mode"].as<unsigned int>();
+      cout << "\n\nPico flexx mode was set to " << vm["mode"].as<unsigned int>()
+           << ".\n";
     } else {
       cout << "\n\nPico Flexx mode was not set manually and therefore is 3.\n";
     }
 
     if (vm.count("version")) {
-	    cout << VERSION << std::endl;
+      cout << VERSION << std::endl;
       return 0;
     }
-  } catch (std::exception& e) {
+  } catch (std::exception &e) {
     cerr << "error: " << e.what() << "\n";
     return 1;
   } catch (...) {
@@ -494,7 +505,7 @@ int main(int ac, char* av[]) {
   }
 
   // create thread wrapper instance and the threads
-  mainThreadWrapper* w = new mainThreadWrapper();
+  mainThreadWrapper *w = new mainThreadWrapper();
   std::thread udpSendTh = w->runUdpSendThread();
   std::thread unfTh = w->runUnfoldingThread();
   std::thread ddCopyTh = w->runCopyDepthDataThread();
@@ -505,5 +516,3 @@ int main(int ac, char* av[]) {
   ddSendTh.join();
   return 0;
 }
-
-

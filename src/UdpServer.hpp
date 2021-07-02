@@ -4,19 +4,19 @@
 #include <boost/asio.hpp>
 #include <chrono>
 #include <iostream>
-#include <vector>
 #include <mutex>
+#include <vector>
 
 #include "Camera.hpp"
-#include "UdpClient.hpp"
 #include "TimeLogger.hpp"
+#include "UdpClient.hpp"
 using namespace std::chrono;
 
 //****************************************************************
 //                         UDP SERVER
 //****************************************************************
 class UdpServer {
- public:
+public:
   UdpServer(boost::asio::io_service &io_service, int max);
   // if it is a vector take this function
   void preparePacket(const std::string key,
@@ -26,8 +26,8 @@ class UdpServer {
   boost::asio::ip::udp::endpoint remote_endpoint_;
   boost::array<char, 4> recv_buffer_;
 
- private:
-    std::mutex mux;
+private:
+  std::mutex mux;
   static const int numClients = 5;
   bool _imgSend = false;
   std::vector<UdpClient> udpClient;
@@ -50,7 +50,7 @@ class UdpServer {
   boost::asio::deadline_timer timer2_;
   DepthDataUtilities ddUtilities;
 
- public:
+public:
   // Template Function that recieves a any type of data (T const &data) and puts
   // it into a vector that can be passed by value
   template <typename T>
@@ -82,8 +82,8 @@ class UdpServer {
     // Iterate through all online clients and post the sendPacket function
     for (size_t i = 0; i < udpClient.size(); i++) {
       if (udpClient[i].checkState()) {
-        strand_.post(strand_.wrap(
-            std::bind(&UdpServer::sendPacket, this, i, dataVect)));
+        strand_.post(
+            strand_.wrap(std::bind(&UdpServer::sendPacket, this, i, dataVect)));
       }
       // throw out inactive ones
       else {

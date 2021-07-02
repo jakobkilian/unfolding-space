@@ -34,9 +34,9 @@ struct Modes {
   std::atomic<bool> a_muted;
   std::atomic<bool> a_testMode;
   std::atomic<bool> a_doLog{
-      true};  // gobal flag that activates TimeLogger.cpp functions – currently
-              // always on because of dependencies of msSinceEntry
-  std::atomic<bool> a_doLogPrint{false};  // printf all TimeLogger values –
+      true}; // gobal flag that activates TimeLogger.cpp functions – currently
+             // always on because of dependencies of msSinceEntry
+  std::atomic<bool> a_doLogPrint{false}; // printf all TimeLogger values –
   std::atomic<unsigned int> a_cameraUseCase{3};
 };
 
@@ -44,7 +44,7 @@ struct Motors : Base {
   std::atomic<bool> a_muted;
   std::atomic<bool> a_testMode;
   unsigned char testTiles[9];
-  unsigned char tiles[9];  // 9 tiles | motor valsˇ
+  unsigned char tiles[9]; // 9 tiles | motor valsˇ
 };
 
 struct Logger : Base {
@@ -55,7 +55,7 @@ struct Logger : Base {
 };
 
 struct CvDepthImg : Base {
-  cv::Mat mat;  // full depth image (one byte p. pixel)
+  cv::Mat mat; // full depth image (one byte p. pixel)
 };
 
 struct RoyalDepthData : Base {
@@ -96,4 +96,4 @@ extern RoyalDepthData royalDepthData;
 extern ThreadNotification notifyProcess;
 extern ThreadNotification notifySend;
 extern Counters counters;
-}  // namespace Glob
+} // namespace Glob

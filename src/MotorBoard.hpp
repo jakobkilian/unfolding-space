@@ -18,14 +18,14 @@
 //                          MotorBoard
 //****************************************************************
 class MotorBoard {
- public:
+public:
   void muteAll();
   void setupGlove();
   void sendValuesToGlove(unsigned char values[], int size);
   void runCalib();
 
- private:
- uint8_t initI2CDevice(uint8_t addr);
+private:
+  uint8_t initI2CDevice(uint8_t addr);
   int registerWrite(unsigned char, char);
   uint8_t registerRead(unsigned char);
   int drvSelect(uint8_t);
@@ -34,9 +34,9 @@ class MotorBoard {
   void printStatusToSerial(uint8_t);
   void printSummary();
 
-  uint8_t maxCalibPasses = 2;  // max trys for calib before skipping
-  uint8_t availableLRAs = 0;   // number of LRAs
-  bool calibSuccess[9];        // was calibration successfull?
+  uint8_t maxCalibPasses = 2; // max trys for calib before skipping
+  uint8_t availableLRAs = 0;  // number of LRAs
+  bool calibSuccess[9];       // was calibration successfull?
   int retVal;
   int lastTCA;
   uint8_t order[9] = {0, 2, 1, 3, 4, 5, 8, 7, 6};

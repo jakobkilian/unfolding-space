@@ -5,9 +5,9 @@
 
 #include <iostream>
 
-#include "MotorBoardDefs.hpp"
 #include "Camera.hpp"
 #include "Globals.hpp"
+#include "MotorBoardDefs.hpp"
 #include "TimeLogger.hpp"
 
 //----------------------------------------------------------------------
@@ -33,7 +33,7 @@ void MotorBoard::setupGlove() {
   // resetAll(); //to stop ongoing vibrations or faulty settings
   // Write settings to all drivers and start simultaneous auto calibration
   for (int u = 0; u < 9; u++) {
-    drvSelect(u);  // select the driver to write to
+    drvSelect(u); // select the driver to write to
     while (setupLRA(startupCalib) != 0) {
       // printf("writing settings to no %i failed \n", u); //Send all register
       // settings and "GO" bit to start auto calibration
@@ -89,7 +89,7 @@ void MotorBoard::sendValuesToGlove(unsigned char inValues[], int size) {
     // For speed's sake start with drvs that are on the first tca
     for (int i = 0; i < size; ++i) {
       if (order[i] <= 4) {
-        drvSelect(order[i]);  // route the value to the right TCA and DRV
+        drvSelect(order[i]); // route the value to the right TCA and DRV
         registerWrite(RTP_INPUT, altCurve[values[i]]);
       }
     }
@@ -97,7 +97,7 @@ void MotorBoard::sendValuesToGlove(unsigned char inValues[], int size) {
     // Now all drv on the 2nd tca together
     for (int i = 0; i < size; ++i) {
       if (order[i] > 4) {
-        drvSelect(order[i]);  // route the value to the right TCA and DRV
+        drvSelect(order[i]); // route the value to the right TCA and DRV
         registerWrite(RTP_INPUT, altCurve[values[i]]);
       }
     }
@@ -106,11 +106,11 @@ void MotorBoard::sendValuesToGlove(unsigned char inValues[], int size) {
   Glob::logger.motorSendLog.store("end");
   Glob::logger.motorSendLog.printAll("SEND VALUES TO MOTORS", "us", "ms");
   Glob::logger.motorSendLog.udpTimeSpan("processing", "us", "startProcess",
-                                      "endProcess");
+                                        "endProcess");
   Glob::logger.motorSendLog.udpTimeSpan("onNewData", "us", "start",
-                                      "notifyProcessing");
+                                        "notifyProcessing");
   Glob::logger.motorSendLog.udpTimeSpan("gloveSending", "us", "startSendGlove",
-                                      "end");
+                                        "end");
   Glob::logger.motorSendLog.udpTimeSpan("wholeCycle", "us", "start", "end");
   Glob::logger.motorSendLog.reset();
   Glob::logger.pauseLog.reset();
@@ -159,33 +159,34 @@ int MotorBoard::drvSelect(uint8_t i) {
 // Set the settings of the DRVs by writing to their registers
 int MotorBoard::setupLRA(bool calib) {
   if (registerWrite(MODE, 0x07) != 0)
-    return -1;  // Device ready (no standby) | Auto calibration mode
+    return -1; // Device ready (no standby) | Auto calibration mode
   if (registerWrite(FB_CON, 0xA6) != 0)
-    return -1;  // Mode = LRA | Brake Factor = 3x | Loop Gain = Medium | BEMF
-                // Gain = 15x
+    return -1; // Mode = LRA | Brake Factor = 3x | Loop Gain = Medium | BEMF
+               // Gain = 15x
   if (registerWrite(RATED_VOLTAGE, 0x46) != 0)
-    return -1;  // Rated Voltage Value of 70 - Calcuclation explained in
-                // datasheet p.24
+    return -1; // Rated Voltage Value of 70 - Calcuclation explained in
+               // datasheet p.24
   // if (registerWrite(OD_CLAMP, 0x5A) != 0) return -1;     //Overdrive Clamp
   // Value of 90 (a little more than rms cause there is no val in LRAs
   // datasheet)
   // - Calcuclation explained in datasheet p.25
   if (registerWrite(CONTRL1, 0x90) != 0)
-    return -1;  // Drive Time Value of 16 (235Hz/1000/2 - 0.5 *10) -
-                // Calcuclation explained in datasheet p.24
+    return -1; // Drive Time Value of 16 (235Hz/1000/2 - 0.5 *10) -
+               // Calcuclation explained in datasheet p.24
   if (registerWrite(CONTRL2, 0x75) != 0)
-    return -1;  // Unidirectional Input Mode on
+    return -1; // Unidirectional Input Mode on
   if (registerWrite(CONTRL3, 0xE2) != 0)
-    return -1;  // Closed/Auto-resonance Mode on
-  if (registerWrite(CONTRL4, 0x30) != 0) return -1;  // Calib length of 500ms
-  if (calib) {  // only when there should be a calib at startup
+    return -1; // Closed/Auto-resonance Mode on
+  if (registerWrite(CONTRL4, 0x30) != 0)
+    return -1; // Calib length of 500ms
+  if (calib) { // only when there should be a calib at startup
     if (registerWrite(GO, 0x01) != 0)
-      return -1;  // GO to start Auto-Calib process
+      return -1; // GO to start Auto-Calib process
   } else {
-    while (registerWrite(MODE, 0x05) != 0)  // set DRV to RTP Mode
+    while (registerWrite(MODE, 0x05) != 0) // set DRV to RTP Mode
     {
     }
-    while (registerWrite(RTP_INPUT, 0x00) != 0)  // set vibration value to 0
+    while (registerWrite(RTP_INPUT, 0x00) != 0) // set vibration value to 0
     {
     }
   }
@@ -211,7 +212,7 @@ void MotorBoard::resetAll() {
     drvSelect(u);
     delay(1);
     // First: Set DEV_RESET bit to 1
-    while (registerWrite(MODE, 0x80) != 0)  // Do until the shield is reset
+    while (registerWrite(MODE, 0x80) != 0) // Do until the shield is reset
     {
       printf("Reset failed\n");
     }
@@ -222,7 +223,7 @@ void MotorBoard::resetAll() {
     delay(1);
     // Check DEV_RESET bit until it gets cleared (reset finished)
     uint8_t getMODE = 0x80;
-    while ((getMODE & 0x80) != 0x00)  // Do until the shield is reset
+    while ((getMODE & 0x80) != 0x00) // Do until the shield is reset
     {
       getMODE = registerRead(MODE);
       delay(1);
@@ -233,7 +234,7 @@ void MotorBoard::resetAll() {
     }
     // Check standby bit until it gets cleared (device active)
     getMODE = 0x00;
-    while ((getMODE & 0x04) != 0x00)  // Check until it is active
+    while ((getMODE & 0x04) != 0x00) // Check until it is active
     {
       getMODE = registerRead(MODE);
       delay(1);
@@ -247,13 +248,13 @@ void MotorBoard::resetAll() {
 // print result of calibration pass
 void MotorBoard::printStatusToSerial(uint8_t status) {
   printf("return:\t\t%x\ncommunication:\t", status);
-  if ((status & 0xE0) == 0x00)  // check if the board gives the right ID back
+  if ((status & 0xE0) == 0x00) // check if the board gives the right ID back
   {
     printf("NO ANSWER\n");
   }
-  if ((status & 0xE0) != 0x00) {  // if it does, check the rest of the status
+  if ((status & 0xE0) != 0x00) { // if it does, check the rest of the status
     printf("CONNECTED\ncalib success:\t");
-    if ((status & 0x8) == 0x00)  // check is calib was successfull
+    if ((status & 0x8) == 0x00) // check is calib was successfull
       printf("YES\n");
     else {
       printf("NO\n");
@@ -303,7 +304,7 @@ void MotorBoard::printSummary() {
 void MotorBoard::runCalib() {
   resetAll();
   for (int u = 0; u < 9; u++) {
-    drvSelect(u);  // select the driver to write to
+    drvSelect(u); // select the driver to write to
     while (setupLRA(true) != 0) {
       // printf("writing settings to no %i failed \n", u); //Send all register
       // settings and "GO" bit to start auto calibration
@@ -312,7 +313,7 @@ void MotorBoard::runCalib() {
   // Check if autocalibration already was finished and successfull. If not, do
   // subsequent calibration passes
   for (int u = 0; u < 9; u++) {
-    drvSelect(u);  // select the driver to write to
+    drvSelect(u); // select the driver to write to
     printf("\n\n\n\nDRV No: %i\n", u);
     printf("_________________\n");
     int calibCounter = 0;
@@ -334,8 +335,8 @@ void MotorBoard::runCalib() {
                calibCounter);
         while (setupLRA(true) != 0) {
           printf("setup of actuator No %i failed\n",
-                 u);  // Send all register settings and "GO" bit to start auto
-                      // calibration
+                 u); // Send all register settings and "GO" bit to start auto
+                     // calibration
         }
         delay(50);
         getGO = 0x01;
@@ -348,7 +349,7 @@ void MotorBoard::runCalib() {
           calibSuccess[u] = true;
           break;
         }
-        calibCounter++;  // count the calibration passes
+        calibCounter++; // count the calibration passes
       }
       if (calibCounter == maxCalibPasses) {
       }
@@ -356,11 +357,11 @@ void MotorBoard::runCalib() {
     }
     // If Calibration was successfull print results and switch to active mode
     if (calibSuccess[u] == true) {
-      while (registerWrite(MODE, 0x05) != 0)  // set DRV to RTP Mode
+      while (registerWrite(MODE, 0x05) != 0) // set DRV to RTP Mode
       {
         printf("setting No %i in RTP mode failed\n", u);
       }
-      while (registerWrite(RTP_INPUT, 0x00) != 0)  // set vibration value to 0
+      while (registerWrite(RTP_INPUT, 0x00) != 0) // set vibration value to 0
       {
         printf("setting RTP value at No %i to zero failed\n", u);
       }
