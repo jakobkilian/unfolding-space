@@ -272,7 +272,7 @@ int unfolding() {
               // reset when back in prev position
               offThreshCounter = 0;
             }
-            if (offThreshCounter > 3) {
+            if (offThreshCounter > 12) {
               Glob::modes.a_muted = true;
               Glob::motorBoard.runOnOffPattern(50, 40, 1);
               Glob::motorBoard.runOnOffPattern(190, 0, 1);
