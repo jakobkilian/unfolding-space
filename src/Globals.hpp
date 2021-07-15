@@ -5,6 +5,8 @@
 #include <royale.hpp>
 
 #include "Camera.hpp"
+#include "I2C.hpp"
+#include "Imu.hpp"
 #include "MotorBoard.hpp"
 #include "TimeLogger.hpp"
 #include "UdpServer.hpp"
@@ -33,6 +35,7 @@ struct RoyalStatus {
 struct Modes {
   std::atomic<bool> a_muted;
   std::atomic<bool> a_testMode;
+  std::atomic<bool> a_isInActivePos{false};
   std::atomic<bool> a_doLog{
       true}; // gobal flag that activates TimeLogger.cpp functions – currently
              // always on because of dependencies of msSinceEntry
@@ -41,8 +44,6 @@ struct Modes {
 };
 
 struct Motors : Base {
-  std::atomic<bool> a_muted;
-  std::atomic<bool> a_testMode;
   unsigned char testTiles[9];
   unsigned char tiles[9]; // 9 tiles | motor valsˇ
 };
@@ -81,6 +82,12 @@ extern UdpServer udpServer;
 extern std::mutex motorBoardMux;
 extern MotorBoard motorBoard;
 
+extern std::mutex i2cMux;
+extern I2C i2c;
+
+extern std::mutex imuMux;
+extern Imu imu;
+
 // Counts when there is onNewData() while the previous wasn't finished yet.
 // We don't want this -> royal library gets unstable
 extern std::atomic<int> a_lockFailCounter;
@@ -96,4 +103,5 @@ extern RoyalDepthData royalDepthData;
 extern ThreadNotification notifyProcess;
 extern ThreadNotification notifySend;
 extern Counters counters;
+void printBinary(uint8_t a, bool lineBreak);
 } // namespace Glob

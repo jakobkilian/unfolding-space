@@ -187,6 +187,9 @@ int unfolding() {
   // register a EVENT listener
   cameraDevice->registerEventListener(&eventReporter);
 
+  // JUST FOR TESTING IF THE LSM DEVICE IS THERE
+  Glob::imu.init();
+
   //_____________________START CAPTURING_________________________________
   // start capture mode
   //#costly: rpi4 500ms
@@ -203,8 +206,11 @@ int unfolding() {
   long lastCallImshow = millis();
   long lastCall = 0;
   long lastCallTemp = 0;
+  int offThreshCounter = 0;
+  int onThreshCounter = 0;
   Glob::logger.mainLogger.printAll("Initializing Unfolding", "ms", "ms");
   Glob::logger.mainLogger.reset();
+
   //_____________________ENDLESS LOOP_________________________________
   while (!Glob::a_restartUnfoldingFlag) {
     // Check if time since camera started capturing is bigger than 3 secs
@@ -233,7 +239,6 @@ int unfolding() {
         // do this every 66ms (15 fps)
         if (millis() - lastCallImshow > 66) {
           // update test motor vals
-
           lastCallImshow = millis();
           // Get all the data of the royal lib to see if camera is working
           royale::Vector<royale::Pair<royale::String, royale::String>>
@@ -250,6 +255,48 @@ int unfolding() {
           Glob::royalStats.a_isCalibrated = tempisCalibrated;
           Glob::royalStats.a_isConnected = tempisConnected;
           Glob::royalStats.a_isCapturing = tempisCapturing;
+
+          // Check if glove position is "active"
+          Glob::imu.getPosition();
+          // Glob::imu.printPosition();
+          bool offThreshEx = Glob::imu.offThreshExceeded();
+          bool onThreshEx = Glob::imu.onThreshExceeded();
+          bool nowActive;
+          // if it was "active" before, but not any more:
+          if (Glob::modes.a_isInActivePos == true) {
+            nowActive = true;
+            if (offThreshEx) {
+              // if threshold is exceeded: incerement counter
+              offThreshCounter++;
+            } else {
+              // reset when back in prev position
+              offThreshCounter = 0;
+            }
+            if (offThreshCounter > 3) {
+              Glob::modes.a_muted = true;
+              Glob::motorBoard.runOnOffPattern(50, 40, 1);
+              Glob::motorBoard.runOnOffPattern(190, 0, 1);
+              Glob::motorBoard.muteAll();
+              nowActive = false;
+            }
+          } else {
+            nowActive = false;
+            // if glove is back in use position
+            if (onThreshEx) {
+              // if threshold is exceeded: incerement counter
+              onThreshCounter++;
+            } else {
+              // reset when back in prev position
+              onThreshCounter = 0;
+            }
+            if (onThreshCounter > 3) {
+              Glob::motorBoard.runOnOffPattern(50, 40, 2);
+              Glob::modes.a_muted = false;
+              nowActive = true;
+            }
+          }
+          // Save whether glove is in active position or not
+          Glob::modes.a_isInActivePos = nowActive;
         }
         // do this every 5000ms (every 1 seconds)
         if (millis() - lastCallTemp > 1000) {
@@ -492,10 +539,12 @@ int main(int ac, char *av[]) {
       cout << "\n\nPico Flexx mode was not set manually and therefore is 3.\n";
     }
 
+    //always print version flag
+    cout << VERSION << std::endl;
     if (vm.count("version")) {
-      cout << VERSION << std::endl;
-      return 0;
+      return 0; //return (flag already printed)
     }
+
   } catch (std::exception &e) {
     cerr << "error: " << e.what() << "\n";
     return 1;
