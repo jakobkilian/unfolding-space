@@ -14,15 +14,17 @@ public:
   I2C();
   int setupDevice(int addr);
   int selectSingleMuxLine(uint8_t mux, uint8_t line);
+  void appendMuxMask(uint8_t muxNo, uint8_t mask);
   int manuallySetMux(uint8_t muxNo, uint8_t regCmd);
   int resetMux(uint8_t muxNo);
   int readReg(int addr, unsigned char ucRegAddress);
   int readReg16(int addr, unsigned char ucRegAddress);
   int writeReg(int addr, unsigned char ucRegAddress, char cValue);
-    int writeReg16(int addr, unsigned char ucRegAddress, char cValue);
+  int writeReg16(int addr, unsigned char ucRegAddress, char cValue);
 
 private:
   int mux[2];
+  uint8_t mask[2];
   int lastMux;
   int printBinary(uint8_t, bool);
 };
