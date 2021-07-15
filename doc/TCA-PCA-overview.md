@@ -22,9 +22,9 @@ Hosting DRV 0-4
 
 Hosting DRV 5-8 & LSM (Gyro+Acc)
 
-- **0x70** (7-bit) or **1110000**
-- **0xE0** (8-bit ) or **11100000** for writing
-- **0xE1** (8-bit ) or **11100001** for reading
+- **0x72** (7-bit) or **1110010**
+- **0xE4** (8-bit ) or **11100100** for writing
+- **0xE5** (8-bit ) or **11100101** for reading
 
 
 
