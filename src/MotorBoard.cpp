@@ -40,10 +40,11 @@ void MotorBoard::sendValuesToGlove(unsigned char inValues[], int size) {
   Glob::logger.motorSendLog.store("startSendGlove");
   {
     for (int i = 0; i < size; i++) {
+      // stronger vibrations on left motors
       if (i == 0 || i == 3 || i == 6) {
-        values[i] = static_cast<int>(inValues[i] * 1);
+        values[i] = static_cast<int>(inValues[i] * 0.8);
       } else {
-        values[i] = static_cast<int>(inValues[i] * 0.75);
+        values[i] = static_cast<int>(inValues[i] * 0.6);
       }
     }
   }
