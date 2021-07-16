@@ -2,9 +2,9 @@
 // INCLUDES
 //----------------------------------------------------------------------
 #include "I2C.hpp"
+#include "Globals.hpp"
 #include "MotorBoardDefs.hpp"
 #include <iostream>
-#include "Globals.hpp"
 
 #include <errno.h>
 
@@ -69,21 +69,19 @@ int I2C::selectSingleMuxLine(uint8_t muxNo, uint8_t lineNo) {
 
 // The i2c multiplexer forwards its input to up to 8 outputs.
 // Which outputs are active is selected via selectSingleMuxLine.
-// This is the default behavior for the motors (as each one is addressed individually)
-// The IMU and other future components should always be addressable
-// and hopefully don't have address conflicts, so we should map
-// them to the muxes all the time.
+// This is the default behavior for the motors (as each one is addressed
+// individually) The IMU and other future components should always be
+// addressable and hopefully don't have address conflicts, so we should map them
+// to the muxes all the time.
 // TODO: improve this explanation
-void I2C::appendMuxMask(uint8_t muxNo, uint8_t mask_) {
-  mask[muxNo] |= mask_;
-}
+void I2C::appendMuxMask(uint8_t muxNo, uint8_t mask_) { mask[muxNo] |= mask_; }
 
 // I case you are tempted to uncomment the following, please
 // consider the notes at `appendMuxMask`
 //________________________________________________
 // set mux by using a binary cmd – here you can open > 1 lines
 // here you have to care for the 2nd mux – e.g. reset by using resetMux()
-//int I2C::manuallySetMux(uint8_t muxNo, uint8_t regCmd) {
+// int I2C::manuallySetMux(uint8_t muxNo, uint8_t regCmd) {
 //  int retVal;
 //  retVal = wiringPiI2CWrite(mux[muxNo], regCmd);
 //  if (retVal < 0) {
@@ -96,7 +94,7 @@ void I2C::appendMuxMask(uint8_t muxNo, uint8_t mask_) {
 //
 ////________________________________________________
 //// send a 0 to selcted mux to reset it
-//int I2C::resetMux(uint8_t muxNo) {
+// int I2C::resetMux(uint8_t muxNo) {
 //  int retVal;
 //  retVal = wiringPiI2CWrite(mux[muxNo], 0b00000000);
 //  if (retVal < 0) {

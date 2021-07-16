@@ -492,21 +492,19 @@ int main(int ac, char *av[]) {
   try {
     po::options_description desc("Allowed options");
     desc.add_options()("help", "produce help message")(
-        "log",
-        "enable general log functions – currently "
-        "no effect")("printLogs",
-                     "print log messages in "
-                     "console")("version",
-                                "print verson info "
-                                "and exit")("mode", po::value<unsigned int>(),
-                                            "set "
-                                            "pico "
-                                            "flexx "
-                                            "camera"
-                                            " mode "
-                                            "(int "
-                                            "from "
-                                            "0:5)");
+        "log", "enable general log functions – currently "
+               "no effect")("printLogs", "print log messages in "
+                                         "console")(
+        "version", "print verson info "
+                   "and exit")("mode", po::value<unsigned int>(),
+                               "set "
+                               "pico "
+                               "flexx "
+                               "camera"
+                               " mode "
+                               "(int "
+                               "from "
+                               "0:5)");
     po::variables_map vm;
     po::store(po::parse_command_line(ac, av, desc), vm);
     po::notify(vm);
@@ -539,10 +537,10 @@ int main(int ac, char *av[]) {
       cout << "\n\nPico Flexx mode was not set manually and therefore is 3.\n";
     }
 
-    //always print version flag
+    // always print version flag
     cout << VERSION << std::endl;
     if (vm.count("version")) {
-      return 0; //return (flag already printed)
+      return 0; // return (flag already printed)
     }
 
   } catch (std::exception &e) {

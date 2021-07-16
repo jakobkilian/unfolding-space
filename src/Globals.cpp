@@ -38,5 +38,5 @@ void Glob::printBinary(uint8_t a, bool lineBreak) {
   lineBreak ? breakChar = '\n' : breakChar = ' ';
   for (i = 0x80; i != 0; i >>= 1)
     printf("%c", (a & i) ? '1' : '0');
-  printf("%c",breakChar);
+  printf("%c", breakChar);
 }

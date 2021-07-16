@@ -95,3 +95,10 @@ $(NAME) : $(OBJS)
 clean:
 	$(RM) $(OBJS) $(DEPS)
 
+
+# requires clang-format
+.PHONY : format
+
+format:
+	clang-format -i $(SOURCES) $(HEADER)
+
