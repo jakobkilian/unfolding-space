@@ -68,6 +68,11 @@ void exitApplicationMuted(__attribute__((unused)) int dummy) {
   exit(0);
 }
 
+// this is set to the filename of an (optional) rrf recording
+// of a session we will replay instead of using a real camera.
+// set in main from cli flags.
+static std::string rrf_filename = "";
+
 //**********************************************************************
 //****************************** UNFOLDING *****************************
 //********** This is the main part, now in a seperate thread ***********
@@ -91,35 +96,40 @@ int unfolding() {
   // this represents the main camera device object
   std::unique_ptr<royale::ICameraDevice> cameraDevice;
 
-  //_____________________INIT CAMERA____________________________________
-  // check if the cam is connected before init anything
-  while (camlist.empty()) {
-    camlist = manager.getConnectedCameraList();
-    if (!camlist.empty()) {
-      cameraDevice = manager.createCamera(camlist[0]);
-      break;
+  if (rrf_filename != "") {
+    cameraDevice = manager.createCamera(rrf_filename);
+  } else {
+    //_____________________INIT CAMERA____________________________________
+    // check if the cam is connected before init anything
+    while (camlist.empty()) {
+      camlist = manager.getConnectedCameraList();
+      if (!camlist.empty()) {
+        cameraDevice = manager.createCamera(camlist[0]);
+        break;
+      }
+      cout << ":";
+      cout.flush();
     }
-    cout << ":";
-    cout.flush();
-  }
-  // if camlist is not NULL
-  camlist.clear();
+    // if camlist is not NULL
+    camlist.clear();
 
-  Glob::logger.mainLogger.store("search");
-  // Mute the LRAs before ending the program by ctr + c (SIGINT)
-  signal(SIGINT, exitApplicationMuted);
-  signal(SIGTERM, exitApplicationMuted);
+    Glob::logger.mainLogger.store("search");
+    // Mute the LRAs before ending the program by ctr + c (SIGINT)
+    signal(SIGINT, exitApplicationMuted);
+    signal(SIGTERM, exitApplicationMuted);
 
-  // Setup the LRAs on the Glove (I2C Connection, Settings, Calibration, etc.)
-  Glob::motorBoard.setupGlove();
-  Glob::logger.mainLogger.store("glove");
+    // Setup the LRAs on the Glove (I2C Connection, Settings, Calibration, etc.)
+    Glob::motorBoard.setupGlove();
+    Glob::logger.mainLogger.store("glove");
 
-  //  camera device is now available, CameraManager can be deallocated here
-  if (cameraDevice == nullptr) {
-    // no cameraDevice available
-    cerr << "Cannot create the camera device" << endl;
-    return 1;
-  }
+    //  camera device is now available, CameraManager can be deallocated here
+    if (cameraDevice == nullptr) {
+      // no cameraDevice available
+      cerr << "Cannot create the camera device" << endl;
+      return 1;
+    }
+  } // if-else use real camera device
+
   // IMPORTANT: call the initialize method before working with camera device
   // #costly: rpi4 1000ms
   auto status = cameraDevice->initialize();
@@ -139,42 +149,46 @@ int unfolding() {
     return 1;
   }
   cerr << useCases << endl;
-  // choose a use case
-  uint selectedUseCaseIdx = 0u;
-  if (Glob::modes.a_cameraUseCase) {
-    cerr << "got the argument:" << Glob::modes.a_cameraUseCase << endl;
-    auto useCaseFound = false;
-    if (Glob::modes.a_cameraUseCase < useCases.size()) {
-      selectedUseCaseIdx = Glob::modes.a_cameraUseCase;
-      useCaseFound = true;
-    }
+  if (rrf_filename == "") {
+    // select here isn't limited to the retreieved use cases so this dies
+    // if we're using a playback session.
 
-    if (!useCaseFound) {
-      cerr << "Error: the chosen use case is not supported by this camera"
-           << endl;
-      cerr << "A list of supported use cases is printed by sampleCameraInfo"
-           << endl;
+    // choose a use case
+    uint selectedUseCaseIdx = 0u;
+    if (Glob::modes.a_cameraUseCase) {
+      cerr << "got the argument:" << Glob::modes.a_cameraUseCase << endl;
+      auto useCaseFound = false;
+      if (Glob::modes.a_cameraUseCase < useCases.size()) {
+        selectedUseCaseIdx = Glob::modes.a_cameraUseCase;
+        useCaseFound = true;
+      }
+
+      if (!useCaseFound) {
+        cerr << "Error: the chosen use case is not supported by this camera"
+             << endl;
+        cerr << "A list of supported use cases is printed by sampleCameraInfo"
+             << endl;
+        return 1;
+      }
+    } else {
+      cerr << "Here: autousecase id" << endl;
+      // choose the first use case
+      selectedUseCaseIdx = 0;
+    }
+    // set an operation mode
+    if (cameraDevice->setUseCase(useCases.at(selectedUseCaseIdx)) !=
+        royale::CameraStatus::SUCCESS) {
+      cerr << "Error setting use case" << endl;
       return 1;
     }
-  } else {
-    cerr << "Here: autousecase id" << endl;
-    // choose the first use case
-    selectedUseCaseIdx = 0;
+    // retrieve the lens parameters from Royale
+    royale::LensParameters lensParameters;
+    status = cameraDevice->getLensParameters(lensParameters);
+    if (status != royale::CameraStatus::SUCCESS) {
+      cerr << "Can't read out the lens parameters" << endl;
+      return 1;
+    }
   }
-  // set an operation mode
-  if (cameraDevice->setUseCase(useCases.at(selectedUseCaseIdx)) !=
-      royale::CameraStatus::SUCCESS) {
-    cerr << "Error setting use case" << endl;
-    return 1;
-  }
-  // retrieve the lens parameters from Royale
-  royale::LensParameters lensParameters;
-  status = cameraDevice->getLensParameters(lensParameters);
-  if (status != royale::CameraStatus::SUCCESS) {
-    cerr << "Can't read out the lens parameters" << endl;
-    return 1;
-  }
-
   // Glob::listener.setLensParameters(lensParameters);
 
   // register a data listener
@@ -491,20 +505,16 @@ int main(int ac, char *av[]) {
   // catch cmd line options
   try {
     po::options_description desc("Allowed options");
-    desc.add_options()("help", "produce help message")(
-        "log", "enable general log functions – currently "
-               "no effect")("printLogs", "print log messages in "
-                                         "console")(
-        "version", "print verson info "
-                   "and exit")("mode", po::value<unsigned int>(),
-                               "set "
-                               "pico "
-                               "flexx "
-                               "camera"
-                               " mode "
-                               "(int "
-                               "from "
-                               "0:5)");
+    auto easy = desc.add_options();
+    easy("help", "produce help message");
+    easy("log", "enable general log functions – currently no effect");
+    easy("printLogs", "print log messages in console");
+    easy("version", "print verson info and exit");
+    easy("mode", po::value<unsigned int>(),
+         "set pico flexx camera mode (int from 0:5)");
+    easy("rrf", po::value<std::string>(),
+         "filename of rrf testfile to use instead of camera");
+
     po::variables_map vm;
     po::store(po::parse_command_line(ac, av, desc), vm);
     po::notify(vm);
@@ -541,6 +551,10 @@ int main(int ac, char *av[]) {
     cout << VERSION << std::endl;
     if (vm.count("version")) {
       return 0; // return (flag already printed)
+    }
+
+    if (vm.count("rrf")) {
+      rrf_filename = vm["rrf"].as<std::string>();
     }
 
   } catch (std::exception &e) {
