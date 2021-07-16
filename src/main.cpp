@@ -7,12 +7,10 @@
 
 #include <thread>
 
-#include <boost/program_options.hpp>
 
 #include "depthDataConsumer.h"
 #include "listener.hpp"
 
-using namespace boost;
 using namespace std;
 
 void usage() {
