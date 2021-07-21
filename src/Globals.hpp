@@ -33,6 +33,7 @@ struct RoyalStatus {
 };
 
 struct Modes {
+  std::atomic<int> a_identifier{0}; //set by cmd line option. Identifier for udp server
   std::atomic<bool> a_muted;
   std::atomic<bool> a_testMode;
   std::atomic<bool> a_isInActivePos{false};

@@ -49,7 +49,7 @@ UdpServer::UdpServer(boost::asio::io_service &io_service, int max)
 //_______ Broadcast Online Status _______
 void UdpServer::broadcast() {
   // std::lock_guard<std::mutex> l(mux);
-  broad_socket_.send_to(boost::asio::buffer("Unfolding 1"), broad_endpoint_, 0,
+  broad_socket_.send_to(boost::asio::buffer("Unfolding Glove " + std::to_string(Glob::modes.a_identifier)), broad_endpoint_, 0,
                         errorBroad);
   timer1_.expires_at(timer1_.expires_at() + boost::posix_time::seconds(1));
   timer1_.async_wait(strand_.wrap(std::bind(&UdpServer::broadcast, this)));
