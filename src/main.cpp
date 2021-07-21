@@ -206,8 +206,6 @@ int unfolding() {
   long lastCallImshow = millis();
   long lastCall = 0;
   long lastCallTemp = 0;
-  int offThreshCounter = 0;
-  int onThreshCounter = 0;
   Glob::logger.mainLogger.printAll("Initializing Unfolding", "ms", "ms");
   Glob::logger.mainLogger.reset();
 
@@ -255,48 +253,6 @@ int unfolding() {
           Glob::royalStats.a_isCalibrated = tempisCalibrated;
           Glob::royalStats.a_isConnected = tempisConnected;
           Glob::royalStats.a_isCapturing = tempisCapturing;
-
-          // Check if glove position is "active"
-          Glob::imu.getPosition();
-          // Glob::imu.printPosition();
-          bool offThreshEx = Glob::imu.offThreshExceeded();
-          bool onThreshEx = Glob::imu.onThreshExceeded();
-          bool nowActive;
-          // if it was "active" before, but not any more:
-          if (Glob::modes.a_isInActivePos == true) {
-            nowActive = true;
-            if (offThreshEx) {
-              // if threshold is exceeded: incerement counter
-              offThreshCounter++;
-            } else {
-              // reset when back in prev position
-              offThreshCounter = 0;
-            }
-            if (offThreshCounter > 12) {
-              Glob::modes.a_muted = true;
-              Glob::motorBoard.runOnOffPattern(50, 40, 1);
-              Glob::motorBoard.runOnOffPattern(190, 0, 1);
-              Glob::motorBoard.muteAll();
-              nowActive = false;
-            }
-          } else {
-            nowActive = false;
-            // if glove is back in use position
-            if (onThreshEx) {
-              // if threshold is exceeded: incerement counter
-              onThreshCounter++;
-            } else {
-              // reset when back in prev position
-              onThreshCounter = 0;
-            }
-            if (onThreshCounter > 3) {
-              Glob::motorBoard.runOnOffPattern(50, 40, 2);
-              Glob::modes.a_muted = false;
-              nowActive = true;
-            }
-          }
-          // Save whether glove is in active position or not
-          Glob::modes.a_isInActivePos = nowActive;
         }
         // do this every 5000ms (every 1 seconds)
         if (millis() - lastCallTemp > 1000) {
@@ -410,6 +366,8 @@ public:
   // Sending the Data to the glove (Costly due to register writing via i2c)
   void runSendDepthData() {
     while (1) {
+      int offThreshCounter = 0; //counter for setting off the motors by position
+      int onThreshCounter = 0;
       {
         std::unique_lock<std::mutex> svCondLock(Glob::notifySend.mut);
         Glob::notifySend.cond.wait(svCondLock,
@@ -431,6 +389,49 @@ public:
           Glob::udpServer.preparePacket("motors", vect);
           Glob::udpServer.prepareImage();
         }
+
+        // Check if glove position is "active"
+        Glob::imu.getPosition();
+        // Glob::imu.printPosition();
+        bool offThreshEx = Glob::imu.offThreshExceeded();
+        bool onThreshEx = Glob::imu.onThreshExceeded();
+        bool nowActive;
+        // if it was "active" before, but not any more:
+        if (Glob::modes.a_isInActivePos == true) {
+          nowActive = true;
+          if (offThreshEx) {
+            // if threshold is exceeded: incerement counter
+            offThreshCounter++;
+          } else {
+            // reset when back in prev position
+            offThreshCounter = 0;
+          }
+          if (offThreshCounter > 12) {
+            Glob::modes.a_muted = true;
+            Glob::motorBoard.runOnOffPattern(50, 40, 1);
+            Glob::motorBoard.runOnOffPattern(190, 0, 1);
+            Glob::motorBoard.muteAll();
+            nowActive = false;
+          }
+        } else {
+          nowActive = false;
+          // if glove is back in use position
+          if (onThreshEx) {
+            // if threshold is exceeded: incerement counter
+            onThreshCounter++;
+          } else {
+            // reset when back in prev position
+            onThreshCounter = 0;
+          }
+          if (onThreshCounter > 3) {
+            Glob::motorBoard.runOnOffPattern(50, 40, 2);
+            Glob::modes.a_muted = false;
+            nowActive = true;
+          }
+        }
+        // Save whether glove is in active position or not
+        Glob::modes.a_isInActivePos = nowActive;
+
       } // IF in test mode
       else {
         std::lock_guard<std::mutex> lockMotorTiles2(Glob::motors.mut);
