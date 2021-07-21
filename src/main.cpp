@@ -365,9 +365,9 @@ public:
 
   // Sending the Data to the glove (Costly due to register writing via i2c)
   void runSendDepthData() {
+    int offThreshCounter = 0; // counter for setting off the motors by position
+    int onThreshCounter = 0;
     while (1) {
-      int offThreshCounter = 0; //counter for setting off the motors by position
-      int onThreshCounter = 0;
       {
         std::unique_lock<std::mutex> svCondLock(Glob::notifySend.mut);
         Glob::notifySend.cond.wait(svCondLock,
@@ -492,14 +492,30 @@ int main(int ac, char *av[]) {
   // catch cmd line options
   try {
     po::options_description desc("Allowed options");
-    desc.add_options()
-    ("help", "produce help message")
-    ("log", "enable general log functions – currently no effect")
-    ("printLogs", "print log messages in console")
-    ("version", "print verson info and exit")
-    ("mode", po::value<unsigned int>(), "set pico flexx camera mode (int from 0:5)")
-    ("id", po::value<unsigned int>(),"set identifier for udp messages");
-    
+    desc
+        .add_options()(
+            "help",
+            "produce help message")("log",
+                                    "enable general log functions – currently "
+                                    "no effect")("printLogs",
+                                                 "print log messages in "
+                                                 "console")("version",
+                                                            "print verson info "
+                                                            "and exit")("mode",
+                                                                        po::value<
+                                                                            unsigned int>(),
+                                                                        "set "
+                                                                        "pico "
+                                                                        "flexx "
+                                                                        "camera"
+                                                                        " mode "
+                                                                        "(int "
+                                                                        "from "
+                                                                        "0:5)")("id",
+                                                                                po::value<
+                                                                                    unsigned int>(),
+                                                                                "set identifier for udp messages");
+
     po::variables_map vm;
     po::store(po::parse_command_line(ac, av, desc), vm);
     po::notify(vm);

@@ -42,9 +42,6 @@ void DepthDataListener::onNewData(const DepthData *data) {
   Glob::logger.newDataLog.reset();
   Glob::logger.newDataLog.store("onNewData");
   Glob::logger.pauseLog.store("endPause");
-  Glob::logger.pauseLog.printAll("PAUSE BETWEEN FRAMES", "us", "ms");
-  Glob::logger.pauseLog.udpTimeSpan("pause", "us", "startPause", "endPause");
-  Glob::logger.pauseLog.reset();
   Glob::logger.mainLogger.reset();
   Glob::logger.mainLogger.store("start");
   Glob::logger.mainLogger.store("startOnNew");
@@ -90,7 +87,7 @@ void DepthDataListener::onNewData(const DepthData *data) {
  *(Glob::motors.tiles)
  ******************************************************************************/
 void DepthDataUtilities::processData() {
-  Glob::logger.mainLogger.store("startProcessing");
+  Glob::logger.mainLogger.store("startProcess");
   int histo[9][256]; // historgram, needed to find closest obj
   // Lock Mutex for copied Data and the Glob::cvDepthImg.mat
   {
@@ -214,6 +211,7 @@ void DepthDataUtilities::processData() {
     int tempFrameCounter = Glob::counters.frameCounter;
     Glob::udpServer.preparePacket("frameCounter", tempFrameCounter);
   }
+    Glob::logger.mainLogger.store("endProcess");
   // call sending thread
   {
     std::lock_guard<std::mutex> svCondLock(Glob::notifySend.mut);
@@ -225,12 +223,6 @@ void DepthDataUtilities::processData() {
   // Glob::logger.mainLogger.store("unlock");
   // wake other thread
   Glob::notifySend.cond.notify_one();
-
-  // WRITE
-  Glob::logger.mainLogger.store("endProcess");
-  Glob::logger.mainLogger.printAll("RECEIVING AND PROCESSING FRAME", "us",
-                                   "ms");
-  Glob::logger.mainLogger.reset();
 }
 //                                    _____
 //                                [process data]

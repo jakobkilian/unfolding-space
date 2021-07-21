@@ -70,14 +70,23 @@ void MotorBoard::sendValuesToGlove(unsigned char inValues[], int size) {
   }
   Glob::logger.motorSendLog.store("TCA2");
   Glob::logger.motorSendLog.store("end");
+  Glob::logger.mainLogger.store("end");
+  // This is the end of the processing and sending of one frame. Nothing to do
+  // anymore, now all the vallues can be sent by udp and printed to the console
+  Glob::logger.pauseLog.printAll("PAUSE BETWEEN FRAMES", "us", "ms");
+  Glob::logger.pauseLog.udpTimeSpan("pause", "us", "startPause", "endPause");
+
+  Glob::logger.mainLogger.printAll("RECEIVING AND PROCESSING FRAME", "us",
+                                   "ms");
+  Glob::logger.mainLogger.udpTimeSpan("onNewData", "us", "startOnNew",
+                                      "notifyProcessing");
+  Glob::logger.mainLogger.udpTimeSpan("processing", "us", "startProcess",
+                                      "endProcess");
+  Glob::logger.mainLogger.udpTimeSpan("wholeCycle", "us", "start", "end");
+  Glob::logger.mainLogger.reset();
   Glob::logger.motorSendLog.printAll("SEND VALUES TO MOTORS", "us", "ms");
-  Glob::logger.motorSendLog.udpTimeSpan("processing", "us", "startProcess",
-                                        "endProcess");
-  Glob::logger.motorSendLog.udpTimeSpan("onNewData", "us", "start",
-                                        "notifyProcessing");
   Glob::logger.motorSendLog.udpTimeSpan("gloveSending", "us", "startSendGlove",
                                         "end");
-  Glob::logger.motorSendLog.udpTimeSpan("wholeCycle", "us", "start", "end");
   Glob::logger.motorSendLog.reset();
   Glob::logger.pauseLog.reset();
   Glob::logger.pauseLog.store("startPause");
