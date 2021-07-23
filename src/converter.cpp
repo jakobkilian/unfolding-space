@@ -83,7 +83,7 @@ uint8_t *Converter::depthImage() {
 uint8_t *Converter::motorMap() {
 
   // histogram is actually a 9x9 grid of histograms, each with 255 bins.
-  short histogram[9][255];
+  short histogram[9][256] = {0};
   uint8_t *map = (uint8_t *)calloc(sizeof(uint8_t), 9);
 
   int width = dd->width;         // get width from depth image
@@ -102,7 +102,7 @@ uint8_t *Converter::motorMap() {
         histogram_depth = (uint8_t)depthPoint.z / maxDepth * 255.0f;
       }
       int histogram_tile_idx = (3 * (y / tileHeight)) + (x / tileWidth);
-
+      //printf("hdepth %i z:%i\n", histogram_depth, depthPoint.z);
       histogram[histogram_tile_idx][histogram_depth] += 1;
     } // for x
   }   // for y
@@ -123,8 +123,9 @@ uint8_t *Converter::motorMap() {
       sum += num_pixels > 5 ? num_pixels : 0;
     }
 
-    for (; distance_bin_number != 256; ++distance_bin_number) {
+    for (; distance_bin_number < 256; ++distance_bin_number) {
       if (sum >= minObjSizeThreshold) {
+	      printf("here: %i\n", sum);
         break;
       }
       // update the sliding window.
@@ -134,6 +135,7 @@ uint8_t *Converter::motorMap() {
       sum -= histogram[tile][distance_bin_number - window_size] > 5
                  ? histogram[tile][distance_bin_number - window_size]
                  : 0;
+      printf("sunm: %i\n", sum);
     }
     // we've either exceeded minObjSizeThreshold and 'break'ed out of the `for`
     // loop or reached the last bin.

@@ -38,12 +38,12 @@ public:
   void consume() override {
     royale::DepthData *dd;
     unsigned char *values;
-    while (NULL != (dd = q->retrieve(500))) {
+    while (NULL != (dd = q->retrieve(1000))) {
       Converter c(dd);
       values = c.motorMap();
       g->sendValues(values);
       delete (dd);
-      delete (values);
+      free (values);
     }
   }
 

@@ -14,7 +14,7 @@ CXXFLAGS += -pthread
 # These are almost certainly wrong of confused. -O sets the optimization level and and -o
 # sets the output, so I imagine something got switched around...
 # CXXFLAGS += -o3 -O 
-CXXFLAGS += -O3
+CXXFLAGS += -O1
 
 # This is to autogenerate %.d header dependency files during compile.
 # The motivation for this is to enable recompiles of %.o object files not

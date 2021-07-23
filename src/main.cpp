@@ -17,6 +17,7 @@ void usage() {
   printf("usage: unfolding\n");
   printf("  [ -l ] list cameras\n");
   printf("  [ -r rrf_file ] load virtual camera from file\n");
+  printf("  [ -s seconds ] run for indicated number of seconds (default: forever)\n");
   exit(1);
 }
 
@@ -53,11 +54,13 @@ void consume(Q<royale::DepthData *> *q) {
 
 void print_version() { printf("version: %s\n", VERSION); }
 
+
 int main(int argc, char *argv[]) {
 
   int c;
   char *rrf_filename = NULL;
-  while (-1 != (c = getopt(argc, argv, "vlr:"))) {
+  int seconds = 0;
+  while (-1 != (c = getopt(argc, argv, "vls:r:"))) {
     switch (c) {
     case 'v':
       print_version();
@@ -67,6 +70,9 @@ int main(int argc, char *argv[]) {
       break;
     case 'r':
       rrf_filename = optarg;
+      break;
+    case 's':
+      seconds = atoi(optarg);
       break;
     default:
       usage();
@@ -115,12 +121,17 @@ int main(int argc, char *argv[]) {
     printf("couldn't start capture\n");
     exit(1);
   }
-  printf("will sleep for 5s\n");
-  fflush(stdout);
-  sleep(5);
-  if (camera->stopCapture() != royale::CameraStatus::SUCCESS) {
-    printf("couldn't stop capture\n");
-    exit(1);
+
+  if (seconds != 0) {
+  	printf("will run for %is\n", seconds);
+  	fflush(stdout);
+  	sleep(seconds);
+  	printf("Stopping Camera\n");
+  	if (camera->stopCapture() != royale::CameraStatus::SUCCESS) {
+	  printf("couldn't stop capture\n");
+	  exit(1);
+  	}
+
   }
   printf("joining thread\n");
   thr.join();
