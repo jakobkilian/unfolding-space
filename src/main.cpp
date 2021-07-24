@@ -389,49 +389,6 @@ public:
           Glob::udpServer.preparePacket("motors", vect);
           Glob::udpServer.prepareImage();
         }
-
-        // Check if glove position is "active"
-        Glob::imu.getPosition();
-        // Glob::imu.printPosition();
-        bool offThreshEx = Glob::imu.offThreshExceeded();
-        bool onThreshEx = Glob::imu.onThreshExceeded();
-        bool nowActive;
-        // if it was "active" before, but not any more:
-        if (Glob::modes.a_isInActivePos == true) {
-          nowActive = true;
-          if (offThreshEx) {
-            // if threshold is exceeded: incerement counter
-            offThreshCounter++;
-          } else {
-            // reset when back in prev position
-            offThreshCounter = 0;
-          }
-          if (offThreshCounter > 12) {
-            Glob::modes.a_muted = true;
-            Glob::motorBoard.runOnOffPattern(50, 40, 1);
-            Glob::motorBoard.runOnOffPattern(190, 0, 1);
-            Glob::motorBoard.muteAll();
-            nowActive = false;
-          }
-        } else {
-          nowActive = false;
-          // if glove is back in use position
-          if (onThreshEx) {
-            // if threshold is exceeded: incerement counter
-            onThreshCounter++;
-          } else {
-            // reset when back in prev position
-            onThreshCounter = 0;
-          }
-          if (onThreshCounter > 3) {
-            Glob::motorBoard.runOnOffPattern(50, 40, 2);
-            Glob::modes.a_muted = false;
-            nowActive = true;
-          }
-        }
-        // Save whether glove is in active position or not
-        Glob::modes.a_isInActivePos = nowActive;
-
       } // IF in test mode
       else {
         std::lock_guard<std::mutex> lockMotorTiles2(Glob::motors.mut);
@@ -478,6 +435,54 @@ public:
         std::unique_lock<std::mutex> svCondLock(Glob::notifySend.mut);
         Glob::notifySend.flag = false;
       }
+      Glob::logger.imuLog.reset();
+      Glob::logger.imuLog.store("start");
+
+      // Check if glove position is "active"
+      Glob::imu.getPosition();
+      // Glob::imu.printPosition();
+      bool offThreshEx = Glob::imu.offThreshExceeded();
+      bool onThreshEx = Glob::imu.onThreshExceeded();
+      bool nowActive;
+      // if it was "active" before, but not any more:
+      if (Glob::modes.a_isInActivePos == true) {
+        nowActive = true;
+        if (offThreshEx) {
+          // if threshold is exceeded: incerement counter
+          offThreshCounter++;
+        } else {
+          // reset when back in prev position
+          offThreshCounter = 0;
+        }
+        if (offThreshCounter > 12) {
+          Glob::modes.a_muted = true;
+          Glob::motorBoard.runOnOffPattern(50, 40, 1);
+          Glob::motorBoard.runOnOffPattern(190, 0, 1);
+          Glob::motorBoard.muteAll();
+          nowActive = false;
+        }
+      } else {
+        nowActive = false;
+        // if glove is back in use position
+        if (onThreshEx) {
+          // if threshold is exceeded: incerement counter
+          onThreshCounter++;
+        } else {
+          // reset when back in prev position
+          onThreshCounter = 0;
+        }
+        if (onThreshCounter > 3) {
+          Glob::motorBoard.runOnOffPattern(50, 40, 2);
+          Glob::modes.a_muted = false;
+          nowActive = true;
+        }
+      }
+      // Save whether glove is in active position or not
+      Glob::modes.a_isInActivePos = nowActive;
+
+      Glob::logger.imuLog.store("end");
+      Glob::logger.imuLog.printAll("TIME FOR IMU", "us", "ms");
+      Glob::logger.imuLog.reset();
     }
   }
   std::thread runSendDepthDataThread() {
@@ -492,29 +497,25 @@ int main(int ac, char *av[]) {
   // catch cmd line options
   try {
     po::options_description desc("Allowed options");
-    desc
-        .add_options()(
-            "help",
-            "produce help message")("log",
-                                    "enable general log functions – currently "
-                                    "no effect")("printLogs",
-                                                 "print log messages in "
-                                                 "console")("version",
-                                                            "print verson info "
-                                                            "and exit")("mode",
-                                                                        po::value<
-                                                                            unsigned int>(),
-                                                                        "set "
-                                                                        "pico "
-                                                                        "flexx "
-                                                                        "camera"
-                                                                        " mode "
-                                                                        "(int "
-                                                                        "from "
-                                                                        "0:5)")("id",
-                                                                                po::value<
-                                                                                    unsigned int>(),
-                                                                                "set identifier for udp messages");
+    desc.add_options()("help", "produce help message")(
+        "log",
+        "enable general log functions – currently "
+        "no effect")("printLogs",
+                     "print log messages in "
+                     "console")("version",
+                                "print verson info "
+                                "and exit")("mode", po::value<unsigned int>(),
+                                            "set "
+                                            "pico "
+                                            "flexx "
+                                            "camera"
+                                            " mode "
+                                            "(int "
+                                            "from "
+                                            "0:5)")("id",
+                                                    po::value<unsigned int>(),
+                                                    "set identifier for udp "
+                                                    "messages");
 
     po::variables_map vm;
     po::store(po::parse_command_line(ac, av, desc), vm);

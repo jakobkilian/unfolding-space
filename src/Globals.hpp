@@ -54,6 +54,7 @@ struct Logger : Base {
   TimeLogger mainLogger;
   TimeLogger motorSendLog;
   TimeLogger pauseLog;
+  TimeLogger imuLog;
 };
 
 struct CvDepthImg : Base {
