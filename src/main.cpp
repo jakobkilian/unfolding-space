@@ -440,7 +440,7 @@ public:
 
       // Check if glove position is "active"
       Glob::imu.getPosition();
-      // Glob::imu.printPosition();
+      if (Glob::modes.a_doLogPrint) Glob::imu.printPosition();
       bool offThreshEx = Glob::imu.offThreshExceeded();
       bool onThreshEx = Glob::imu.onThreshExceeded();
       bool nowActive;
