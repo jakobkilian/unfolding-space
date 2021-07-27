@@ -1,6 +1,7 @@
 #pragma once
 #include "CrossPlatformI2C_Core.h"
 #include "LSM6DSM.h"
+#include "MMC5633.h"
 #include <stdint.h>
 //****************************************************************
 //                          IMU Class
@@ -19,5 +20,6 @@ private:
   static const uint8_t LSM_ADDRESS = 0x6A;
   static const uint8_t LSM_WHOAMI = 0x0F;
   LSM6DSM *lsm6dsm;
+  MMC5633 *mmc5633;
   float ax = 0, ay = 0, az = 0, gx = 0, gy = 0, gz = 0;
 };

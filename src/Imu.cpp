@@ -53,6 +53,10 @@ void Imu::init() {
   default:
     break;
   }
+
+  // MMC
+  mmc5633 = new MMC5633();
+  mmc5633->begin();
 }
 
 void Imu::getPosition() {
