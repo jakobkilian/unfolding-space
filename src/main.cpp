@@ -64,7 +64,8 @@ void getCoreTemp() {
 void exitApplicationMuted(__attribute__((unused)) int dummy) {
   Glob::modes.a_muted = true;
   Glob::motorBoard.muteAll();
-  // delay(1);
+  Glob::led1.off();
+  Glob::led2.off();
   exit(0);
 }
 
@@ -190,6 +191,10 @@ int unfolding() {
   // JUST FOR TESTING IF THE LSM DEVICE IS THERE
   Glob::imu.init();
 
+  // Init LEDs
+  Glob::led1.init();
+  Glob::led2.init();
+
   //_____________________START CAPTURING_________________________________
   // start capture mode
   //#costly: rpi4 500ms
@@ -208,6 +213,8 @@ int unfolding() {
   long lastCallTemp = 0;
   Glob::logger.mainLogger.printAll("Initializing Unfolding", "ms", "ms");
   Glob::logger.mainLogger.reset();
+
+  bool lastMuted = 0;
 
   //_____________________ENDLESS LOOP_________________________________
   while (!Glob::a_restartUnfoldingFlag) {
@@ -236,6 +243,16 @@ int unfolding() {
 
         // do this every 66ms (15 fps)
         if (millis() - lastCallImshow > 66) {
+          // update LEDs
+          if (Glob::modes.a_muted != lastMuted) {
+            lastMuted = Glob::modes.a_muted;
+            if (lastMuted) {
+              Glob::led1.setR(0);
+            } else {
+              Glob::led1.setR(1);
+            }
+          }
+
           // update test motor vals
           lastCallImshow = millis();
           // Get all the data of the royal lib to see if camera is working
@@ -321,6 +338,8 @@ int unfolding() {
   Glob::modes.a_muted = true;
   // mute all motors
   Glob::motorBoard.muteAll();
+  Glob::led1.off();
+  Glob::led2.off();
   return 0;
 }
 
@@ -440,7 +459,8 @@ public:
 
       // Check if glove position is "active"
       Glob::imu.getPosition();
-      if (Glob::modes.a_doLogPrint) Glob::imu.printPosition();
+      if (Glob::modes.a_doLogPrint)
+        Glob::imu.printPosition();
       bool offThreshEx = Glob::imu.offThreshExceeded();
       bool onThreshEx = Glob::imu.onThreshExceeded();
       bool nowActive;

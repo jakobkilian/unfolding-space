@@ -10,6 +10,7 @@
 #include "MotorBoard.hpp"
 #include "TimeLogger.hpp"
 #include "UdpServer.hpp"
+#include "Led.hpp"
 
 /*
 Globals are organized in structs, that get initialized in "Globals.cpp"
@@ -89,6 +90,10 @@ extern I2C i2c;
 
 extern std::mutex imuMux;
 extern Imu imu;
+
+
+extern Led led1;
+extern Led led2;
 
 // Counts when there is onNewData() while the previous wasn't finished yet.
 // We don't want this -> royal library gets unstable

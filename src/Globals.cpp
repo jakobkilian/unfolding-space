@@ -17,6 +17,10 @@ I2C Glob::i2c;
 std::mutex Glob::imuMux;
 Imu Glob::imu;
 
+
+Led Glob::led1(28,11,27);
+Led Glob::led2(10,29,6);
+
 std::atomic<int> Glob::a_lockFailCounter{0};
 std::atomic<bool> Glob::a_restartUnfoldingFlag{false};
 // Init structs
