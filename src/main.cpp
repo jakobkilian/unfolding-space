@@ -44,12 +44,11 @@ using namespace std::chrono;
 // VERSION is defined by the Makefile
 #endif
 
+//________________________________________________
+// Check Internet Connection
 bool isInternetConnected() {
-
-  char *hostname;
+  static const char *hostname = "google.com";
   struct hostent *hostinfo;
-
-  hostname = "google.com";
   hostinfo = gethostbyname(hostname);
   bool connected;
   if (hostinfo == NULL)
@@ -226,14 +225,14 @@ int unfolding() {
   cameraDetached = false;      // camera is attached and ready
   Glob::modes.a_muted = false; // activate the vibration motors
   long lastCallImshow = millis();
-  long lastCall = 0;
+  long lastCall = millis() - 10000;
   long lastCallTemp = 0;
   Glob::logger.mainLogger.printAll("Initializing Unfolding", "ms", "ms");
   Glob::logger.mainLogger.reset();
 
   bool lastMuted = 0;
   bool statusBlink = 0;
-  bool internetConnected=0;
+  bool internetConnected = 0;
   //_____________________ENDLESS LOOP_________________________________
   while (!Glob::a_restartUnfoldingFlag) {
     // Check if time since camera started capturing is bigger than 3 secs
@@ -411,7 +410,10 @@ public:
 
   // Sending the Data to the glove (Costly due to register writing via i2c)
   void runSendDepthData() {
-    int offThreshCounter = 0; // counter for setting off the motors by position
+    // counter for setting off the motors by position. start with
+    int offThresh = 12;
+    // start with hight counter to mute fast
+    int offThreshCounter = offThresh - 1;
     int onThreshCounter = 0;
     while (1) {
       {
@@ -501,7 +503,7 @@ public:
           // reset when back in prev position
           offThreshCounter = 0;
         }
-        if (offThreshCounter > 12) {
+        if (offThreshCounter > offThresh) {
           Glob::modes.a_muted = true;
           Glob::motorBoard.runOnOffPattern(50, 40, 1);
           Glob::motorBoard.runOnOffPattern(190, 0, 1);

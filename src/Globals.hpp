@@ -37,7 +37,7 @@ struct Modes {
   std::atomic<int> a_identifier{0}; //set by cmd line option. Identifier for udp server
   std::atomic<bool> a_muted;
   std::atomic<bool> a_testMode;
-  std::atomic<bool> a_isInActivePos{false};
+  std::atomic<bool> a_isInActivePos{true};
   std::atomic<bool> a_doLog{
       true}; // gobal flag that activates TimeLogger.cpp functions – currently
              // always on because of dependencies of msSinceEntry
