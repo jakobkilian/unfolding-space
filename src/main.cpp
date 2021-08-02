@@ -44,6 +44,21 @@ using namespace std::chrono;
 // VERSION is defined by the Makefile
 #endif
 
+bool isInternetConnected() {
+
+  char *hostname;
+  struct hostent *hostinfo;
+
+  hostname = "google.com";
+  hostinfo = gethostbyname(hostname);
+  bool connected;
+  if (hostinfo == NULL)
+    connected = false;
+  else
+    connected = true;
+  return connected;
+}
+
 //________________________________________________
 // Read out the core temperature and save it in coreTempDouble
 void getCoreTemp() {
@@ -194,6 +209,8 @@ int unfolding() {
   // Init LEDs
   Glob::led1.init();
   Glob::led2.init();
+  Glob::led1.off();
+  Glob::led2.off();
 
   //_____________________START CAPTURING_________________________________
   // start capture mode
@@ -215,7 +232,7 @@ int unfolding() {
   Glob::logger.mainLogger.reset();
 
   bool lastMuted = 0;
-
+  bool statusBlink = 0;
   //_____________________ENDLESS LOOP_________________________________
   while (!Glob::a_restartUnfoldingFlag) {
     // Check if time since camera started capturing is bigger than 3 secs
@@ -247,9 +264,9 @@ int unfolding() {
           if (Glob::modes.a_muted != lastMuted) {
             lastMuted = Glob::modes.a_muted;
             if (lastMuted) {
-              Glob::led1.setR(0);
-            } else {
               Glob::led1.setR(1);
+            } else {
+              Glob::led1.setR(0);
             }
           }
 
@@ -273,6 +290,14 @@ int unfolding() {
         }
         // do this every 5000ms (every 1 seconds)
         if (millis() - lastCallTemp > 1000) {
+          if (isInternetConnected()) {
+            Glob::led2.setDimG(statusBlink);
+            Glob::led2.setDimB(!statusBlink);
+          } else {
+            Glob::led2.setDimG(statusBlink);
+            Glob::led2.setDimB(!statusBlink);
+          }
+          statusBlink = !statusBlink;
           lastCallTemp = millis();
           getCoreTemp(); // read raspi's core temperature
         }

@@ -15,6 +15,9 @@ public:
   void setR(bool);
   void setG(bool);
   void setB(bool);
+  void setDimR(bool);
+  void setDimG(bool);
+  void setDimB(bool);
   void off();
 
 private:
