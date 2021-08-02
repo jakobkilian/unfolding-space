@@ -233,6 +233,7 @@ int unfolding() {
 
   bool lastMuted = 0;
   bool statusBlink = 0;
+  bool internetConnected=0;
   //_____________________ENDLESS LOOP_________________________________
   while (!Glob::a_restartUnfoldingFlag) {
     // Check if time since camera started capturing is bigger than 3 secs
@@ -264,9 +265,9 @@ int unfolding() {
           if (Glob::modes.a_muted != lastMuted) {
             lastMuted = Glob::modes.a_muted;
             if (lastMuted) {
-              Glob::led1.setR(1);
+              Glob::led1.setDimR(1);
             } else {
-              Glob::led1.setR(0);
+              Glob::led1.setDimR(0);
             }
           }
 
@@ -290,12 +291,12 @@ int unfolding() {
         }
         // do this every 5000ms (every 1 seconds)
         if (millis() - lastCallTemp > 1000) {
-          if (isInternetConnected()) {
-            Glob::led2.setDimG(statusBlink);
-            Glob::led2.setDimB(!statusBlink);
+          if (internetConnected) {
+            Glob::led2.setDimG(0);
+            Glob::led2.setDimB(statusBlink);
           } else {
             Glob::led2.setDimG(statusBlink);
-            Glob::led2.setDimB(!statusBlink);
+            Glob::led2.setDimB(0);
           }
           statusBlink = !statusBlink;
           lastCallTemp = millis();
@@ -305,6 +306,7 @@ int unfolding() {
         // do this every 5000ms (every 1 seconds)
         if (millis() - lastCall > 10000) {
           lastCall = millis();
+          internetConnected = isInternetConnected();
           // tenSecsDrops = 0;
         }
 
