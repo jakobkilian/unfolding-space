@@ -44,3 +44,7 @@ libroyale
 #local sh script for docker by Jakob
 makecp-ip.sh
 makecp.sh
+makecp1.sh
+makecp2.sh
+makecp4.sh
+makecp3.sh
