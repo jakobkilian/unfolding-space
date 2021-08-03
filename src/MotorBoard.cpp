@@ -16,7 +16,10 @@
 
 // initially set up all TCA9548A, DRV2605 and the actuators
 void MotorBoard::setupGlove() {
-  drv = Glob::i2c.setupDevice(DRV2605_ADDRESS);
+  {
+    std::lock_guard<std::mutex> locki2c(Glob::i2cMux);
+    drv = Glob::i2c.setupDevice(DRV2605_ADDRESS);
+  }
   // resetAll(); //to stop ongoing vibrations or faulty settings
   // Write settings to all drivers and start simultaneous auto calibration
   for (int u = 0; u < 9; u++) {

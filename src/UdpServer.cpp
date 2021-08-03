@@ -49,8 +49,10 @@ UdpServer::UdpServer(boost::asio::io_service &io_service, int max)
 //_______ Broadcast Online Status _______
 void UdpServer::broadcast() {
   // std::lock_guard<std::mutex> l(mux);
-  broad_socket_.send_to(boost::asio::buffer("Unfolding Glove " + std::to_string(Glob::modes.a_identifier)), broad_endpoint_, 0,
-                        errorBroad);
+  broad_socket_.send_to(
+      boost::asio::buffer("Unfolding Glove " +
+                          std::to_string(Glob::modes.a_identifier)),
+      broad_endpoint_, 0, errorBroad);
   timer1_.expires_at(timer1_.expires_at() + boost::posix_time::seconds(1));
   timer1_.async_wait(strand_.wrap(std::bind(&UdpServer::broadcast, this)));
 }
@@ -192,14 +194,20 @@ void UdpServer::handle_receive() {
     if (incoming != recv_buffer_.end()) {
       Glob::modes.a_muted = !Glob::modes.a_muted;
       Glob::modes.a_testMode = false;
-      Glob::motorBoard.muteAll();
+      {
+        std::lock_guard<std::mutex> lockMotorTiles(Glob::motors.mut);
+        Glob::motorBoard.muteAll();
+      }
     }
     incoming = std::find(recv_buffer_.begin(), recv_buffer_.end(), 't');
     if (incoming != recv_buffer_.end()) {
       bool tempTest = Glob::modes.a_testMode;
       Glob::modes.a_testMode = !tempTest;
       Glob::modes.a_muted = tempTest;
-      Glob::motorBoard.muteAll();
+      {
+        std::lock_guard<std::mutex> lockMotorTiles(Glob::motors.mut);
+        Glob::motorBoard.muteAll();
+      }
     }
 
     incoming = std::find(recv_buffer_.begin(), recv_buffer_.end(), 'z');
@@ -222,9 +230,15 @@ void UdpServer::handle_receive() {
     incoming = std::find(recv_buffer_.begin(), recv_buffer_.end(), 'c');
     if (incoming != recv_buffer_.end()) {
       Glob::royalStats.a_isCalibRunning = true;
-      Glob::motorBoard.muteAll();
+      {
+        std::lock_guard<std::mutex> lockMotorTiles(Glob::motors.mut);
+        Glob::motorBoard.muteAll();
+      }
       Glob::modes.a_muted = true;
-      Glob::motorBoard.runCalib();
+      {
+        std::lock_guard<std::mutex> lockMotorTiles(Glob::motors.mut);
+        Glob::motorBoard.runCalib();
+      }
       Glob::royalStats.a_isCalibRunning = false;
     }
   }

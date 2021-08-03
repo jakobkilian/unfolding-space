@@ -60,10 +60,6 @@ void Imu::init() {
 }
 
 void Imu::getPosition() {
-  //  {
-  //    std::lock_guard<std::mutex> locki2c(Glob::i2cMux);
-  //    Glob::i2c.selectSingleMuxLine(1, 7);
-  //  }
   if (lsm6dsm->checkNewData()) {
     ax = 0, ay = 0, az = 0, gx = 0, gy = 0, gz = 0;
     lsm6dsm->readData(ax, ay, az, gx, gy, gz);

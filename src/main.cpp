@@ -77,7 +77,10 @@ void getCoreTemp() {
 // Mute motors before exiting the appllication
 void exitApplicationMuted(__attribute__((unused)) int dummy) {
   Glob::modes.a_muted = true;
-  Glob::motorBoard.muteAll();
+  {
+    std::lock_guard<std::mutex> lockMotorTiles(Glob::motors.mut);
+    Glob::motorBoard.muteAll();
+  }
   Glob::led1.off();
   Glob::led2.off();
   exit(0);
@@ -126,7 +129,10 @@ int unfolding() {
   signal(SIGTERM, exitApplicationMuted);
 
   // Setup the LRAs on the Glove (I2C Connection, Settings, Calibration, etc.)
-  Glob::motorBoard.setupGlove();
+  {
+    std::lock_guard<std::mutex> lockMotorTiles(Glob::motors.mut);
+    Glob::motorBoard.setupGlove();
+  }
   Glob::logger.mainLogger.store("glove");
 
   //  camera device is now available, CameraManager can be deallocated here
@@ -203,7 +209,10 @@ int unfolding() {
   cameraDevice->registerEventListener(&eventReporter);
 
   // JUST FOR TESTING IF THE LSM DEVICE IS THERE
-  Glob::imu.init();
+  {
+    std::lock_guard<std::mutex> lockimu(Glob::imuMux);
+    Glob::imu.init();
+  }
 
   // Init LEDs
   Glob::led1.init();
@@ -326,7 +335,10 @@ int unfolding() {
               cout << "Searching for 3D camera in loop" << endl;
               // stop writing new values to the LRAs
               Glob::modes.a_muted = true;
-              Glob::motorBoard.muteAll();
+              {
+                std::lock_guard<std::mutex> lockMotorTiles(Glob::motors.mut);
+                Glob::motorBoard.muteAll();
+              }
               cameraDetached = true;
               Glob::a_restartUnfoldingFlag = true;
             }
@@ -335,7 +347,8 @@ int unfolding() {
             if (timeSinceNewData > 4000) { // but there is no frame for 4s
               cout << "________________________________________________" << endl
                    << endl;
-              cout << "Library Crashed! Reinitialize Camera and Listener. last "
+              cout << "Library Crashed! Reinitialize Camera and Listener. "
+                      "last "
                       "new "
                       "frame:  "
                    << timeSinceNewData << endl
@@ -346,7 +359,10 @@ int unfolding() {
               // stop writing new values to the LRAs
               Glob::modes.a_muted = true;
               // mute all LRAs
-              Glob::motorBoard.muteAll();
+              {
+                std::lock_guard<std::mutex> lockMotorTiles(Glob::motors.mut);
+                Glob::motorBoard.muteAll();
+              }
               // go to the beginning and find camera again
               Glob::a_restartUnfoldingFlag = true;
             }
@@ -363,7 +379,10 @@ int unfolding() {
   }
   Glob::modes.a_muted = true;
   // mute all motors
-  Glob::motorBoard.muteAll();
+  {
+    std::lock_guard<std::mutex> lockMotorTiles(Glob::motors.mut);
+    Glob::motorBoard.muteAll();
+  }
   Glob::led1.off();
   Glob::led2.off();
   return 0;
@@ -415,6 +434,7 @@ public:
     // start with hight counter to mute fast
     int offThreshCounter = offThresh - 1;
     int onThreshCounter = 0;
+
     while (1) {
       {
         std::unique_lock<std::mutex> svCondLock(Glob::notifySend.mut);
@@ -423,8 +443,10 @@ public:
       }
       // IF in regular mode
       if (!Glob::modes.a_testMode) {
-        std::lock_guard<std::mutex> lockMotorTiles(Glob::motors.mut);
-        Glob::motorBoard.sendValuesToGlove(Glob::motors.tiles, 9);
+        {
+          std::lock_guard<std::mutex> lockMotorTiles(Glob::motors.mut);
+          Glob::motorBoard.sendValuesToGlove(Glob::motors.tiles, 9);
+        }
         const int size =
             sizeof(Glob::motors.testTiles) / sizeof(Glob::motors.testTiles[0]);
         std::vector<unsigned char> vect;
@@ -487,11 +509,21 @@ public:
       Glob::logger.imuLog.store("start");
 
       // Check if glove position is "active"
-      Glob::imu.getPosition();
-      if (Glob::modes.a_doLogPrint)
+      {
+        std::lock_guard<std::mutex> lockimu(Glob::imuMux);
+        Glob::imu.getPosition();
+      }
+      if (Glob::modes.a_doLogPrint) {
+        std::lock_guard<std::mutex> lockimu(Glob::imuMux);
         Glob::imu.printPosition();
-      bool offThreshEx = Glob::imu.offThreshExceeded();
-      bool onThreshEx = Glob::imu.onThreshExceeded();
+      }
+      bool offThreshEx;
+      bool onThreshEx;
+      {
+        std::lock_guard<std::mutex> lockimu(Glob::imuMux);
+        offThreshEx = Glob::imu.offThreshExceeded();
+        onThreshEx = Glob::imu.onThreshExceeded();
+      }
       bool nowActive;
       // if it was "active" before, but not any more:
       if (Glob::modes.a_isInActivePos == true) {
@@ -505,9 +537,12 @@ public:
         }
         if (offThreshCounter > offThresh) {
           Glob::modes.a_muted = true;
-          Glob::motorBoard.runOnOffPattern(50, 40, 1);
-          Glob::motorBoard.runOnOffPattern(190, 0, 1);
-          Glob::motorBoard.muteAll();
+          {
+            std::lock_guard<std::mutex> lockMotorTiles(Glob::motors.mut);
+            Glob::motorBoard.runOnOffPattern(50, 40, 1);
+            Glob::motorBoard.runOnOffPattern(190, 0, 1);
+            Glob::motorBoard.muteAll();
+          }
           nowActive = false;
         }
       } else {
@@ -521,7 +556,10 @@ public:
           onThreshCounter = 0;
         }
         if (onThreshCounter > 3) {
-          Glob::motorBoard.runOnOffPattern(50, 40, 2);
+          {
+            std::lock_guard<std::mutex> lockMotorTiles(Glob::motors.mut);
+            Glob::motorBoard.runOnOffPattern(50, 40, 2);
+          }
           Glob::modes.a_muted = false;
           nowActive = true;
         }
