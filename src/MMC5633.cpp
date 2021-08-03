@@ -20,7 +20,7 @@ uint8_t MMC5633::readRegister(uint8_t subAddress) {
 
 void MMC5633::seti2cAddr() {
   std::lock_guard<std::mutex> locki2c(Glob::i2cMux);
-  i2cAddr = (uint8_t)Glob::i2c.setupDevice(i2cAddr);
+  i2cAddr = (uint8_t)Glob::i2c.setupDevice(ADDRESS);
 }
 
 void MMC5633::writeRegister(uint8_t subAddress, uint8_t data) {
