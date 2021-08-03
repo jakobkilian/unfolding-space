@@ -277,14 +277,6 @@ int unfolding() {
           // update test motor vals
           lastCallImshow = millis();
           // Get all the data of the royal lib to see if camera is working
-          royale::Vector<royale::Pair<royale::String, royale::String>>
-              cameraInfo;
-          //status = cameraDevice->getCameraInfo(cameraInfo);
-          //status = cameraDevice->getMaxSensorHeight(maxSensorHeight);
-          //status = cameraDevice->getMaxSensorWidth(maxSensorWidth);
-          //status = cameraDevice->getCameraName(name);
-          //status = cameraDevice->getId(id);
-          //status = cameraDevice->isCalibrated(tempisCalibrated);
           status = cameraDevice->isConnected(tempisConnected);
           status = cameraDevice->isCapturing(tempisCapturing);
 
