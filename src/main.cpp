@@ -254,13 +254,8 @@ int unfolding() {
     if (!Glob::royalStats.a_isCalibRunning) {
       // only do all of this stuff when the camera is attached
       if (!cameraDetached) {
-        royale::String id;
-        royale::String name;
-        bool tempisCalibrated;
         bool tempisConnected;
         bool tempisCapturing;
-        uint16_t maxSensorWidth;
-        uint16_t maxSensorHeight;
         // time passed since last OnNewData
         timeSinceNewData = Glob::logger.newDataLog.msSinceEntry(0);
         if (maxTimeSinceNewData < timeSinceNewData) {
@@ -284,16 +279,15 @@ int unfolding() {
           // Get all the data of the royal lib to see if camera is working
           royale::Vector<royale::Pair<royale::String, royale::String>>
               cameraInfo;
-          status = cameraDevice->getCameraInfo(cameraInfo);
-          status = cameraDevice->getMaxSensorHeight(maxSensorHeight);
-          status = cameraDevice->getMaxSensorWidth(maxSensorWidth);
-          status = cameraDevice->getCameraName(name);
-          status = cameraDevice->getId(id);
-          status = cameraDevice->isCalibrated(tempisCalibrated);
+          //status = cameraDevice->getCameraInfo(cameraInfo);
+          //status = cameraDevice->getMaxSensorHeight(maxSensorHeight);
+          //status = cameraDevice->getMaxSensorWidth(maxSensorWidth);
+          //status = cameraDevice->getCameraName(name);
+          //status = cameraDevice->getId(id);
+          //status = cameraDevice->isCalibrated(tempisCalibrated);
           status = cameraDevice->isConnected(tempisConnected);
           status = cameraDevice->isCapturing(tempisCapturing);
 
-          Glob::royalStats.a_isCalibrated = tempisCalibrated;
           Glob::royalStats.a_isConnected = tempisConnected;
           Glob::royalStats.a_isCapturing = tempisCapturing;
         }
