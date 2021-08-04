@@ -567,6 +567,8 @@ public:
 // MAIN LOOP
 //----------------------------------------------------------------------
 #include <math.h>
+#include <chrono>
+
 int main(int ac, char *av[]) {
 
   // Glob::imu.init();
@@ -574,23 +576,42 @@ int main(int ac, char *av[]) {
   Glob::i2c.appendMuxMask(1, 1 << 7);
   MMC5633 compass;
   compass.begin();
-  for (;;) {
-    int x = compass.pollX() - 0x800000;
-    int y = compass.pollY() - 0x800000;
-    int z = compass.pollZ() - 0x800000;
 
-    double radxy = atan2(x, y);
-    double radxz = atan2(x, z);
-    double radyz = atan2(y, z);
+  // 1. rudimentary compass calibration by averaging data for 10 seconds
+  // user needs to hold glove horizontally and rotate in that time.
+  const double calibration_seconds = 10;    //10 seconds
+  const double calibration_interval = 0.01; //10 ms
+  auto start = std::chrono::steady_clock::now();
+  printf("Starting compass calibration\n");
+  int minx = 0xffffff;
+  int miny = 0xffffff;
+  int maxx = 0;
+  int maxy = 0;
+  while (1) {
+    std::chrono::duration<double> elapsed = std::chrono::steady_clock::now()-start;
+    if (elapsed.count() > calibration_seconds) break;
+    int x = compass.pollX();
+    int y = compass.pollY();
+    minx = MIN(x, minx);
+    maxx = MAX(x, maxx);
+    miny = MIN(y, miny);
+    maxy = MAX(y, maxy);
+    usleep(1000000 * calibration_interval);
+  }
+  int midx = (maxx + minx) / 2;
+  int midy = (maxy + miny) / 2;
+  printf("Compass calibration done, min %i %i max %i %i mid %i %i\n", minx, miny, maxx, maxy, midx, midy);
 
-    double axy = 180 * (radxy / M_PI);
-    double axz = 180 * (radxy / M_PI);
-    double ayz = 180 * (radxy / M_PI);
+  //display compass values
+  const double run_interval = 0.1; //100 ms
+  while (1) {
+    int xx = compass.pollX() - midx;
+    int yy = compass.pollY() - midy;
+    double radxy = atan2(xx, yy);
+    double degxy = radxy * 180 / M_PI;
 
-    printf("X: %i Y: %i Z: %i\n", x, y, z);
-    printf("XY: %f, XZ: %f, YZ: %f \n", radxy, radxz, radyz);
-    printf("aXY: %f, aXZ: %f, aYZ: %f \n", axy, axz, ayz);
-    sleep(1);
+    printf("X: %i Y: %i rad: %f deg: %f\n", xx, yy, radxy, degxy);
+    usleep(1000000 * run_interval);
   }
 
   return 0;
