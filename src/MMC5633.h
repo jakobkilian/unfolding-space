@@ -10,6 +10,9 @@ class MMC5633 {
 public:
   MMC5633();
   void begin();
+  int pollX();
+  int pollY();
+  int pollZ();
 
   /*  typedef enum {
 

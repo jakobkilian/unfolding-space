@@ -211,7 +211,7 @@ void DepthDataUtilities::processData() {
     int tempFrameCounter = Glob::counters.frameCounter;
     Glob::udpServer.preparePacket("frameCounter", tempFrameCounter);
   }
-    Glob::logger.mainLogger.store("endProcess");
+  Glob::logger.mainLogger.store("endProcess");
   // call sending thread
   {
     std::lock_guard<std::mutex> svCondLock(Glob::notifySend.mut);

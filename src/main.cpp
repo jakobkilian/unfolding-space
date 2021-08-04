@@ -566,29 +566,55 @@ public:
 //----------------------------------------------------------------------
 // MAIN LOOP
 //----------------------------------------------------------------------
+#include <math.h>
 int main(int ac, char *av[]) {
+
+  // Glob::imu.init();
+  Glob::i2c.selectSingleMuxLine(1, 7);
+  Glob::i2c.appendMuxMask(1, 1 << 7);
+  MMC5633 compass;
+  compass.begin();
+  for (;;) {
+    int x = compass.pollX() - 0x800000;
+    int y = compass.pollY() - 0x800000;
+    int z = compass.pollZ() - 0x800000;
+
+    double radxy = atan2(x, y);
+    double radxz = atan2(x, z);
+    double radyz = atan2(y, z);
+
+    double axy = 180 * (radxy / M_PI);
+    double axz = 180 * (radxy / M_PI);
+    double ayz = 180 * (radxy / M_PI);
+
+    printf("X: %i Y: %i Z: %i\n", x, y, z);
+    printf("XY: %f, XZ: %f, YZ: %f \n", radxy, radxz, radyz);
+    printf("aXY: %f, aXZ: %f, aYZ: %f \n", axy, axz, ayz);
+    sleep(1);
+  }
+
+  return 0;
+
+  //
   // catch cmd line options
   try {
     po::options_description desc("Allowed options");
     desc.add_options()("help", "produce help message")(
-        "log",
-        "enable general log functions – currently "
-        "no effect")("printLogs",
-                     "print log messages in "
-                     "console")("version",
-                                "print verson info "
-                                "and exit")("mode", po::value<unsigned int>(),
-                                            "set "
-                                            "pico "
-                                            "flexx "
-                                            "camera"
-                                            " mode "
-                                            "(int "
-                                            "from "
-                                            "0:5)")("id",
-                                                    po::value<unsigned int>(),
-                                                    "set identifier for udp "
-                                                    "messages");
+        "log", "enable general log functions – currently "
+               "no effect")("printLogs", "print log messages in "
+                                         "console")(
+        "version", "print verson info "
+                   "and exit")("mode", po::value<unsigned int>(),
+                               "set "
+                               "pico "
+                               "flexx "
+                               "camera"
+                               " mode "
+                               "(int "
+                               "from "
+                               "0:5)")("id", po::value<unsigned int>(),
+                                       "set identifier for udp "
+                                       "messages");
 
     po::variables_map vm;
     po::store(po::parse_command_line(ac, av, desc), vm);
