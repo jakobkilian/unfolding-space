@@ -114,7 +114,6 @@ int I2C::readReg(int addr, unsigned char ucRegAddress) {
            addr, ucRegAddress, data, errno, strerror(errno));
     return -1;
   }
-  // delayMicroseconds(100); // TODO: really needed? think I read it somewhere.
   return data;
 }
 
@@ -128,7 +127,6 @@ int I2C::readReg16(int addr, unsigned char ucRegAddress) {
            addr, ucRegAddress, data, errno);
     return -1;
   }
-  // delayMicroseconds(100); // TODO: really needed? think I read it somewhere.
   return data;
 }
 

@@ -374,7 +374,6 @@ int unfolding() {
   return 0;
 }
 
-// TODO: maybe this is not the best way to handle this?
 class mainThreadWrapper {
 public:
   // Sending the data out at specified moments when there is nothing else to do
@@ -391,7 +390,6 @@ public:
     }
     printf("Unfolding Thread has been exited with a #%i \n", unfReturn);
     printf("Stopping the UDP server now... \n");
-    // Todo: stoppen notwendig? Was ist mein Stop-plan?
     Glob::udpService.stop();
   }
   std::thread runUnfoldingThread() {
@@ -469,8 +467,6 @@ public:
         Glob::udpServer.prepareImage();
       }
 
-      // TODO: sollte gleichzeitig zu send ausgeführt werden und nicht
-      // danach...
       bool tempisConnected = Glob::royalStats.a_isConnected;
       bool tempisCapturing = Glob::royalStats.a_isCapturing;
       int tempCounter = Glob::royalStats.a_libraryCrashCounter;
