@@ -45,9 +45,9 @@ void MotorBoard::sendValuesToGlove(unsigned char inValues[], int size) {
     for (int i = 0; i < size; i++) {
       // stronger vibrations on left motors
       if (i == 0 || i == 3 || i == 6) {
-        values[i] = static_cast<int>(inValues[i] * 0.8);
+        values[i] = static_cast<int>(inValues[i] * 1);
       } else {
-        values[i] = static_cast<int>(inValues[i] * 0.6);
+        values[i] = static_cast<int>(inValues[i] * 0.95);
       }
     }
   }

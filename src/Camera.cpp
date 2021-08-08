@@ -25,7 +25,7 @@ using namespace std::chrono;
 //----------------------------------------------------------------------
 const int minObjSizeThresh = 90; // the min number of pixels, an object must
                                  // have (smaller objects might be noise)
-float maxDepth = 1.5;            // The depth of viewing range.
+float maxDepth = 2;            // The depth of viewing range.
                                  // Objects with bigger distance to camera
                                  // are ignored.
 
@@ -162,7 +162,7 @@ void DepthDataUtilities::processData() {
     for (int tileIdx = 0; tileIdx < 9; tileIdx++) {
       int sum = 0;
       int val = 0;
-      int offset = 17; // exclude the first 17cm because of oversaturation
+      int offset = 14; // exclude the first 17cm because of oversaturation
                        // issues and noisy data the Pico Flexx has in this range
       int range = 50;  // look in a tolerance range of 50cm
       int pixelThresh = 5; // part of the smoothing process. There are better
