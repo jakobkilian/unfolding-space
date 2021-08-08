@@ -55,8 +55,8 @@ void Imu::init() {
   }
 
   // MMC
-  mmc5633 = new MMC5633();
-  mmc5633->begin();
+  //mmc5633 = new MMC5633();
+  //mmc5633->begin();
 }
 
 void Imu::getPosition() {
@@ -68,12 +68,12 @@ void Imu::getPosition() {
 }
 
 bool Imu::offThreshExceeded() {
-  bool exceeded = (ax > -500 || abs(ay) > 700) ? true : false;
+  bool exceeded = (ax > -600 || abs(ay) > 700) ? true : false;
   return exceeded;
 }
 
 bool Imu::onThreshExceeded() {
-  bool exceeded = (ax < -600 && abs(ay) < 600) ? true : false;
+  bool exceeded = (ax < -700 && abs(ay) < 600) ? true : false;
   return exceeded;
 }
 
