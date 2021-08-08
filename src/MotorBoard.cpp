@@ -52,7 +52,7 @@ void MotorBoard::sendValuesToGlove(unsigned char inValues[], int size) {
       if (i == 0 || i == 3 || i == 6) {
         values[i] = static_cast<int>(inValues[i] * 1);
       } else {
-        values[i] = static_cast<int>(inValues[i] * 0.95);
+        values[i] = static_cast<int>(inValues[i] * 0.90);
       }
     }
   }
