@@ -236,7 +236,7 @@ int unfolding() {
   long lastCallImshow = millis();
   long lastCall = millis() - 10000;
   long lastCallTemp = 0;
-  Glob::logger.mainLogger.printAll("Initializing Unfolding", "ms", "ms");
+  //Glob::logger.mainLogger.printAll("Initializing Unfolding", "ms", "ms");
   Glob::logger.mainLogger.reset();
 
   bool lastMuted = 0;

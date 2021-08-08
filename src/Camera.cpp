@@ -60,8 +60,8 @@ void DepthDataListener::onNewData(const DepthData *data) {
   } else {
     // if onNewData fails to unlock the mutex it returns instantly
     Glob::a_lockFailCounter++;
-    cout << "failed locks:" << Glob::a_lockFailCounter
-         << " last is: " << multiLock << "\n";
+   // cout << "failed locks:" << Glob::a_lockFailCounter
+   //      << " last is: " << multiLock << "\n";
     if (multiLock == 0) {
       Glob::notifyProcess.mut.unlock();
     }
