@@ -99,6 +99,14 @@ int unfolding() {
   int maxTimeSinceNewData; // the longest timespan without new data since start
   bool cameraDetached;     // camera got detached
 
+  // Init LEDs
+  Glob::led1.init();
+  Glob::led2.init();
+  Glob::led1.off();
+  Glob::led2.off();
+  // Turn on green init LED
+  Glob::led1.setG(1);
+
   Glob::logger.mainLogger.store("INIT");
 
   // Event Listener
@@ -111,15 +119,27 @@ int unfolding() {
 
   //_____________________INIT CAMERA____________________________________
   // check if the cam is connected before init anything
+  bool cameraSearchBlink = false;
   while (camlist.empty()) {
+    cameraSearchBlink = !cameraSearchBlink;
     camlist = manager.getConnectedCameraList();
     if (!camlist.empty()) {
       cameraDevice = manager.createCamera(camlist[0]);
       break;
     }
+    Glob::led1.setG(0);
     cout << ":";
     cout.flush();
+    delay(100);
+    if (cameraSearchBlink)
+      Glob::led1.setB(1);
+    else
+      Glob::led1.setB(0);
   }
+  // Turn Off Camera Search blink
+  Glob::led1.setB(0);
+  Glob::led1.setG(1);
+
   // if camlist is not NULL
   camlist.clear();
 
@@ -214,12 +234,6 @@ int unfolding() {
     Glob::imu.init();
   }
 
-  // Init LEDs
-  Glob::led1.init();
-  Glob::led2.init();
-  Glob::led1.off();
-  Glob::led2.off();
-
   //_____________________START CAPTURING_________________________________
   // start capture mode
   //#costly: rpi4 500ms
@@ -236,7 +250,9 @@ int unfolding() {
   long lastCallImshow = millis();
   long lastCall = millis() - 10000;
   long lastCallTemp = 0;
-  //Glob::logger.mainLogger.printAll("Initializing Unfolding", "ms", "ms");
+  // Turn off green init LED
+  Glob::led1.setG(0);
+  // Glob::logger.mainLogger.printAll("Initializing Unfolding", "ms", "ms");
   Glob::logger.mainLogger.reset();
 
   bool lastMuted = 0;
