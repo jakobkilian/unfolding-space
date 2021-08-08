@@ -37,12 +37,17 @@ void MotorBoard::setupGlove() {
 }
 
 void MotorBoard::sendValuesToGlove(unsigned char inValues[], int size) {
+  patternOn = !patternOn;
+  bool patternThreshEx = false;
   // WRITE VALUES TO GLOVE
   unsigned char values[] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
   Glob::logger.motorSendLog.reset();
   Glob::logger.motorSendLog.store("startSendGlove");
   {
     for (int i = 0; i < size; i++) {
+      //check: object closer than 20cm? -> activate warning pattern
+      if (inValues[i] > 234)
+        patternThreshEx = true;
       // stronger vibrations on left motors
       if (i == 0 || i == 3 || i == 6) {
         values[i] = static_cast<int>(inValues[i] * 1);
@@ -59,7 +64,16 @@ void MotorBoard::sendValuesToGlove(unsigned char inValues[], int size) {
     for (int i = 0; i < size; ++i) {
       if (order[i] <= 4) {
         drvSelect(order[i]); // route the value to the right TCA and DRV
-        protectedWrite(drv, RTP_INPUT, altCurve[values[i]]);
+        if (!patternThreshEx) {
+          // write value if there is no on/off warning pattern
+          protectedWrite(drv, RTP_INPUT, altCurve[values[i]]);
+        } else {
+          // do pattern with all motors if there is a close object
+          if (patternOn)
+            protectedWrite(drv, RTP_INPUT, altCurve[values[i]]);
+          else
+            protectedWrite(drv, RTP_INPUT, 0);
+        }
       }
     }
     Glob::logger.motorSendLog.store("TCA1");
@@ -67,7 +81,16 @@ void MotorBoard::sendValuesToGlove(unsigned char inValues[], int size) {
     for (int i = 0; i < size; ++i) {
       if (order[i] > 4) {
         drvSelect(order[i]); // route the value to the right TCA and DRV
-        protectedWrite(drv, RTP_INPUT, altCurve[values[i]]);
+        if (!patternThreshEx) {
+          // write value if there is no on/off warning pattern
+          protectedWrite(drv, RTP_INPUT, altCurve[values[i]]);
+        } else {
+          // do pattern with all motors if there is a close object
+          if (patternOn)
+            protectedWrite(drv, RTP_INPUT, altCurve[values[i]]);
+          else
+            protectedWrite(drv, RTP_INPUT, 0);
+        }
       }
     }
   }

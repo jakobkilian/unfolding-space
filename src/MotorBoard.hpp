@@ -48,4 +48,7 @@ private:
 
   // respective I2C Address
   int drv;
+
+  //vibration ON/OFF pattern for high values
+  bool patternOn=0;
 };
