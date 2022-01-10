@@ -1,8 +1,7 @@
 # The Unfolding Space Glove
 
-***A Wearable Spatio-Visual to Haptic Sensory Substitution Device for Blind People***
+**A Wearable Spatio-Visual to Haptic Sensory Substitution Device for Blind People**
 
-[TOC]
 
 ## About the Project
 
@@ -13,6 +12,30 @@ The device employs the concept of [Sensory Substitution](https://en.wikipedia.or
 Initiated in 2018 as an interaction design project as part of my undergraduate thesis, I developed several prorotypes over the years, aiming to learn from the mistakes of other projects and use design methods to develop a more user-friendly device; the latest prototype was tested in 2021 in a study with blind and sighted (but blindfolded) subjects (see section Publication). 
 
 ![uf-glove-main](doc/images/uf-glove-main.jpg)
+
+
+## Table of Contents
+
+   * [About the Project](#about-the-project)
+      * [More Information on the Project](#more-information-on-the-project)
+      * [Publication](#publication)
+      * [Future of the project](#future-of-the-project)
+   * [Content and Connected Repos](#content-and-connected-repos)
+   * [Code Documentation](#code-documentation)
+      * [Build &amp; Run](#build--run)
+         * [Makefile](#makefile)
+         * [Run](#run)
+      * [Overall Code Structure](#overall-code-structure)
+      * [Processing Procedure for New Incoming Frame](#processing-procedure-for-new-incoming-frame)
+      * [UPD API (In- and Outputs)](#upd-api-in--and-outputs)
+         * [Request-Messages](#request-messages)
+         * [Status Messages](#status-messages)
+      * [Docu on Registers of DRVs and PCAs](#docu-on-registers-of-drvs-and-pcas)
+      * [Future Directions](#future-directions)
+   * [Credits](#credits)
+   * [Funding](#funding)
+
+
 
 ### More Information on the Project
 
