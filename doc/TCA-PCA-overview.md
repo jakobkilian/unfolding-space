@@ -1,4 +1,4 @@
-# Overview of register programming on the DRV2605l
+# Overview of register programming on the TCA9584a / PCA9635
 
 To target the drv2605l ICs seperately (which are on the same adresse) we use a i2c multiplexer (TCA9584a) to route i2c signals to the targeted DRV. There may be other ways to solve this (enable/disable chips, using pwn, ...) but due to time restriction we stuck with this solution for the moment.To write and read we currently still use the *deprecated* WiringPi library functions (e.g. wiringPiI2CWrite).
 
@@ -43,9 +43,3 @@ There is one bit for each of the 8 lines. You can open or close them by writing 
 
 
 the function selectSingleMuxLine in i2c.cpp is written to be able to open only one line at a time: It uses bitshifting to shift a "1" by lineNo digits/positions
-
-
-
-## Is this identical with the PCA9635? 
-
-We have to check if we can use the PCA the exact same way... TCA was out of stock...

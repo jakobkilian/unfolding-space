@@ -19,6 +19,8 @@ Therefore I use a i2c multiplexer (PCA9635 or TCA9584a) to route i2c signals to 
 
 ## Registers
 
+This is a sum-up of the registered used in this code. See DRV2605l datasheet for details 
+
 R = read only, X = Read & Write
 
 Defaults are the bold bits on the left side
