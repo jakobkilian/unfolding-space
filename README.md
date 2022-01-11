@@ -165,15 +165,17 @@ To enable the monitoring-app to retrieve values, logs and the depth image, a UDP
 
 The clients can request different type of information (depending e.g. on use case and network speed) and can control certain behaviour of the unfolding-app by adding information to its subscription message. They can also be combined
 
-- **i |** send full depth image as greyscale image. 
-  - when followed by a byte containing 1:9 ascii number: define size of the image (1 being 20*20 pixels only, 9 being the full image)
-- **m |**"mute" the vibration motors / disable vibratory output
-- **t | toggle test mode. Mute all motors and use test-values (defined by next command)
-- **z |** toggle motor test value for one motor (on/off)
-  - byte containing 1:9 ascii number defines the motor to be switched
-- **u |** change camera use case and restart app. Check pico flexx documentation for available use cases (fps and accuracy)
-  - byte containing 1:5 ascii number defines the new camera use case. 
-- **c |** run calibration process on all motors. Usually we use fixed calibration values to speed up starting time...
+|char|description / *effect of following byte*|
+|-|-|
+| i | send full depth image as greyscale image.  |
+|| *byte containing 1:9 ascii number: define size of the image (1 being 20x20 pixels only, 9 being the full image)* |
+| m |"mute" the vibration motors / disable vibratory output |
+| t | toggle test mode. Mute all motors and use test-values (defined by next command) |
+| z | toggle motor test value for one motor (on/off) |
+||  *byte containing 1:9 ascii number defines the motor to be switched *|
+| u | change camera use case and restart app. Check pico flexx documentation for available use cases (fps and accuracy) |
+|| *byte containing 1:5 ascii number defines the new camera use case.*  |
+| c | run calibration process on all motors. Usually we use fixed calibration values to speed up starting time...
 
 #### Status Messages
 
