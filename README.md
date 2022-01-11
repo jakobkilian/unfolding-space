@@ -81,7 +81,20 @@ You currently are in the **main repository of the project**, which contains the 
 
 ### Build & Run
 
-Note, that you can only reasonably the code on specific hardware (the Unfolding Space Glove) which is documented in the afaorementioned hardware repo. A way to at least test the code would be to use pre-recorded 3d depth clip: also see section *Future Directions*.
+Note, that you can only reasonably run the code on specific hardware (the Unfolding Space Glove) which is documented in the afaorementioned hardware repo. A way to at least test the code would be to use pre-recorded 3d depth video clip: also see section *Future Directions*.
+
+#### System
+
+Code runs on the Raspberry Pi Compute Module 4 mounted on a custom carrier board – see hardware repo. To make things easier and to have a distro that is modifiable and already boots fast from the ground up, we use **Dietpi** as OS. The system is headless, things that consume boot time are reduced to a minimu, unnecessary stuff got uninstalled. In the end the app gets started at an early stage in boot (bevor e.g. setting up network) with a service in `/etc/systemd/system/`(Thanks to [Himesh Prasad](https://himeshp.blogspot.com/2018/08/fast-boot-with-raspberry-pi.html) for tips on fast booting). From power up to vibration (including e.g. init of camera) it now takes about 12 s.
+
+#### Dependencies
+
+Several libraries are used in the project:
+
+- [Libroyale from pmdtechnologies ag](https://pmdtec.com/en/) which is **not** open source but freely accessible when buying a pico flexx cam which is an obligatory part of the hardware. (You need to allow the usb cam in `/etc/udev/rules.d`, see lib doc)
+- [OpenCV: Open Source Computer Vision Library](https://github.com/opencv/opencv). Thanks to @Lauszus for [install inspritation](https://gist.github.com/Lauszus/c8ce73f3177d6455c27c)
+- [Boost Library](https://www.boost.org) is used for udp communication. Install with package manager sudo `apt-get install boost`
+- [WiringPi (Unofficial Mirror/Fork)](https://github.com/WiringPi/WiringPi) is used for i2c communication on the Raspi. 
 
 #### Makefile
 
