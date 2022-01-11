@@ -7,33 +7,28 @@ Following software components have been used (some in source code, some at compi
 ## Components
 
 - **Boost C++ libraries** | Needed to compile
-
   https://www.boost.org/
   License: Boost Software License 
   Copyright © 1998-2005 Beman Dawes, David Abrahams.
   Copyright © 2004-2007 Rene Rivera.
 
 - **OpenCV**| Needed to compile
-
   https://opencv.org
   License: [Apache-2.0](https://github.com/opencv/opencv/blob/master/LICENSE).
   *By downloading, copying, installing or using the software you agree to this license. If you do not agree to this license, do not download, install, copy or use the software.*
   Copyright © 2022 OpenCV team
 
 - **CrossPlatformDataBus**| Included in Source Code
-
   https://github.com/simondlevy/CrossPlatformDataBus
   License: GPL-3.0-only (Attention, recently transferred to MIT)
   Copyright © 2021 Simon D. Levy
 
-- **LSM6DSM Library for CrossPlatformDataBus **| Included in Source Code
-
+- **LSM6DSM Library for CrossPlatformDataBus** | Included in Source Code
   https://github.com/simondlevy/LSM6DSM
   License: GPL-3.0-only
   Copyright © 2018 Simon D. Levy
 
-- **Royale Library **| not needed to compile, needed to run, not included in source code
-
+- **Royale Library** | not needed to compile, needed to run, not included in source code
   https://pmdtec.com/en/
   License: Royale License for Camera Systems
   Copyright © 2022  pmdtechnologies ag
