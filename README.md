@@ -63,11 +63,17 @@ After 4 years of active development, I will let this project rest due to lack of
 
 You currently are in the **main repository of the project**, which contains the source code of the *unfolding-app* running on the Unfolding Space Glove (powered by a Raspberry Pi). The project also contains the following repos:
 
-- **[Unfolding Space Hardware](https://github.com/jakobkilian/unfolding-space-hardware)**
+- **[Unfolding Space Software / Main](https://github.com/jakobkilian/unfolding-space) (You are here)** 
+  Compiled application also called *unfolding-app*:
   Documentation of the hardware (glove, electronics, ...) needed to run this project in the first place. Building instructions, blueprints, circuit board files, 3D design files. 
-- **[Unfolding Space Monitor](https://github.com/jakobkilian/unfolding-space-monitor)**
+
+- [Unfolding Space Hardware](https://github.com/jakobkilian/unfolding-space-hardware) 
+  Also called *glove* (whole product with motors, Rapsi, ...) and *Unfolding Space Carrier Board* (a custom pcb):
+  Documentation of the hardware (glove, electronics, ...) needed to run this project in the first place. Building instructions, blueprints, circuit board files, 3D design files. 
+- [Unfolding Space Monitor](https://github.com/jakobkilian/unfolding-space-monitor) 
+  Compiled application also called *monitoring-app*:
   *Unity 3D* project (cross platform) of a monitoring app that receives data (depth image, motor values, logs) from the glove over Wifi an displays them on a tablet, smartphone or computer.
-- **(perhaps soon: Docker Environment)**
+- (perhaps soon: Docker Environment)
   ... to crosscompile the code for raspi. Needs resvision to be published
 
 
