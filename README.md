@@ -92,7 +92,7 @@ Code runs on the Raspberry Pi Compute Module 4 mounted on a custom carrier board
 Several libraries are used in the project:
 
 - [Libroyale from pmdtechnologies ag](https://pmdtec.com/en/) which is **not** open source but freely accessible when buying a pico flexx cam which is an obligatory part of the hardware. (You need to allow the usb cam in `/etc/udev/rules.d`, see lib doc)
-- [OpenCV: Open Source Computer Vision Library](https://github.com/opencv/opencv). Thanks to @Lauszus for [install inspritation](https://gist.github.com/Lauszus/c8ce73f3177d6455c27c)
+- [OpenCV: Open Source Computer Vision Library](https://github.com/opencv/opencv). Thanks to @github/Lauszus for [install inspritation](https://gist.github.com/Lauszus/c8ce73f3177d6455c27c)
 - [Boost Library](https://www.boost.org) is used for udp communication. Install with package manager sudo `apt-get install boost`
 - [WiringPi (Unofficial Mirror/Fork)](https://github.com/WiringPi/WiringPi) is used for i2c communication on the Raspi. 
 
@@ -181,20 +181,22 @@ Status Messages get triggered from various locations of the CU's code and at var
 Every message starts with a ascii encoded key for better readability delimited by a ':' (hex value: 3A). After that the data gets transferred in a plain uchar array. It is therefore crucial to know the data type of the message...
 These are the keys:
 
-- img           [byte][array]       pixel by pixel...
-- motors        [byte][array]       motor by motor...
-- frameCounter  [int]               sequential number incremented every frame
-- coreTemp      [float]             Temperature of the Raspberry's core in ° C
-- fps           [int]               Frames per second on the CU
-- isConnected   [bool]              Is the Pico Flexx camera connected?
-- isCapturing   [bool]              Is the Pico Flexx camera in capturing mode?
-- libCrashes    [int]               How often did the royal library crash since startup?
-- isTestMode    [bool]              CU is in Test Mode: the motors represent the test values not the camera values
-- isMuted       [bool]              All motors are muted 
-- drpBridge     [int]               Lib Royale: How many frames got dropped at the bridge during the last deptFrame calculation?
-- drpFC         [int]               Lib Royale: How many frames got dropped at the FC during the last deptFrame calculation?
-- delivFrames   [int]               Lib Royale: How many frames got finally delivered
-- drpMinute     [int]               Lib Royale: Summation of all drops in the last minute
+|msg|type|description|
+|-|-|-|
+| img          | [byte][array]      | pixel by pixel... |
+| motors       | [byte][array]      | motor by motor... |
+| frameCounter | [int]              | sequential number incremented every frame |
+| coreTemp     | [float]            | Temperature of the Raspberry's core in ° C |
+| fps          | [int]              | Frames per second on the CU |
+| isConnected  | [bool]             | Is the Pico Flexx camera connected? |
+| isCapturing  | [bool]             | Is the Pico Flexx camera in capturing mode? |
+| libCrashes   | [int]              | How often did the royal library crash since startup? |
+| isTestMode   | [bool]             | CU is in Test Mode: the motors represent the test values not the camera values |
+| isMuted      | [bool]             | All motors are muted  |
+| drpBridge    | [int]              | Lib Royale: How many frames got dropped at the bridge during the last deptFrame calculation? |
+| drpFC        | [int]              | Lib Royale: How many frames got dropped at the FC during the last deptFrame calculation? |
+| delivFrames  | [int]              | Lib Royale: How many frames got finally delivered |
+| drpMinute    | [int]              | Lib Royale: Summation of all drops in the last minute |
 
 
 
