@@ -13,30 +13,6 @@ Initiated in 2018 as an interaction design project as part of my undergraduate t
 
 ![uf-glove-main](doc/images/uf-glove-main.jpg)
 
-
-## Table of Contents
-
-   * [About the Project](#about-the-project)
-      * [More Information on the Project](#more-information-on-the-project)
-      * [Publication](#publication)
-      * [Future of the project](#future-of-the-project)
-   * [Content and Connected Repos](#content-and-connected-repos)
-   * [Code Documentation](#code-documentation)
-      * [Build &amp; Run](#build--run)
-         * [Makefile](#makefile)
-         * [Run](#run)
-      * [Overall Code Structure](#overall-code-structure)
-      * [Processing Procedure for New Incoming Frame](#processing-procedure-for-new-incoming-frame)
-      * [UPD API (In- and Outputs)](#upd-api-in--and-outputs)
-         * [Request-Messages](#request-messages)
-         * [Status Messages](#status-messages)
-      * [Docu on Registers of DRVs and PCAs](#docu-on-registers-of-drvs-and-pcas)
-      * [Future Directions](#future-directions)
-   * [Credits](#credits)
-   * [Funding](#funding)
-
-
-
 ### More Information on the Project
 
 - [Project Website](https://unfoldingspace.org) with more information, images and press texts
@@ -59,6 +35,27 @@ For February/March 2022 a publication in a scientific journal is planned. You wi
 ### Future of the project
 
 After 4 years of active development, I will let this project rest due to lack of time and money. Of course, questions, tips or feedback are always welcome and maybe the project will continue with or without me at another time. That would make me very happy indeed. Also see section "Future Directions" for things that have been started but couldn't be finished yet.
+
+
+
+## Table of further Contents
+
+   * [Content and Connected Repos](#content-and-connected-repos)
+   * [Code Documentation](#code-documentation)
+      * [Build &amp; Run](#build--run)
+         * [Makefile](#makefile)
+         * [Run](#run)
+      * [Overall Code Structure](#overall-code-structure)
+      * [Processing Procedure for New Incoming Frame](#processing-procedure-for-new-incoming-frame)
+      * [UPD API (In- and Outputs)](#upd-api-in--and-outputs)
+         * [Request-Messages](#request-messages)
+         * [Status Messages](#status-messages)
+      * [Docu on Registers of DRVs and PCAs](#docu-on-registers-of-drvs-and-pcas)
+      * [Future Directions](#future-directions)
+   * [Credits](#credits)
+   * [Funding](#funding)
+
+
 
 
 
