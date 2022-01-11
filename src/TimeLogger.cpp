@@ -1,3 +1,8 @@
+/* INFO
+ * Small library to log how much time the processing steps take. 
+ * Can be used to monitor and detect anomalies.
+ */
+
 #include "TimeLogger.hpp"
 
 #include <array>

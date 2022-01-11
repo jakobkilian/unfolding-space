@@ -1,3 +1,10 @@
+/* INFO
+ * Controls Unfolding Space Carrier Board (earlier MotorBoard)
+ * Inits DRVs and routes communication to them
+ * Sends motor values to the motors
+ */
+
+
 //----------------------------------------------------------------------
 // INCLUDES
 //----------------------------------------------------------------------

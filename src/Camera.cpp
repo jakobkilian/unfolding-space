@@ -1,3 +1,11 @@
+/* INFO
+ * DepthDataListener::onNewData() callback function that gets called from
+ * libroyale lib whenever a new depth data frame is ready.
+ * DepthDataUtilities::processData() that processes new incoming frames to th
+ * 3x3 output matrix for the glove
+ * And som other camera / libroyale helper functions
+ */
+
 //----------------------------------------------------------------------
 // INCLUDES
 //----------------------------------------------------------------------
@@ -25,7 +33,7 @@ using namespace std::chrono;
 //----------------------------------------------------------------------
 const int minObjSizeThresh = 90; // the min number of pixels, an object must
                                  // have (smaller objects might be noise)
-float maxDepth = 2;            // The depth of viewing range.
+float maxDepth = 2;              // The depth of viewing range.
                                  // Objects with bigger distance to camera
                                  // are ignored.
 
@@ -60,8 +68,8 @@ void DepthDataListener::onNewData(const DepthData *data) {
   } else {
     // if onNewData fails to unlock the mutex it returns instantly
     Glob::a_lockFailCounter++;
-   // cout << "failed locks:" << Glob::a_lockFailCounter
-   //      << " last is: " << multiLock << "\n";
+    // cout << "failed locks:" << Glob::a_lockFailCounter
+    //      << " last is: " << multiLock << "\n";
     if (multiLock == 0) {
       Glob::notifyProcess.mut.unlock();
     }
@@ -211,7 +219,7 @@ void DepthDataUtilities::processData() {
     int tempFrameCounter = Glob::counters.frameCounter;
     Glob::udpServer.preparePacket("frameCounter", tempFrameCounter);
   }
-    Glob::logger.mainLogger.store("endProcess");
+  Glob::logger.mainLogger.store("endProcess");
   // call sending thread
   {
     std::lock_guard<std::mutex> svCondLock(Glob::notifySend.mut);

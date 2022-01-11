@@ -18,7 +18,7 @@
 
 #include "CrossPlatformI2C.h"
 
-#include "Globals.hpp"
+#include "../../Globals.hpp"
 #include <wiringPi.h>
 #include <wiringPiI2C.h>
 

@@ -1,3 +1,21 @@
+/* INFO
+ * These objects are stored globally to be accesible by all threads.
+ *
+ * Some are organized in structs (initialized in "Globals.cpp")
+ * Naming convention:
+ * Atomic variables (that do not need locking) begin with: a_
+ * All others need to be protected manually when edited.
+ * Structs therefore have a .mut member (inherited from Base) to do so.
+ *
+ * Those without structs need to have a separate mutex if they need one.
+ *
+ * All global variables are in the Glob namespace to indicate that they might
+ * need mutexing...
+ *
+ * There might be better ways to implement multithreading, just didn't know
+ * better...
+ */
+
 #include "Globals.hpp"
 
 #include <boost/asio.hpp>
@@ -17,9 +35,8 @@ I2C Glob::i2c;
 std::mutex Glob::imuMux;
 Imu Glob::imu;
 
-
-Led Glob::led1(28,11,27);
-Led Glob::led2(10,29,6);
+Led Glob::led1(28, 11, 27);
+Led Glob::led2(10, 29, 6);
 
 std::atomic<int> Glob::a_lockFailCounter{0};
 std::atomic<bool> Glob::a_restartUnfoldingFlag{false};

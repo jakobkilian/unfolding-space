@@ -1,5 +1,11 @@
+/* INFO
+ * Just a test file. Not yet implemented due to time issues...
+ * Would be called from i2c in the end. Can already read WhoAmI regsiter. More
+ * work to study registers and do calibration..
+ */
+
 #include "MMC5633.h"
-#include "Globals.hpp"
+#include "../Globals.hpp"
 #include <math.h>
 
 MMC5633::MMC5633() {

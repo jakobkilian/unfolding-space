@@ -1,3 +1,9 @@
+/* INFO
+ * The UDP server sends uptime messages that clients are looking for, maintains
+ * a list of clients (UdpClient) that requested information and sendd it to them
+ * whenever a new frame is finished with processing.
+ */
+
 #include "UdpServer.hpp"
 
 #include <boost/array.hpp>

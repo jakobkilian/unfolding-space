@@ -1,7 +1,3 @@
-/*
-First try to use MMC5633 by Jakob
- */
-
 #pragma once
 
 #include <stdint.h>

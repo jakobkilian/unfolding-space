@@ -1,11 +1,7 @@
-/*
- * File: main.cpp
- * Author: Jakob Kilian
- * Date: 26.09.19
- * Info: Containts Main (endless) loop, UDP Handling and Analysis stuff
- * Project: unfoldingspace.jakobkilian.de
+/* INFO
+ * Initilises all components and persists in endless loop for mainting app and
+ * doing time based tasks. Creates 4 main threads (see readme).
  */
-
 //----------------------------------------------------------------------
 // INCLUDES
 //----------------------------------------------------------------------
@@ -583,24 +579,21 @@ int main(int ac, char *av[]) {
   try {
     po::options_description desc("Allowed options");
     desc.add_options()("help", "produce help message")(
-        "log",
-        "enable general log functions – currently "
-        "no effect")("printLogs",
-                     "print log messages in "
-                     "console")("version",
-                                "print verson info "
-                                "and exit")("mode", po::value<unsigned int>(),
-                                            "set "
-                                            "pico "
-                                            "flexx "
-                                            "camera"
-                                            " mode "
-                                            "(int "
-                                            "from "
-                                            "0:5)")("id",
-                                                    po::value<unsigned int>(),
-                                                    "set identifier for udp "
-                                                    "messages");
+        "log", "enable general log functions – currently "
+               "no effect")("printLogs", "print log messages in "
+                                         "console")(
+        "version", "print verson info "
+                   "and exit")("mode", po::value<unsigned int>(),
+                               "set "
+                               "pico "
+                               "flexx "
+                               "camera"
+                               " mode "
+                               "(int "
+                               "from "
+                               "0:5)")("id", po::value<unsigned int>(),
+                                       "set identifier for udp "
+                                       "messages");
 
     po::variables_map vm;
     po::store(po::parse_command_line(ac, av, desc), vm);

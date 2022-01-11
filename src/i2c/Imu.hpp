@@ -1,6 +1,6 @@
 #pragma once
-#include "CrossPlatformI2C_Core.h"
-#include "LSM6DSM.h"
+#include "CrossPlatformDataBus/CrossPlatformI2C_Core.h"
+#include "CrossPlatformDataBus/LSM6DSM.h"
 #include "MMC5633.h"
 #include <stdint.h>
 //****************************************************************

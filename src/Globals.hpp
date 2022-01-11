@@ -5,20 +5,14 @@
 #include <royale.hpp>
 
 #include "Camera.hpp"
-#include "I2C.hpp"
-#include "Imu.hpp"
+#include "i2c/I2C.hpp"
+#include "i2c/Imu.hpp"
 #include "MotorBoard.hpp"
 #include "TimeLogger.hpp"
 #include "UdpServer.hpp"
 #include "Led.hpp"
 
-/*
-Globals are organized in structs, that get initialized in "Globals.cpp"
-Naming convention:
-Atomic variables (that do not need locking) are beginning with: a_
-All others need to be protected when edited.
-Every Struct therefore has a .mut member (inherited from Base) to do so.
-*/
+
 
 struct Base {
   std::mutex mut;
@@ -90,7 +84,6 @@ extern I2C i2c;
 
 extern std::mutex imuMux;
 extern Imu imu;
-
 
 extern Led led1;
 extern Led led2;

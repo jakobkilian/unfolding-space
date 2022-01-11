@@ -1,3 +1,8 @@
+/* INFO
+ * Every monitoring app requesting information acts as a client that gets added
+ * to a list by the server as an UdpClient object. See Readme for details
+ */
+
 #include "UdpServer.hpp"
 
 #include <boost/array.hpp>

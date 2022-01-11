@@ -1,9 +1,13 @@
+/* INFO
+ * Own library to make communication to i2c devices easier. 
+ */
+
 //----------------------------------------------------------------------
 // INCLUDES
 //----------------------------------------------------------------------
 #include "I2C.hpp"
-#include "Globals.hpp"
-#include "MotorBoardDefs.hpp"
+#include "../Globals.hpp"
+#include "../MotorBoardDefs.hpp"
 #include <iostream>
 
 #include <errno.h>

@@ -75,7 +75,8 @@ endif
 # don't need to do this manually, we'll just forget if we ever add a file
 # SOURCES = src/MotorBoard.cpp src/Camera.cpp src/TimeLogger.cpp src/UdpServer.cpp src/UdpClient.cpp src/Globals.cpp src/main.cpp 
 
-SOURCES = $(wildcard src/*.cpp)
+# SOURCES = $(wildcard src/*.cpp)
+SOURCES = $(shell find src/. -name "*.cpp")     
 OBJS    = $(patsubst %.cpp, %.o, $(SOURCES))
 DEPS    = $(patsubst %.o, %.d, $(OBJS)) 
 

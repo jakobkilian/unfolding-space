@@ -1,6 +1,7 @@
-// Jakob 27.07.21
-// first try to get LEDs running
-// on CM4 use wiringpi 2.60 (unofficial)!
+/* INFO
+ * Small library to control LEDs on the Unfolding Space Carrier Board
+ * Using wiringpi 2.60 (suited for CM4) from  https://github.com/WiringPi
+ */
 
 //----------------------------------------------------------------------
 // INCLUDES

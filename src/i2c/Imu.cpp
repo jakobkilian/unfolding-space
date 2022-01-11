@@ -1,14 +1,14 @@
-// Jakob 01.07.21:
-// Registers of the lsm6dsl are quite extensive and difficult to grasp for me.
-// There is a library. But it is also complex. That's why I wrote a short script
-// just to check if the chip is available via I2C.
-// https://github.com/STMicroelectronics/STMems_Standard_C_drivers/tree/master/lsm6dsl_STdC
+/* INFO
+ * Small class to get values from all imus in the system
+ * currently only position from imu (lsm6dsl)
+ * Thanks to https://github.com/STMicroelectronics/STMems_Standard_C_drivers/tree/master/lsm6dsl_STdC
+ */
 
 //----------------------------------------------------------------------
 // INCLUDES
 //----------------------------------------------------------------------
 #include "Imu.hpp"
-#include "Globals.hpp"
+#include "../Globals.hpp"
 
 #include <errno.h>
 #include <stdio.h>
@@ -53,12 +53,9 @@ void Imu::init() {
   default:
     break;
   }
-
-  // MMC
-  //mmc5633 = new MMC5633();
-  //mmc5633->begin();
 }
 
+//Get all position data from umi
 void Imu::getPosition() {
   if (lsm6dsm->checkNewData()) {
     ax = 0, ay = 0, az = 0, gx = 0, gy = 0, gz = 0;
@@ -67,11 +64,13 @@ void Imu::getPosition() {
   }
 }
 
+//Test if glove exceeded the threshhold for turning it OFF
 bool Imu::offThreshExceeded() {
   bool exceeded = (ax > -600 || abs(ay) > 700) ? true : false;
   return exceeded;
 }
 
+//Test if glove exceeded the threshhold for turning it ON
 bool Imu::onThreshExceeded() {
   bool exceeded = (ax < -700 && abs(ay) < 600) ? true : false;
   return exceeded;
