@@ -11,16 +11,23 @@ The device employs the concept of [Sensory Substitution](https://en.wikipedia.or
 
 Initiated in 2018 as an interaction design project as part of my undergraduate thesis, I developed several prorotypes over the years, aiming to learn from the mistakes of other projects and use design methods to develop a more user-friendly device; the latest prototype was tested in 2021 in a study with blind and sighted (but blindfolded) subjects (see section Publication). 
 
+Note that this is an ongoing research project and the device is not yet applicaple to the real world. For mor information also see the publication.
+
 ![uf-glove-main](doc/images/uf-glove-main.jpg)
+
+
 
 ### More Information on the Project
 
 - [Project Website](https://unfoldingspace.org) with more information, images and press texts
+
 - [Hackaday.io Project Page ](https://hackaday.io/project/163784-unfolding-space)with project logs, files and instructions
+
 - [Publications on Researchgate](https://www.researchgate.net/project/Unfolding-Space) – previous scientific papers (German only, sorry)
+
 - [Videos from the Study](https://vimeo.com/channels/1758883) – exemplary video clips from the study
 
-
+  
 
 ### Publication
 
@@ -41,6 +48,7 @@ After 4 years of active development, I will let this project rest due to lack of
 ## Table of further Contents
 
    * [Content and Connected Repos](#content-and-connected-repos)
+   * [Demo](#demo)
    * [Code Documentation](#code-documentation)
       * [Build &amp; Run](#build--run)
          * [Makefile](#makefile)
@@ -79,6 +87,14 @@ You currently are in the **main repository of the project**, which contains the 
   *Unity 3D* project (cross platform) of a monitoring app that receives data (depth image, motor values, logs) from the glove over Wifi an displays them on a tablet, smartphone or computer.
 - (perhaps soon: Docker Environment)
   ... to crosscompile the code for raspi. Needs resvision to be published
+
+
+
+## Demo
+
+Here is a short demo video from the obstacle course of the study.
+
+![uf-glove-main](doc/images/sidebyside.mp4)
 
 
 
