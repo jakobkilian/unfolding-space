@@ -13,52 +13,6 @@ Initiated in 2018 as an interaction design project as part of my undergraduate t
 
 ![uf-glove-main](doc/images/uf-glove-main.jpg)
 
-### More Information on the Project
-
-- [Project Website](https://unfoldingspace.org) with more information, images and press texts
-- [Hackaday.io Project Page ](https://hackaday.io/project/163784-unfolding-space)with project logs, files and instructions
-- [Publications on Researchgate](https://www.researchgate.net/project/Unfolding-Space) – previous scientific papers (German only, sorry)
-- [Videos from the Study](https://vimeo.com/channels/1758883) – exemplary video clips from the study
-
-
-
-### Publication
-
-For February/March 2022 a publication in a scientific journal is planned. You will find the respective link and doi number here, as soon as it got published. The Abstract currently reads:
-
-> **Abstract:**
->
-> This paper documents the design, implementation and evaluation of the Unfolding Space Glove: an open source sensory substitution device that allows blind users to haptically sense the depth of their surrounding space. The prototype requires no external hardware, is highly portable, operates in all lighting conditions, and provides continuous and immediate feedback – all while being visually unobtrusive. Both blind (n = 8) and sighted but blindfolded subjects (n = 6) completed structured training and obstacle courses with the prototype and the white long cane to allow performance comparisons to be drawn between them. Although the subjects quickly learned how to use the glove and successfully completed all of the trials, they could not outperform their results with the white cane within the duration of the study. Nevertheless, the results indicate general processability of spatial information through sensory substitution by means of haptic, vibrotactile interfaces. Moreover, qualitative interviews revealed high levels of usability and user experience with the glove. Further research is necessary to investigate whether performance could be improved through further training, and how a fully functional navigational aid could be derived from this prototype.
-
-
-
-### Future of the project
-
-After 4 years of active development, I will let this project rest due to lack of time and money. Of course, questions, tips or feedback are always welcome and maybe the project will continue with or without me at another time. That would make me very happy indeed. Also see section "Future Directions" for things that have been started but couldn't be finished yet.
-
-
-
-## Table of further Contents
-
-   * [Content and Connected Repos](#content-and-connected-repos)
-   * [Code Documentation](#code-documentation)
-      * [Build &amp; Run](#build--run)
-         * [Makefile](#makefile)
-         * [Run](#run)
-      * [Overall Code Structure](#overall-code-structure)
-      * [Processing Procedure for New Incoming Frame](#processing-procedure-for-new-incoming-frame)
-      * [UPD API (In- and Outputs)](#upd-api-in--and-outputs)
-         * [Request-Messages](#request-messages)
-         * [Status Messages](#status-messages)
-      * [Docu on Registers of DRVs and PCAs](#docu-on-registers-of-drvs-and-pcas)
-      * [Future Directions](#future-directions)
-   * [Credits](#credits)
-   * [Funding](#funding)
-
-
-
-
-
 ## Content and Connected Repos
 
 You currently are in the **main repository of the project**, which contains the source code of the *unfolding-app* running on the Unfolding Space Glove (powered by a Raspberry Pi). The project also contains the following repos:
@@ -79,6 +33,47 @@ You currently are in the **main repository of the project**, which contains the 
   *Unity 3D* project (cross platform) of a monitoring app that receives data (depth image, motor values, logs) from the glove over Wifi an displays them on a tablet, smartphone or computer.
 - (perhaps soon: Docker Environment)
   ... to crosscompile the code for raspi. Needs resvision to be published
+
+### Links on the Project
+
+- [Project Website](https://unfoldingspace.org) with more information, images and press texts
+- [Hackaday.io Project Page ](https://hackaday.io/project/163784-unfolding-space)with project logs, files and instructions
+- [Publications on Researchgate](https://www.researchgate.net/project/Unfolding-Space) – previous scientific papers (German only, sorry)
+- [Videos from the Study](https://vimeo.com/channels/1758883) – exemplary video clips from the study
+
+### Publication on Study in 2021
+
+For February/March 2022 a publication in a scientific journal is planned. You will find the respective link and doi number here, as soon as it got published. The Abstract currently reads:
+
+> **Abstract:**
+>
+> This paper documents the design, implementation and evaluation of the Unfolding Space Glove: an open source sensory substitution device that allows blind users to haptically sense the depth of their surrounding space. The prototype requires no external hardware, is highly portable, operates in all lighting conditions, and provides continuous and immediate feedback – all while being visually unobtrusive. Both blind (n = 8) and sighted but blindfolded subjects (n = 6) completed structured training and obstacle courses with the prototype and the white long cane to allow performance comparisons to be drawn between them. Although the subjects quickly learned how to use the glove and successfully completed all of the trials, they could not outperform their results with the white cane within the duration of the study. Nevertheless, the results indicate general processability of spatial information through sensory substitution by means of haptic, vibrotactile interfaces. Moreover, qualitative interviews revealed high levels of usability and user experience with the glove. Further research is necessary to investigate whether performance could be improved through further training, and how a fully functional navigational aid could be derived from this prototype.
+
+### Future of the project
+
+After 4 years of active development, I will let this project rest due to lack of time and money. Of course, questions, tips or feedback are always welcome and maybe the project will continue with or without me at another time. That would make me very happy indeed. Also see section "Future Directions" for things that have been started but couldn't be finished yet.
+
+
+
+## Table of further Contents
+
+   * [Code Documentation](#code-documentation)
+      * [Build &amp; Run](#build--run)
+         * [Makefile](#makefile)
+         * [Run](#run)
+      * [Overall Code Structure](#overall-code-structure)
+      * [Processing Procedure for New Incoming Frame](#processing-procedure-for-new-incoming-frame)
+      * [UPD API (In- and Outputs)](#upd-api-in--and-outputs)
+         * [Request-Messages](#request-messages)
+         * [Status Messages](#status-messages)
+      * [Docu on Registers of DRVs and PCAs](#docu-on-registers-of-drvs-and-pcas)
+      * [Future Directions](#future-directions)
+   * [Credits](#credits)
+   * [Funding](#funding)
+
+
+
+
 
 
 
