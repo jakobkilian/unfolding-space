@@ -94,7 +94,7 @@ You currently are in the **main repository of the project**, which contains the 
 
 Here is a short demo video from the obstacle course of the study.
 
-![uf-glove-main](doc/images/sidebyside.mp4)
+![uf-glove-main](doc/images/sidebyside.gif)
 
 
 
