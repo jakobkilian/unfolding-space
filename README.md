@@ -263,5 +263,5 @@ The 2021-prototype was funded in two ways:
 
 - The study on the device and related expenses were funded as part of my Master's Thesis in an industry-on-campus-cooperation between the University of Tuebingen and Carl Zeiss Vision International GmbH.
 
-- In addition, the prototype construction was funded as part of the Kickstart@TH Cologne project of the StartUpLab@TH Cologne programme (``StartUpLab@TH Cologne'', funding reference 13FH015SU8, Federal Ministry of Education and Research – Germany / BMBF). 
+- In addition, the prototype construction was funded as part of the Kickstart@TH Cologne project of the StartUpLab@TH Cologne programme ("StartUpLab@TH Cologne", funding reference 13FH015SU8, Federal Ministry of Education and Research – Germany / BMBF). 
 
