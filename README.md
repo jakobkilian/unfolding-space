@@ -15,7 +15,7 @@ Note that this is an ongoing research project and the device is not yet applicap
 
 ![uf-glove-main](doc/images/uf-glove-main.jpg)
 
-## Content and Connected Repos
+### Content and Connected Repos
 
 You currently are in the **main repository of the project**, which contains the source code of the *unfolding-app* running on the Unfolding Space Glove (powered by a Raspberry Pi). The project also contains the following repos:
 
