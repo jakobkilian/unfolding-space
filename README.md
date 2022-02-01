@@ -5,7 +5,7 @@
 
 ## About the Project
 
-The Unfolding Space Glove is an Open Source wearbale that **allows blind or visually impaired users to haptically sense the depth of their surrounding space** and thus (hopefully) better navigate through it. 
+The Unfolding Space Glove is an Open Source wearable that **allows blind or visually impaired users to haptically sense the depth of their surrounding space** and thus (hopefully) better navigate through it. 
 
 The device employs the concept of [Sensory Substitution](https://en.wikipedia.org/wiki/Sensory_substitution), which in simple terms states that if one sensory modality is missing, the brain is able to receive and process the missing information by means of another modality. There has been a great deal of research on this topic over the last 50 years, but as yet there is no widely used device on the market that implements these ideas. 
 
