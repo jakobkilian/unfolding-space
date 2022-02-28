@@ -50,17 +50,15 @@ You currently are in the **main repository of the project**, which contains the 
 
 ### Publication
 
-For February/March 2022 a publication in a scientific journal is planned. You will find the respective link and doi number here, as soon as it got published. The Abstract currently reads:
+On 26.02.22 I published a scientific article with my co-authors in the Special Issue "Spatial Perception and Navigation in the Absence of Vision" of the  MDPI – Sensors magazine: https://www.mdpi.com/1518958
 
 > **Abstract:**
 >
-> This paper documents the design, implementation and evaluation of the Unfolding Space Glove: an open source sensory substitution device that allows blind users to haptically sense the depth of their surrounding space. The prototype requires no external hardware, is highly portable, operates in all lighting conditions, and provides continuous and immediate feedback – all while being visually unobtrusive. Both blind (n = 8) and sighted but blindfolded subjects (n = 6) completed structured training and obstacle courses with the prototype and the white long cane to allow performance comparisons to be drawn between them. Although the subjects quickly learned how to use the glove and successfully completed all of the trials, they could not outperform their results with the white cane within the duration of the study. Nevertheless, the results indicate general processability of spatial information through sensory substitution by means of haptic, vibrotactile interfaces. Moreover, qualitative interviews revealed high levels of usability and user experience with the glove. Further research is necessary to investigate whether performance could be improved through further training, and how a fully functional navigational aid could be derived from this prototype.
-
+>  This paper documents the design, implementation and evaluation of the Unfolding Space Glove—an open source sensory substitution device. It transmits the relative position and distance of nearby objects as vibratory stimuli to the back of the hand and thus enables blind people to haptically explore the depth of their surrounding space, assisting with navigation tasks such as object recognition and wayfinding. The prototype requires no external hardware, is highly portable, operates in all lighting conditions, and provides continuous and immediate feedback—all while being visually unobtrusive. Both blind (n = 8) and blindfolded sighted participants (n = 6) completed structured training and obstacle courses with both the prototype and a white long cane to allow performance comparisons to be drawn between them. The subjects quickly learned how to use the glove and successfully completed all of the trials, though still being slower with it than with the cane. Qualitative interviews revealed a high level of usability and user experience. Overall, the results indicate the general processability of spatial information through sensory substitution using haptic, vibrotactile interfaces. Further research would be required to evaluate the prototype’s capabilities after extensive training and to derive a fully functional navigation aid from its features.
 
 ### Future of the project
 
 After 4 years of active development, I will let this project rest due to lack of time and money. Of course, questions, tips or feedback are always welcome and maybe the project will continue with or without me at another time. That would make me very happy indeed. Also see section "Future Directions" for things that have been started but couldn't be finished yet.
-
 
 
 ## Table of further Contents
